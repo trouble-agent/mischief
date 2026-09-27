@@ -1,0 +1,15 @@
+id: F-009
+name: file-replaced-under-live-writer
+what: rename a new file over a path a live process holds open — the inode it writes
+    is no longer the file anyone reads (the 2026-08-29/30 archive hole)
+    breaks: long-lived writers, session stores, log rotation, state DBs
+params: {path: str, mode: replace|unlink-then-create|restore-snapshot, backup: bool}
+landed_proof:
+  kind: inode-identity
+  check: "stat(path).inode != fstat(open_fd).inode for the target pid"
+inverse: {action: restore-original, verify: "the writer's next flush is visible at the path"}
+capability: none
+tier: L0 (copy) / L1 (declared path) / L2 (real path, needs backup assertion)
+backend: fs
+maturity: L1-only
+expect_when_healthy: "the writer detects the swap (fd/inode check) and either reopens or fails loudly"

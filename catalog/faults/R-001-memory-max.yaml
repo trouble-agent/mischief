@@ -1,0 +1,14 @@
+id: R-001
+name: memory-max-squeeze
+what: a hard memory cap on the target's cgroup — allocation failure and OOM kill
+    breaks: caches that assume growth, graceful-degradation paths, in-flight work
+params: {scope: selector, memory_max: "64M", oom_group: bool?}
+landed_proof:
+  kind: cgroup-counters
+  check: "memory.events oom>=1 or oom_kill>=1, or the target observed ENOMEM"
+inverse: {action: raise-or-remove-limit, verify: "memory.current settles below the old cap"}
+capability: cgroup2 + user scope
+tier: L1
+backend: scope
+maturity: proven
+expect_when_healthy: "the service sheds load / refuses requests / restarts cleanly — it does not die silently"

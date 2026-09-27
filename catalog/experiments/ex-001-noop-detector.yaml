@@ -1,0 +1,20 @@
+# Replay S-1 / QA-TROUBLE-3: the false green.
+# A repo whose "start" command never starts the app (main packages live in cmd/) was
+# graded OK by the legacy chaos-corruption cell. mischief must grade no_op, because the
+# fault never reached a running target.
+id: ex-001-noop-detector
+target: {selector: "host:.", scratch: true}
+faults:
+  - primitive: F-008            # truncate-under-live-writer (the legacy cell's intent)
+    params: {path: "<state_root>/state.db", mode: truncate}
+    ttl: 20s
+    landed_proof: {kind: proc-state, check: "the target pid exists AND holds the path open"}
+    inverse: {action: restore-from-copy}
+probe:
+  - {name: process-alive, cmd: "pgrep -f '<app>' >/dev/null", expect: "0"}
+budget: {recover_within: 30s}
+seed: 20260927
+expect:
+  # the assertion the legacy cell could not make
+  verdict_on_missing_target: no_op
+  reason: "the injector found no live target holding the path -> the fault never landed"

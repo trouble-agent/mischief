@@ -1,0 +1,20 @@
+# Replay S-3: the 2026-08-29/30 archive hole.
+# state.db replaced underneath a live session killed the session; the restore path had
+# never been exercised, and two days of archive are permanently gone.
+id: ex-004-live-file-replace
+target: {selector: "process:hermes-gateway", scratch: true, allow_real_path: false}
+faults:
+  - primitive: F-009
+    params: {path: "<state_root>/state.db", mode: restore-snapshot, backup: true}
+    ttl: 45s
+    landed_proof: {kind: inode-identity, check: "open fd inode != path inode for the gateway pid"}
+    inverse: {action: restore-original-inode}
+probe:
+  - {name: session-survives, cmd: "hermes --version && hermes chat -q 'reply OK' --timeout 60", expect: "OK"}
+  - {name: history-intact, cmd: "<oracle> count sessions after t0", expect: "no gap"}
+integrity: {files: ["<state_root>/state.db"], mode: hash-and-rowcount}
+budget: {recover_within: 90s}
+expect:
+  replay_on_old_driver: corrupted        # the in-flight session died; data lost
+  replay_with_fallback: recovered        # the driver's copy-and-retry path takes over
+seed: 20260927

@@ -1,0 +1,21 @@
+# build artifacts
+bin/
+*.so
+*.o
+
+# run artifacts (journals are evidence, not source; keep them out of the tree)
+.journals/
+runs/
+*.journal.jsonl
+
+# probe scratch
+probe/*.out
+/tmp-*
+mc-fault-hits.*
+mc-victim.txt
+
+# editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

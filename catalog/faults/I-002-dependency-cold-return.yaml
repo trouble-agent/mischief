@@ -1,0 +1,15 @@
+id: I-002
+name: dependency-cold-return
+what: a dependency dies and comes back as an EMPTY instance on the same address
+    (the TRBL-031 shape: the recovery code existed and was never reached)
+    breaks: consumer-group recreation, re-registration, cache re-warm, leader election
+params: {service: str, mode: stop|kill|fresh-empty, restore_state: bool}
+landed_proof:
+  kind: external-probe + state-diff
+  check: "the port refuses for >= 1 sample, then accepts AND a known key/group is absent"
+inverse: {action: restore-state + restart-consumers, verify: "the dependent service processes one unit of work end to end"}
+capability: docker API (or the simulator)
+tier: L3 / L4
+backend: docker | sim
+maturity: proven        # replayed by hand during TRBL-031
+expect_when_healthy: "the consumer re-creates its group/registration and resumes without a restart"

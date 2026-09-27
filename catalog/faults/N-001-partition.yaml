@@ -1,0 +1,14 @@
+id: N-001
+name: network-partition
+what: drop all traffic to/from a named peer or port (netem loss 100% or DROP)
+    breaks: retries, timeouts, reconnect logic, queue backpressure
+params: {netns: str, iface: str, peer: ip:port?, mode: loss|drop, loss: "100%"}
+landed_proof:
+  kind: qdisc-counters + external-probe
+  check: "tc -s qdisc shows drops >= 1 AND an out-of-band probe to the peer fails"
+inverse: {action: delete-qdisc, verify: "the probe succeeds and tc -s shows no drops"}
+capability: NET_ADMIN
+tier: L2
+backend: net
+maturity: proven        # netns + netem + revert verified live on this host
+expect_when_healthy: "requests fail fast or queue with backpressure; no unbounded memory growth"

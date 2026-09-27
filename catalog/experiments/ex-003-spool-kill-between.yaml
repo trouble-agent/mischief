@@ -1,0 +1,19 @@
+# Replay S-4 / TRBL-041: the queue that was durable in name only.
+id: ex-003-spool-kill-between
+target: {selector: "process:troubled", scratch: true}
+faults:
+  - primitive: P-006
+    params: {kill_when: "after-enqueue-before-drain", signal: SIGKILL}
+    ttl: 15s
+    landed_proof:
+      kind: intermediate-state
+      check: ">= 1 spool entry exists on disk AND the process is gone (no commit record for it)"
+    inverse: {action: restart-and-reconcile}
+probe:
+  - {name: spool-drained, cmd: "ls <state_root>/spool/flow/spawn | wc -l", expect: "0"}
+  - {name: no-duplicate-dispatch, cmd: "grep -c dispatch <state_root>/ledger/<date>.jsonl", expect: "<expected exactly one per event>"}
+budget: {recover_within: 60s}
+expect:
+  replay_pre_fix: not_recovered      # payload written under a key no loop ever lists
+  replay_post_fix: recovered
+seed: 20260927

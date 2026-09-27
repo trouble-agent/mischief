@@ -1,0 +1,15 @@
+# process & signal layer
+id: P-001
+name: stop-process
+what: SIGSTOP a process (or one thread with tgkill) — hang without a crash
+    breaks: drains, heartbeats, leases, watchdogs, stuck-detection
+params: {pid: int|selector, thread_tid: int?, signal: SIGSTOP}
+landed_proof:
+  kind: proc-state
+  check: "/proc/<pid>/stat field 3 is 'T' for 2 consecutive samples"
+inverse: {primitive: P-001, params: {signal: SIGCONT}, verify: "state is 'R' or 'S'"}
+capability: none
+tier: L1
+backend: sig
+maturity: proven       # selftest green on this host, battery cell present
+expect_when_healthy: "liveness probe fails or the health endpoint stalls; no silent success"

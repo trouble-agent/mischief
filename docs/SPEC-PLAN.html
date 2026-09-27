@@ -1,0 +1,101 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec Plan</title>
+<style>
+:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:46rem;margin-inline:auto}
+h1{font-size:1.45rem;line-height:1.3;color:#fff;margin:.2rem 0 .6rem}
+h2{font-size:1.15rem;color:var(--acc);border-bottom:1px solid #2a3140;padding-bottom:.3rem;margin:1.6rem 0 .5rem}
+h3{font-size:1.02rem;color:#fff;margin:1.2rem 0 .3rem}
+p{margin:.55rem 0} code{background:var(--card);border:1px solid #2a3140;border-radius:5px;
+padding:.08em .35em;font-size:.86em;font-family:ui-monospace,Menlo,monospace;color:#9ecbff}
+pre{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.8rem;overflow-x:auto}
+pre code{border:none;background:none;padding:0;color:#c9e2a8}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.6rem 0}
+th,td{text-align:left;padding:.45rem;border-bottom:1px solid #2a3140;vertical-align:top}
+th{color:var(--mut)} a{color:var(--acc)}
+ul,ol{margin:.4rem 0 .8rem;padding-left:1.3rem} li{margin:.3rem 0}
+hr{border:none;border-top:1px solid #2a3140;margin:1.4rem 0}
+strong{color:#fff} .tag{color:var(--mut);font-size:.85rem}
+
+.toc{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.7rem .9rem;margin:1rem 0}
+.toc-h{color:var(--mut);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
+.toc ul{margin:.2rem 0;padding-left:1.1rem}.toc li{margin:.18rem 0}.toc a{text-decoration:none}
+@media (max-width:640px){
+  body{padding:.8rem;font-size:16px}
+  table,thead,tbody,tr,th,td{display:block;width:100%}
+  thead{display:none}
+  tr{border:1px solid #2a3140;border-radius:8px;padding:.4rem;margin:.6rem 0;background:var(--card)}
+  td{border:none;padding:.3rem .4rem;display:flex;gap:.6rem}
+  td::before{content:attr(data-label);color:var(--mut);flex:0 0 38%;font-size:.82rem;
+             text-transform:uppercase;letter-spacing:.03em}
+  td:empty{display:none}
+  pre{font-size:.82rem}
+}
+</style></head><body>
+<h1>mischief — spec plan (annex to the v0.1 PRD)</h1>
+<p>The PRD is the front door; this is the build&#x27;s spec set. Each spec is written to</p>
+<p><strong>falsify</strong> the PRD (report holes rather than smooth them over) and each carries a</p>
+<p><code>NOT-LIST</code>: what the mechanism explicitly does not promise.</p>
+<table>
+<tr><th>spec</th><th>title</th><th>owns</th></tr>
+<tr><td data-label="spec">SPEC-01</td><th>fault model &amp; catalog schema</th><th>primitive descriptor (params schema, landed-proof, inverse, capability, tier, maturity), catalog loader, catalog versioning</th></tr>
+<tr><td data-label="spec">SPEC-02</td><th>experiment &amp; journal</th><th>experiment schema, run id derivation (<code>hex(sha256(spec+seed))[:16]</code>), journal record types, group-commit + fsync, scrub-on-write, retention</th></tr>
+<tr><td data-label="spec">SPEC-03</td><th>rails &amp; blast</th><th>target resolution (no default target), protected list, scope ladder L0-L5, load gate, blast accounting, refusal taxonomy</th></tr>
+<tr><td data-label="spec">SPEC-04</td><th>reverter &amp; lifecycle</th><th>write-ahead inverse recording, TTL ownership, detached reverter, boot reconcile (<code>stuck</code>), kill switch, <code>/health.json</code></th></tr>
+<tr><td data-label="spec">SPEC-05</td><th>verdict engine</th><th>verdict vocabulary, probe/assertion model, integrity oracle, control run, <code>flaky</code> (N runs), timing model (t_landed, t_symptom, t_detect, t_recover)</th></tr>
+<tr><td data-label="spec">SPEC-06</td><th>backends: process &amp; syscall</th><th>signal primitives, <code>prlimit</code>, LD_PRELOAD shim (rule language, per-pid counters), seccomp user-notify supervisor</th></tr>
+<tr><td data-label="spec">SPEC-07</td><th>backends: resource &amp; storage</th><th><code>systemd-run --user</code> scopes, cgroup freezer, dm/loop, fsfreeze, RO remount, scratch filesystems</th></tr>
+<tr><td data-label="spec">SPEC-08</td><th>backends: network</th><th>userspace HTTP/DNS/TLS proxy (rootless), netns+netem via the privileged helper, sudo allowlist contract</th></tr>
+<tr><td data-label="spec">SPEC-09</td><th>backends: nodes &amp; cloud</th><th>docker node faults, provider simulator (API/DNS/object/metadata), real-provider adapter (v0.2, allowlist + spend cap)</th></tr>
+<tr><td data-label="spec">SPEC-10</td><th>battery &amp; filing</th><th>matrix definition, coverage/detection artifact, findings to board rows (per-board vocabulary), <code>--quick</code> parity with the legacy bash cells</th></tr>
+<tr><td data-label="spec">SPEC-11</td><th>operations</th><th>install, privileged helper + sudoers drop-in, privilege audit, upgrade/downgrade, <code>doctor</code>, self-watchdog, retention/rotation, uninstall</th></tr>
+<tr><td data-label="spec">SPEC-12</td><th>integration</th><th><code>observe.trouble</code> (ledger read-only), detection-gap rows, <code>verify-play</code> (v0.2), lane cadence contract, deliver routing</th></tr>
+</table>
+<h2 id="spec-prd-mapping-nothing-in-the-prd-may-be-unowned">Spec→PRD mapping (nothing in the PRD may be unowned)</h2>
+<table>
+<tr><th>PRD section</th><th>spec(s)</th><th>acceptance criteria</th></tr>
+<tr><td data-label="PRD section">§5 one architectural decision</td><th>SPEC-01, SPEC-02, SPEC-04</th><th>AC-1..AC-5, AC-10, AC-19</th></tr>
+<tr><td data-label="PRD section">§6 interface &amp; verdicts</td><th>SPEC-02, SPEC-05</th><th>AC-9, AC-13, AC-15, AC-16, AC-20</th></tr>
+<tr><td data-label="PRD section">§7 safety doctrine</td><th>SPEC-03, SPEC-04, SPEC-07 (allowlist), SPEC-11 (audit)</th><th>AC-2, AC-6, AC-7, AC-8, AC-12, AC-17</th></tr>
+<tr><td data-label="PRD section">§8 integration with trouble</td><th>SPEC-10, SPEC-12</th><th>AC-14, AC-18</th></tr>
+<tr><td data-label="PRD section">§9 platform audit</td><th>SPEC-06..SPEC-09 (each capability row is a precondition)</th><th>AC-11, AC-19</th></tr>
+<tr><td data-label="PRD section">§12 success criteria</td><th>SPEC-10 (the replays are battery cases)</th><th>S-1..S-5</th></tr>
+</table>
+<h2 id="per-spec-section-skeleton-the-shape-each-spec-must-fill">Per-spec section skeleton (the shape each spec must fill)</h2>
+<pre><code>
+1. Purpose and the question it answers
+2. State model (the states and, above all, the EDGES: armed-but-not-landed,
+   reverted-but-target-still-broken, land-after-revert, stuck)
+3. Deliverables (the exact files/records this spec owns)
+4. Wiring (who builds it, who calls it, what is nil-safe)
+5. No vocabulary of its own (which existing enum/type it reuses)
+6. Edge cases (one named case each, with the fallback behaviour)
+7. Test file + observable threshold per criterion
+8. NOT-LIST (what this spec does not promise)
+</code></pre>
+<h2 id="build-order-rule">Build-order rule</h2>
+<p>A primitive&#x27;s spec section is written <strong>before</strong> its code, and it must state the three</p>
+<p>things the code will be verified against: the landed-proof, the inverse, and the</p>
+<p>capability it requires. A primitive without those three is not specced and does not get</p>
+<p>built — that is the whole point of the fault contract.</p>
+<h2 id="non-guarantees-the-not-list-every-spec-must-carry">Non-guarantees (the NOT-LIST every spec must carry)</h2>
+<ul>
+<li>mischief does not promise a target <em>can</em> recover; it promises to measure whether it did.</li>
+<li>mischief does not promise every fault is revertible — it promises every fault&#x27;s inverse</li>
+</ul>
+<p>is <em>recorded before landing</em>, and that a fault whose inverse cannot be expressed is</p>
+<p>refused rather than attempted.</p>
+<ul>
+<li>mischief does not promise determinism of the target, only of the <em>fault</em>: same spec plus</li>
+</ul>
+<p>same seed means the same fault set in the same order.</p>
+<ul>
+<li>mischief does not protect against operator error: <code>--allow-real</code>, the protected-list</li>
+</ul>
+<p>override and the L5 adapter are deliberate human acts, and each is recorded in the journal.</p>
+<ul>
+<li>mischief does not replace a project&#x27;s own tests; it is the adversary those tests do not have.</li>
+</ul>
+</body></html>

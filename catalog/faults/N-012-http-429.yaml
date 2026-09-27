@@ -1,0 +1,15 @@
+id: N-012
+name: http-error-injection
+what: a userspace proxy returns 429/503/500 (with or without Retry-After), or
+    truncates a body, on a chosen fraction of requests
+    breaks: backoff, retry storms, partial-body parsing, idempotency
+params: {listen: str, upstream: str, status: int, rate: "0..1", retry_after: dur?, truncate: bool?}
+landed_proof:
+  kind: proxy-counter
+  check: "the proxy's own response log counts injected responses >= 1 for the run window"
+inverse: {action: stop-proxy, verify: "the upstream answers directly and the counter stops"}
+capability: none
+tier: L0
+backend: proxy
+maturity: proven
+expect_when_healthy: "the client honours Retry-After, bounds its retries and never duplicates a write"

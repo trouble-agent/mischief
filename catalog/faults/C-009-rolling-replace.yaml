@@ -1,0 +1,15 @@
+id: C-009
+name: rolling-replacement
+what: replace a container under a live client with the SAME name/address — every
+    in-flight connection dies while the endpoint looks unchanged
+    breaks: connection pooling, keepalive, retry-after-write, session affinity
+params: {runtime: docker, name: str, image: str, grace: dur}
+landed_proof:
+  kind: runtime + client-side
+  check: "docker inspect StartedAt changed AND the client observed >= 1 reset connection"
+inverse: {action: hold-stable, verify: "a fresh request succeeds and no resets occur for the window"}
+capability: docker API
+tier: L3
+backend: docker
+maturity: L1-only
+expect_when_healthy: "the client reconnects and retries idempotently, or surfaces a clear error"

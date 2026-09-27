@@ -1,0 +1,14 @@
+id: S-004
+name: short-write
+what: write() succeeds with n/2 bytes (no error anywhere) — torn/partial append
+    breaks: buffered writers, framing, offset arithmetic, checksum-on-read
+params: {path_substr: str, fraction: 0.5, budget: int?}
+landed_proof:
+  kind: shim-counter + size-delta
+  check: "shim hits >= 1 AND the file's size delta is less than the bytes the app believes it wrote"
+inverse: {action: detach-shim-rule, verify: "a following write applies all bytes"}
+capability: none
+tier: L1
+backend: shim
+maturity: L1-only        # needs its selftest + a battery cell before any shared target
+expect_when_healthy: "the app either retries to completion or refuses to ack — never silent truncation"

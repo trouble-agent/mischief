@@ -1,0 +1,15 @@
+# syscall & libc layer
+id: S-001
+name: write-eio
+what: write()/pwrite() to a NAMED path returns EIO
+    breaks: durability, append paths, error handling that has never executed
+params: {path_substr: str, errno: EIO, budget: int?}   # budget = how many calls to fail
+landed_proof:
+  kind: shim-counter
+  check: "<run_dir>/shim.<pid>.json hits >= 1 (written by the shim, independent of the target)"
+inverse: {action: detach-shim-rule, verify: "the next write to the path succeeds"}
+capability: none
+tier: L1
+backend: shim
+maturity: proven
+expect_when_healthy: "the app records the write failure and does not acknowledge the operation"

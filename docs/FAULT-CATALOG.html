@@ -1,0 +1,262 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fault Catalog</title>
+<style>
+:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:46rem;margin-inline:auto}
+h1{font-size:1.45rem;line-height:1.3;color:#fff;margin:.2rem 0 .6rem}
+h2{font-size:1.15rem;color:var(--acc);border-bottom:1px solid #2a3140;padding-bottom:.3rem;margin:1.6rem 0 .5rem}
+h3{font-size:1.02rem;color:#fff;margin:1.2rem 0 .3rem}
+p{margin:.55rem 0} code{background:var(--card);border:1px solid #2a3140;border-radius:5px;
+padding:.08em .35em;font-size:.86em;font-family:ui-monospace,Menlo,monospace;color:#9ecbff}
+pre{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.8rem;overflow-x:auto}
+pre code{border:none;background:none;padding:0;color:#c9e2a8}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.6rem 0}
+th,td{text-align:left;padding:.45rem;border-bottom:1px solid #2a3140;vertical-align:top}
+th{color:var(--mut)} a{color:var(--acc)}
+ul,ol{margin:.4rem 0 .8rem;padding-left:1.3rem} li{margin:.3rem 0}
+hr{border:none;border-top:1px solid #2a3140;margin:1.4rem 0}
+strong{color:#fff} .tag{color:var(--mut);font-size:.85rem}
+
+.toc{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.7rem .9rem;margin:1rem 0}
+.toc-h{color:var(--mut);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
+.toc ul{margin:.2rem 0;padding-left:1.1rem}.toc li{margin:.18rem 0}.toc a{text-decoration:none}
+@media (max-width:640px){
+  body{padding:.8rem;font-size:16px}
+  table,thead,tbody,tr,th,td{display:block;width:100%}
+  thead{display:none}
+  tr{border:1px solid #2a3140;border-radius:8px;padding:.4rem;margin:.6rem 0;background:var(--card)}
+  td{border:none;padding:.3rem .4rem;display:flex;gap:.6rem}
+  td::before{content:attr(data-label);color:var(--mut);flex:0 0 38%;font-size:.82rem;
+             text-transform:uppercase;letter-spacing:.03em}
+  td:empty{display:none}
+  pre{font-size:.82rem}
+}
+</style></head><body>
+<h1>mischief — fault catalog (v0.1 draft)</h1>
+<p>The catalog is <strong>data</strong>. Every entry carries, by contract: what it does, the</p>
+<p><strong>independent landed-proof</strong> (how the run knows the fault arrived), the <strong>inverse</strong></p>
+<p>(how it is reverted and how the revert is measured), the <strong>capability</strong> it needs, and</p>
+<p>the <strong>privilege tier</strong> (L0 scratch / L1 rootless scope / L2 sudo allowlist / L3 docker /</p>
+<p>L4 simulator). A primitive that cannot state all five does not enter the catalog.</p>
+<p><strong>Legend</strong> — backend: <code>sig</code> signals, <code>shim</code> LD_PRELOAD, <code>sec</code> seccomp user-notify,</p>
+<p><code>scope</code> <code>systemd-run --user</code> scope, <code>helper</code> narrow sudo allowlist, <code>net</code> netns+netem,</p>
+<p><code>dm</code> device-mapper/loop, <code>docker</code> container API, <code>proxy</code> userspace HTTP/DNS/TLS proxy,</p>
+<p><code>sim</code> provider simulator. Tier shorthand in the Cap column.</p>
+<p><strong>Why landed-proofs are not optional</strong>: a chaos run that cannot distinguish *&quot;the fault</p>
+<p>landed and the software survived&quot;<em> from </em>&quot;the fault never landed&quot;* reports the second</p>
+<p>as the first. That is exactly how this fleet&#x27;s <code>chaos-corruption</code> cell passed for weeks</p>
+<p>(QA-TROUBLE-3).</p>
+<hr>
+<nav class="toc"><div class="toc-h">Contents</div><ul><li><a href="#p-process-signal-14">P — Process &amp; signal (14)</a></li>
+<li><a href="#s-syscall-libc-14">S — Syscall &amp; libc (14)</a></li>
+<li><a href="#r-resource-cgroup-12">R — Resource &amp; cgroup (12)</a></li>
+<li><a href="#f-filesystem-storage-16">F — Filesystem &amp; storage (16)</a></li>
+<li><a href="#n-network-dns-tls-18">N — Network, DNS, TLS (18)</a></li>
+<li><a href="#c-container-node-orchestration-12">C — Container, node &amp; orchestration (12)</a></li>
+<li><a href="#i-infra-external-services-cloud-shapes-14">I — Infra, external services &amp; cloud shapes (14)</a></li>
+<li><a href="#t-time-clock-4">T — Time &amp; clock (4)</a></li>
+<li><a href="#companion-faults-deliberately-not-in-v0-1">Companion faults (deliberately NOT in v0.1)</a></li>
+<li><a href="#descriptor-the-machine-readable-form-of-a-row">Descriptor — the machine-readable form of a row</a></li>
+<li><a href="#maturity-ladder-which-primitives-may-run-where">Maturity ladder (which primitives may run where)</a></li></ul></nav>
+<hr>
+<h2 id="p-process-signal-14">P — Process &amp; signal (14)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">P-001</td><th><code>SIGSTOP</code> a process (hang, no crash): drains, heartbeats, watchdog logic</th><th><code>/proc/&lt;pid&gt;/stat</code> state <code>T</code> (or <code>/proc/&lt;pid&gt;/status</code> <code>SigStopped</code>) for N consecutive samples</th><th><code>SIGCONT</code> + assert state <code>R/S</code></th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-002</td><th><code>SIGSTOP</code> <strong>one thread</strong> of a multi-threaded daemon (<code>tgkill</code>) — thread starvation, blocked work queue</th><th>thread&#x27;s per-tid state <code>T</code> while the process stays alive</th><th><code>SIGCONT</code> to that tid</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-003</td><th><code>SIGKILL</code> (crash, no cleanup) mid-operation</th><th>target pid gone before its exit record; <code>waitpid</code> says signal 9</th><th>restart (process) / none needed (container)</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-004</td><th><code>SIGTERM</code> <strong>ignored</strong> on purpose (stuck drain) — shutdown never completes</th><th>process alive past <code>SIGTERM</code> + grace window</th><th>escalation <code>SIGKILL</code>, then restart</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-005</td><th><code>SIGTERM</code> followed by graceful-grace expiry → escalation: shutdown path never finishes cleanly</th><th>the KILL was necessary (the target did not exit within grace)</th><th>restart</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-006</td><th><strong>Kill between two named steps</strong> (e.g. enqueue → drain, append → fsync, ack → commit) — the &quot;durable in name only&quot; class (TRBL-041)</th><th>the intermediate state EXISTS on disk (spool entry present, record unwritten) and the process is gone</th><th>restart; assert the intermediate state is replayed or honestly discarded</th><th>sig+shim · L1</th></tr>
+<tr><td data-label="ID">P-007</td><th>Kill the <strong>parent</strong> (orphan / re-parent to init / lost subreaper)</th><th>child&#x27;s <code>PPid</code> changed to 1 (or the target&#x27;s own subreaper)</th><th><code>SIGKILL</code> the orphan; report the leak</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-008</td><th>Kill <strong>PID 1 of a container</strong> (whole-container death)</th><th><code>docker inspect</code> <code>State.Running=false</code>, exit code 137/143</th><th><code>docker start</code> (or restart policy)</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">P-009</td><th><code>SIGSEGV</code>/<code>SIGABRT</code>/<code>SIGBUS</code> injection (crash with core) — panic paths, corrupted-state recovery</th><th>process died BY that signal (<code>WTERMSIG</code>)</th><th>restart; assert no half-written state</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-010</td><th><code>SIGPIPE</code> on a listener (peer vanished) — write to a dead consumer</th><th><code>EPIPE</code> observed on the writer side</th><th>reconnect / restart the consumer</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-011</td><th>Real-time signal storm (<code>SIGRTMIN+k</code>) interrupting blocking syscalls — <code>EINTR</code> loops, <code>sigtimedwait</code> bugs</th><th><code>EINTR</code> observed in the target&#x27;s own log/counters; signal delivery count via <code>/proc/&lt;pid&gt;/status</code></th><th>stop the storm; assert the call completes</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">P-012</td><th><code>SIGSTOP</code> while <strong>inside a write/syscall</strong> and never resume until after the observer samples (torn/flush-window faults)</th><th>state <code>T</code> + the target&#x27;s fd open, target file size unchanged</th><th><code>SIGCONT</code>, then compare integrity oracle</th><th>sig+shim · L1</th></tr>
+<tr><td data-label="ID">P-013</td><th>Cgroup <strong>freeze</strong> (<code>cgroup.freeze=1</code>) — the whole tree stalls at once, unlike per-process stop</th><th><code>cgroup.events</code> frozen=1 <strong>or</strong> every pid in the group state <code>T</code></th><th><code>cgroup.freeze=0</code> + assert every pid resumed</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">P-014</td><th><strong>Crash loop</strong>: restart N times with a backoff gate, then stop (container <code>restart=always</code> with a failing entrypoint)</th><th><code>docker inspect</code> <code>RestartCount</code> ≥ N</th><th>restore entrypoint/start command; assert stable uptime</th><th>docker · L3</th></tr>
+</table>
+<p><strong>Edge cases this layer exists for</strong>: graceful shutdown that only works when nothing is</p>
+<p>in flight; a drain that hangs forever with zero error output; a watchdog that stops</p>
+<p>watching when the watchdog itself is stopped; recovery that depends on the process</p>
+<p>having exited <em>cleanly</em>.</p>
+<hr>
+<h2 id="s-syscall-libc-14">S — Syscall &amp; libc (14)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">S-001</td><th><code>write()</code>/<code>pwrite()</code> to a <strong>named path</strong> returns <code>EIO</code></th><th>shim&#x27;s own per-pid counter file increments (independent of the target)</th><th>counter stops; next write succeeds</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-002</td><th><code>write()</code> returns <code>ENOSPC</code> (disk full without a full disk)</th><th>counter + the target&#x27;s own error line</th><th>counter stops</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-003</td><th><code>write()</code> returns <code>EDQUOT</code> (quota, distinct from ENOSPC)</th><th>counter + target&#x27;s error</th><th>counter stops</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-004</td><th><strong>Short write</strong>: <code>write()</code> returns <code>n/2</code> (partial write, no error) — the nastiest shape, no error anywhere</th><th>counter + the file&#x27;s size/content mismatch vs expectation</th><th>disable rule; assert the app&#x27;s own append logic</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-005</td><th><code>fsync</code>/<code>fdatasync</code>/<code>sync_file_range</code> fails <code>EIO</code> — durability acknowledged but not durable</th><th>counter + the target&#x27;s log</th><th>counter stops; re-fsync</th><th>shim/seccomp · L1</th></tr>
+<tr><td data-label="ID">S-006</td><th><code>rename</code>/<code>link</code> fails <code>EXDEV</code>/<code>EACCES</code> — atomic publish path breaks</th><th>counter</th><th>retry path succeeds</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-007</td><th><code>open</code>/<code>openat</code> of a path returns <code>EACCES</code>/<code>ENOENT</code> (the file exists)</th><th>counter + target&#x27;s error</th><th>counter stops</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-008</td><th><code>connect</code>/<code>send</code>/<code>recv</code> fail <code>ECONNREFUSED</code>/<code>ETIMEDOUT</code> for a named peer</th><th>counter</th><th>counter stops</th><th>shim/seccomp · L1</th></tr>
+<tr><td data-label="ID">S-009</td><th><code>malloc</code>/<code>calloc</code> returns <code>NULL</code> at the Nth allocation — allocation-failure paths that never run</th><th>counter (allocation index)</th><th>counter stops</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-010</td><th><code>EINTR</code> injected into a chosen blocking syscall (select/poll/read) — retry-loop correctness</th><th>counter</th><th>counter stops</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">S-011</td><th><strong>Delay</strong> injected before a chosen syscall (e.g. 500 ms before each <code>fsync</code>) — timeout budgets</th><th>counter + observed latency delta</th><th>rule removed; latency recovers</th><th>shim/seccomp · L1</th></tr>
+<tr><td data-label="ID">S-012</td><th><strong>TOCTOU window</strong>: widen the gap between a check and a use (delay after <code>stat</code>, before <code>open</code>)</th><th>the injected delay is visible in the syscall trace</th><th>rule removed</th><th>seccomp · L1</th></tr>
+<tr><td data-label="ID">S-013</td><th>Seccomp-level <strong>syscall-subset kill</strong> (<code>SECCOMP_RET_ERRNO</code> for a family) — graceful degradation when a syscall disappears</th><th>supervisor&#x27;s notification count per syscall</th><th>supervisor detached, filter dropped with the process</th><th>sec · L1</th></tr>
+<tr><td data-label="ID">S-014</td><th><code>getrandom</code>/<code>/dev/urandom</code> returns a <strong>fixed seed</strong> — reproducibility bugs, key reuse (test-only)</th><th>counter; identical outputs across runs</th><th>rule removed</th><th>shim · L1</th></tr>
+</table>
+<p><strong>Edge cases</strong>: error paths that have never executed; code that treats <code>EINTR</code> as fatal;</p>
+<p>buffered writers that swallow a partial write; <code>fsync</code> failures that are logged and then</p>
+<p>ignored; allocation-failure handling that assumes <code>NULL</code> never happens.</p>
+<hr>
+<h2 id="r-resource-cgroup-12">R — Resource &amp; cgroup (12)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">R-001</td><th><code>MemoryMax</code> squeeze (<code>memory.max</code>) — allocation failure + OOM kill under a hard cap</th><th><code>memory.events</code> <code>oom</code>/<code>oom_kill</code> counters move, or target observes <code>ENOMEM</code></th><th>raise the cap; assert the target&#x27;s heap returns to baseline</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-002</td><th><code>MemoryHigh</code> soft pressure (throttling, <code>memory.pressure</code> climbs)</th><th><code>memory.pressure</code> <code>some</code>/<code>full</code> rises above baseline</th><th>clear the limit</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-003</td><th><strong>OOM-kill a chosen member</strong> (<code>memory.oom.group</code> + <code>oom_score_adj</code>) — which part of a tree dies first</th><th>kernel log/<code>dmesg</code> OOM line naming the pid + the pid is gone</th><th>restart the victim in the correct order</th><th>scope/helper · L1</th></tr>
+<tr><td data-label="ID">R-004</td><th><code>CPUQuota</code> throttle (starved CPU, timing budget blown)</th><th><code>cpu.stat</code> <code>nr_throttled</code> + <code>throttled_usec</code> grow</th><th>remove the quota; latency recovers</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-005</td><th>CPU <strong>pin to one core / cpuset shrink</strong> — concurrency bugs stop hiding</th><th><code>cpuset.cpus.effective</code> narrows; observed parallelism drops</th><th>restore the cpuset</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-006</td><th><code>TasksMax</code>/<code>RLIMIT_NPROC</code> squeeze — <code>fork</code>/<code>clone</code> returns <code>EAGAIN</code></th><th>the target observes <code>EAGAIN</code>; <code>pids.current</code> at the cap</th><th>raise the limit</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-007</td><th><code>RLIMIT_NOFILE</code> squeeze — fd exhaustion (<code>EMFILE</code>), deferred by design</th><th>the target observes <code>EMFILE</code>; <code>ls /proc/&lt;pid&gt;/fd</code> at the cap</th><th>raise the limit; assert fds are released</th><th>scope/shim · L1</th></tr>
+<tr><td data-label="ID">R-008</td><th><code>io.max</code>/<code>blkio</code> throttle — slow disk under a latency budget</th><th><code>io.stat</code> throttled counters / observed latency delta</th><th>remove the throttle</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-009</td><th><strong>Swap/memory pressure</strong> with no OOM (death by a thousand page faults)</th><th>PSI <code>full</code> grows, no OOM kill</th><th>clear pressure, measure recovery time</th><th>scope · L1</th></tr>
+<tr><td data-label="ID">R-010</td><th>Hugepage exhaustion (<code>nr_hugepages</code> to 0) — silent failure of a hugepage-dependent allocator</th><th>hugepage free counters drop to zero</th><th>restore</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">R-011</td><th><strong>Zombie accumulation</strong>: stop reaping (freeze the parent) — pid exhaustion via unreaped children</th><th><code>ps</code> state <code>Z</code> count grows; <code>pids.current</code> climbs</th><th><code>SIGCONT</code> parent; children reaped</th><th>sig · L1</th></tr>
+<tr><td data-label="ID">R-012</td><th>File-descriptor <strong>leak injection</strong> (shim holds a reference per call) — leak detection over hours</th><th>shim&#x27;s internal open-fd count grows monotonically</th><th>rule removed; fds released</th><th>shim · L1</th></tr>
+</table>
+<hr>
+<h2 id="f-filesystem-storage-16">F — Filesystem &amp; storage (16)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">F-001</td><th><strong>Disk full</strong> (<code>ENOSPC</code>) on a scratch mount, to the byte</th><th><code>df</code> shows 0 available AND the target observes <code>ENOSPC</code></th><th>delete the filler; <code>df</code> recovers</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-002</td><th><strong>Quota exhausted</strong> (<code>EDQUOT</code>) with free space on the device</th><th>quota report + target&#x27;s error</th><th>raise the quota</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-003</td><th><strong>Read-only remount</strong> (<code>EROFS</code>) — write path dies live, reads keep working</th><th><code>/proc/mounts</code> shows <code>ro</code>; writes raise <code>EROFS</code></th><th>remount <code>rw</code>; assert an append succeeds</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-004</td><th><strong><code>fsfreeze</code></strong> (FIFREEZE ioctl) — every writer blocks mid-flight for the freeze duration</th><th>ioctl returned 0 in the injector; target&#x27;s writes are observed blocked</th><th><code>FITHAW</code>; assert blocked writers complete</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-005</td><th><strong>dm-error</strong> (real I/O errors on read/write for a mapped region)</th><th><code>dmsetup status</code> error counter increments</th><th>remove the mapping; reads succeed</th><th>dm · L2</th></tr>
+<tr><td data-label="ID">F-006</td><th><strong>dm-delay</strong> (slow I/O, e.g. 200 ms per op) — timeout budgets, retry storms</th><th>measured latency delta + dm status</th><th>remove the delay</th><th>dm · L2</th></tr>
+<tr><td data-label="ID">F-007</td><th><strong>Volume detach</strong> (loop/mapper tear-down mid-write) — the cloud &quot;volume gone&quot; shape</th><th>the mount vanishes; <code>EIO</code>/<code>ENODEV</code> observed</th><th>re-attach; assert recovery (or honest refusal)</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-008</td><th><strong>Truncate to 0</strong> under a live writer (log/DB/journal file)</th><th>file size 0 while the writer holds an fd</th><th>restore from the pre-fault copy</th><th>L0/L1</th></tr>
+<tr><td data-label="ID">F-009</td><th><strong>File replaced under a live process</strong> (<code>rename</code>-over an open fd) — the 2026-08-29/30 archive hole</th><th>inode of the open fd ≠ inode at the path (<code>stat</code> both)</th><th>restore the original path/inode; assert the writer recovers or dies honestly</th><th>L0/L1</th></tr>
+<tr><td data-label="ID">F-010</td><th><strong>Directory removed</strong> under a running service (config/cache dir gone)</th><th><code>ENOENT</code> on the next relative operation</th><th>recreate; assert re-init vs crash</th><th>L0</th></tr>
+<tr><td data-label="ID">F-011</td><th><strong>Bit-flip corruption</strong> at a chosen offset (checksum mismatch detection)</th><th>the file&#x27;s own hash differs by exactly the flipped bits</th><th>restore from baseline; assert the app detects it</th><th>L0</th></tr>
+<tr><td data-label="ID">F-012</td><th><strong>Inode exhaustion</strong> (millions of empty files) — <code>ENOSPC</code> with free space</th><th><code>df -i</code> at 0 free inodes</th><th>delete the filler</th><th>helper · L2</th></tr>
+<tr><td data-label="ID">F-013</td><th><strong>mtime/ctime frozen</strong> (<code>os.Chtimes</code>) — change detectors that trust timestamps (the TRBL-013 class)</th><th>mtime unchanged while content differs</th><th>restore the timestamp</th><th>L0</th></tr>
+<tr><td data-label="ID">F-014</td><th><strong>Permission flip</strong> (<code>chmod 000</code>) on a live path — <code>EACCES</code> where none was expected</th><th>mode bits read back as 000</th><th>restore the mode</th><th>L0</th></tr>
+<tr><td data-label="ID">F-015</td><th><strong>Symlink/hardlink trickery</strong>: path swapped to a new target mid-run (or a symlink loop) — path trust bugs</th><th><code>readlink</code> shows the new target; <code>ELOOP</code> if looped</th><th>restore the link</th><th>L0</th></tr>
+<tr><td data-label="ID">F-016</td><th><strong>Network/FUSE mount stall</strong> (server unreachable → <code>D</code> state, uninterruptible) — the nastiest hang</th><th>process state <code>D</code> in <code>/proc/&lt;pid&gt;/stat</code>; <code>stat</code> on the mount blocks</th><th>restore the server; assert the client recovers (or is honest about <code>stuck</code>)</th><th>L1/L2</th></tr>
+</table>
+<hr>
+<h2 id="n-network-dns-tls-18">N — Network, DNS, TLS (18)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">N-001</td><th><strong>Full partition</strong> (<code>netem loss 100%</code> or <code>DROP</code>) for a named peer/port</th><th><code>tc -s qdisc</code> shows drops ≥ 1; the observer&#x27;s connect fails</th><th>delete the qdisc; a request succeeds</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-002</td><th><strong>Latency</strong> injection (delay ± jitter) — timeout budgets, head-of-line blocking</th><th><code>tc -s</code> delay counter + measured RTT delta</th><th>delete qdisc</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-003</td><th><strong>Packet reorder / duplication</strong> — protocol assumptions</th><th>netem stats + duplicate counts at the observer</th><th>delete qdisc</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-004</td><th><strong>Bandwidth ceiling</strong> (rate limit) — slow consumer/backpressure</th><th>measured throughput drop</th><th>delete qdisc</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-005</td><th><strong>Packet corruption</strong> (bad checksums, silent retransmits)</th><th>netem <code>corrupt</code> counter</th><th>delete qdisc</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-006</td><th><strong>MTU blackhole</strong> (drop packets &gt; 1400) — the classic &quot;hangs on large responses&quot;</th><th>large packets dropped, small ones pass (<code>ping -s</code> split)</th><th>delete qdisc</th><th>net · L2</th></tr>
+<tr><td data-label="ID">N-007</td><th><strong>Connection refused</strong> (nothing listening) — cold start ordering</th><th><code>ECONNREFUSED</code> observed by the target</th><th>start the listener</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-008</td><th><strong>Half-open / silent drop after SYN</strong> (connect hangs, no RST) — the worst timeout shape</th><th>observer sees SYN with no SYN-ACK; target blocked in connect</th><th>remove the rule</th><th>net/proxy · L1</th></tr>
+<tr><td data-label="ID">N-009</td><th><strong>RST mid-response</strong> (peer dies holding a half-written body)</th><th>the consumer observes <code>ECONNRESET</code> mid-body</th><th>re-request; assert no partial write leaked</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-010</td><th><strong>Slow reader / backpressure</strong> (consumer stops reading) — unbounded buffers</th><th>sender&#x27;s socket buffer fills; write blocks</th><th>resume reading</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-011</td><th><strong>Truncated HTTP body</strong> (content-length lies)</th><th>client&#x27;s parse error + received-vs-declared byte counts</th><th>remove the rule</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-012</td><th><strong>HTTP 429 / 503 / 500 bursts</strong> with/without <code>Retry-After</code> — backoff, retry storms</th><th>proxy&#x27;s own hit counter + the target&#x27;s retry log</th><th>rule removed</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-013</td><th><strong>Chunked-encoding / gzip corruption</strong> — parser robustness</th><th>client-side decode error</th><th>remove rule</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-014</td><th><strong>Redirect loop</strong> / wrong <code>Location</code></th><th>client&#x27;s hop counter</th><th>remove rule</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-015</td><th><strong>DNS NXDOMAIN / SERVFAIL / timeout</strong> for a named name</th><th>resolver-side counter; target&#x27;s resolution error</th><th>restore the answer</th><th>proxy/helper · L1</th></tr>
+<tr><td data-label="ID">N-016</td><th><strong>DNS stale/wrong record</strong> (name resolves to a dead IP) — cache/TTL bugs</th><th>resolution returns the injected IP</th><th>restore; assert cache TTL respected</th><th>proxy/helper · L1</th></tr>
+<tr><td data-label="ID">N-017</td><th><strong>TLS: expired / self-signed / wrong-host certificate</strong>, or a <strong>rotation mid-flight</strong></th><th>handshake failure in the client; the served cert&#x27;s validity read back</th><th>restore the cert</th><th>proxy · L0</th></tr>
+<tr><td data-label="ID">N-018</td><th><strong>Clock-skewed peer</strong> (cert &quot;not yet valid&quot; / signature window)</th><th>handshake failure naming validity</th><th>restore</th><th>proxy · L0</th></tr>
+</table>
+<hr>
+<h2 id="c-container-node-orchestration-12">C — Container, node &amp; orchestration (12)</h2>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">C-001</td><th>Graceful stop with a short grace window (<code>docker stop -t 1</code>) — drain vs SIGKILL</th><th><code>State.Running=false</code> + exit code; SIGKILL needed</th><th><code>docker start</code></th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-002</td><th>Hard kill (<code>docker kill</code>) — no cleanup at all</th><th>exit code 137</th><th><code>docker start</code></th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-003</td><th><strong>Pause/unpause</strong> (container freezer) — the tree stalls, the TCP stack still ACKs</th><th><code>State.Paused=true</code>; no app progress while paused</th><th>unpause</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-004</td><th><strong>OOM-kill</strong> inside the container&#x27;s cgroup</th><th><code>State.OOMKilled=true</code></th><th>restart with the original limit</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-005</td><th><strong>Network detach/attach</strong> (container loses its network mid-request)</th><th><code>NetworkSettings</code> shows no endpoint; target sees <code>ENETUNREACH</code></th><th>re-attach; assert reconnect</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-006</td><th><strong>Volume/bind-mount disappears</strong> mid-write (the cloud volume-loss shape)</th><th>path <code>ENOENT</code> inside the container while the mount record is gone</th><th>remount; assert recovery</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-007</td><th><strong>Read-only rootfs</strong> (write to <code>/tmp</code> or <code>/var</code> fails)</th><th><code>EROFS</code> in the container</th><th>restore</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-008</td><th><strong>Image pull failure / registry 5xx</strong> — deploy-time recovery</th><th>pull error recorded; container absent</th><th>registry responds; pull succeeds</th><th>sim/proxy · L4</th></tr>
+<tr><td data-label="ID">C-009</td><th><strong>Rolling replacement with connection drop</strong> (new container, same name/IP, old connections killed) — the &quot;replaced under a live client&quot; class</th><th>client connections reset at swap time; <code>StartedAt</code> changed</th><th>none (that is the point) — grade recovery</th><th>docker · L3</th></tr>
+<tr><td data-label="ID">C-010</td><th><strong>Healthcheck forced failure</strong> (probe returns 500) — restart-on-unhealthy loops</th><th>healthcheck failures ≥ threshold; restart count grows</th><th>restore the probe</th><th>proxy/docker · L3</th></tr>
+<tr><td data-label="ID">C-011</td><th><strong>Node drain / cordon shape</strong> (faults that assume the node goes away)</th><th>simulated scheduler marks the node unschedulable</th><th>uncordon</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">C-012</td><th><strong>PID-1 reaping gone</strong> (entrypoint that ignores orphaned children) — zombie accumulation</th><th>zombie count grows in the container</th><th>restart with a real init</th><th>docker · L3</th></tr>
+</table>
+<hr>
+<h2 id="i-infra-external-services-cloud-shapes-14">I — Infra, external services &amp; cloud shapes (14)</h2>
+<p>Simulator-first: every entry here has a <code>mode: sim</code> (default) and, where a real provider</p>
+<p>adapter exists (v0.2+), a <code>mode: real</code> that is opt-in, allowlisted and spend-capped.</p>
+<p><code>destroy_class=permanent</code> never runs outside the simulator in v0.1.</p>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">I-001</td><th><strong>Instance/machine restart</strong> (soft then hard) — boot ordering, re-attach, cold caches</th><th>boot id changed; uptime reset; service records a fresh start</th><th>ensure it boots; assert service healthy</th><th>sim/docker · L4</th></tr>
+<tr><td data-label="ID">I-002</td><th><strong>Dependency restart / cold return</strong> — a service returns as an EMPTY instance on the same address (the TRBL-031 shape)</th><th>the dependency is up but its state is empty (keys/streams/groups gone)</th><th>restore state or re-init consumers; grade recovery</th><th>docker/sim · L3/L4</th></tr>
+<tr><td data-label="ID">I-003</td><th><strong>API rate limit</strong> (429 bursts, throttle headers, quota exhaustion) with and without <code>Retry-After</code></th><th>provider-sim request log shows rejected calls; the client&#x27;s retry log</th><th>quota restored</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-004</td><th><strong>API 5xx / malformed response / pagination bug</strong> (same page twice, endless page)</th><th>sim log + client&#x27;s loop counter</th><th>sim healthy</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-005</td><th><strong>Eventual consistency lag</strong> — a write is acknowledged, a read returns the old value for N seconds</th><th>the sim serves the stale value for the declared window</th><th>window expires; read is fresh</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-006</td><th><strong>Stale/partial object store</strong> (<code>404</code> on a key that exists; truncated multipart; expired presigned URL 403)</th><th>sim (or provider) returns that exact status; client&#x27;s error names it</th><th>restore</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-007</td><th><strong>Volume detach / re-attach</strong> on a live writer (cloud disk loss)</th><th>the device disappears from the box; <code>EIO</code> observed</th><th>re-attach; assert recovery</th><th>sim/helper · L4/L2</th></tr>
+<tr><td data-label="ID">I-008</td><th><strong>Floating IP / DNS move</strong> — traffic shifts away (or to a blackhole)</th><th>the address no longer answers on the old node</th><th>move it back</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-009</td><th><strong>Instance termination / spot reclaim notice</strong> — the graceful-exit window</th><th>termination notice delivered; the node goes away at T+2min</th><th>new node; assert state recovery from durable storage</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-010</td><th><strong>Authentication expiry mid-run</strong> (token/credential expires between requests, key rotated)</th><th>the next call 401s while the previous succeeded</th><th>re-auth path; assert the client refreshes</th><th>sim/proxy · L4</th></tr>
+<tr><td data-label="ID">I-011</td><th><strong>Metadata service fault</strong> (169.254.169.254 timeout/500/stale token) — long credential stalls at boot</th><th>metadata requests hang/fail in the sim; the client&#x27;s boot stalls</th><th>sim healthy</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-012</td><th><strong>Quota/limit exhaustion</strong> (VM count, bucket count, disk quota at the account level)</th><th>provider-sim rejects with the quota error</th><th>quota freed</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-013</td><th><strong>Snapshot restore to a stale point</strong> — &quot;recovered&quot; but lost N minutes</th><th>restored state&#x27;s timestamp &lt; the fault time; data delta measurable</th><th>(that is the finding)</th><th>sim · L4</th></tr>
+<tr><td data-label="ID">I-014</td><th><strong>DNS propagation delay / TTL mismatch</strong> after a change</th><th>two resolvers disagree for the declared window</th><th>propagate</th><th>sim · L4</th></tr>
+</table>
+<hr>
+<h2 id="t-time-clock-4">T — Time &amp; clock (4)</h2>
+<p>Time namespaces are <strong>not available unprivileged on this host</strong> (<code>unshare --time</code> →</p>
+<p><code>EPERM</code>), so this layer is shim/helper-based in v0.1 and its primitives ship at the</p>
+<p>lowest maturity until their selftest is green.</p>
+<table>
+<tr><th>ID</th><th>fault / what it breaks</th><th>landed-proof</th><th>inverse</th><th>Cap</th></tr>
+<tr><td data-label="ID">T-001</td><th><code>clock_gettime</code>/<code>gettimeofday</code> <strong>jumps forward</strong> (e.g. +1 h) — timers fire early, TTLs collapse, leases expire</th><th>shim counter + the target&#x27;s own clock reading</th><th>rule removed; clock restored</th><th>shim/helper · L1</th></tr>
+<tr><td data-label="ID">T-002</td><th>Clock <strong>jumps backward</strong> — monotonic-vs-wall bugs, negative durations, expired cache thinking</th><th>as above</th><th>as above</th><th>shim/helper · L1</th></tr>
+<tr><td data-label="ID">T-003</td><th><strong>Timer acceleration</strong> (time runs 100× fast) — rate limiters, retry budgets, lease churn</th><th>shim counter + observed timer frequency</th><th>rule removed</th><th>shim · L1</th></tr>
+<tr><td data-label="ID">T-004</td><th><strong>Time freeze</strong> (clock stands still) — watchdog never trips, TTL never expires</th><th>readings identical across N samples</th><th>rule removed</th><th>shim/helper · L1</th></tr>
+</table>
+<hr>
+<h2 id="companion-faults-deliberately-not-in-v0-1">Companion faults (deliberately NOT in v0.1)</h2>
+<ul>
+<li><strong>Permanent destruction</strong> (delete an instance, delete a bucket, wipe a volume):</li>
+</ul>
+<p>simulator-only, and refused outside it. The value does not justify the blast radius</p>
+<p>before the reversible set is proven fleet-wide.</p>
+<ul>
+<li><strong>Kernel-level faults</strong> (kmem / device removal / <code>MADV_HWPOISON</code>): the blast radius is</li>
+</ul>
+<p>the host and the recovery path may not exist. Requires a dedicated scratch box as a</p>
+<p>precondition, which is an owner decision, not a primitive.</p>
+<ul>
+<li><strong>Load/flood faults</strong>: that is a load generator&#x27;s job; mischief may <em>accompany</em> one,</li>
+</ul>
+<p>never own one.</p>
+<ul>
+<li><strong>Privilege-escalation or exploit delivery</strong>: out of scope permanently.</li>
+</ul>
+<h2 id="descriptor-the-machine-readable-form-of-a-row">Descriptor — the machine-readable form of a row</h2>
+<pre><code>
+id: S-001
+name: write-eio
+what: write()/pwrite() to a NAMED path returns EIO
+params: {path_substr: str, errno: EIO, budget: int?}
+landed_proof: {kind: shim-counter, check: &quot;&lt;run_dir&gt;/shim.&lt;pid&gt;.json hits &gt;= 1&quot;}
+inverse: {action: detach-shim-rule, verify: &quot;the next write to the path succeeds&quot;}
+capability: none
+tier: L1
+backend: shim
+maturity: proven          # L1-only | proven | fielded
+expect_when_healthy: &quot;the failure is recorded and the operation is not acknowledged&quot;
+</code></pre>
+<p>Every row in the tables above is publishable in this form; ten of them ship as real</p>
+<p>files in <code>catalog/faults/</code>, and the four replay cases ship in <code>catalog/experiments/</code>.</p>
+<h2 id="maturity-ladder-which-primitives-may-run-where">Maturity ladder (which primitives may run where)</h2>
+<table>
+<tr><th>rung</th><th>requirement</th><th>reachable scope</th></tr>
+<tr><td data-label="rung"><code>L1-only</code></td><th>no selftest yet</th><th>L0 scratch target only</th></tr>
+<tr><td data-label="rung"><code>proven</code></td><th><code>mischief selftest --primitive &lt;id&gt;</code> green on this host + a battery cell exists</th><th>its declared tier</th></tr>
+<tr><td data-label="rung"><code>fielded</code></td><th>≥ 30 days of runs with zero <code>stuck</code> faults and zero unproven reverts</th><th>any tier, including monkey mode</th></tr>
+</table>
+</body></html>

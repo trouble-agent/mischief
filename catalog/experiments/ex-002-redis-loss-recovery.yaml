@@ -1,0 +1,20 @@
+# Replay S-2 / TRBL-031: dependency loss where the recovery code was unreachable.
+id: ex-002-redis-loss-recovery
+target: {selector: "container:trouble-hub", scratch: true}
+faults:
+  - primitive: I-002
+    params: {service: redis, mode: fresh-empty, restore_state: false}
+    ttl: 90s
+    landed_proof: {kind: external-probe, probe: "tcp:127.0.0.1:7699", expect: "refused-then-open-empty"}
+    inverse: {primitive: I-002, params: {mode: restore}}
+probe:
+  - {name: health-ok, cmd: "curl -sf -o /dev/null -w '%{http_code}' 127.0.0.1:7661/health.json", expect: "200"}
+  - {name: ingest-accepts, cmd: "curl -s -o /dev/null -w '%{http_code}' -X POST '127.0.0.1:7661/api/1/event/?sentry_key=<key>' -d '{\"message\":\"probe\",\"level\":\"error\"}'", expect: "200"}
+  - {name: group-present, cmd: "redis-cli XPENDING <stream> <group>", expect: "0"}
+budget: {recover_within: 120s}
+observe: {trouble: {namespace: trouble, expect_record: TROUBLE-HUB-004, within: 60s}}
+expect:
+  # measured by hand when the bug was live; the experiment is the rehearsal
+  replay_pre_fix: not_recovered
+  replay_post_fix: recovered
+seed: 20260927

@@ -1,0 +1,145 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results</title>
+<style>
+:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:46rem;margin-inline:auto}
+h1{font-size:1.45rem;line-height:1.3;color:#fff;margin:.2rem 0 .6rem}
+h2{font-size:1.15rem;color:var(--acc);border-bottom:1px solid #2a3140;padding-bottom:.3rem;margin:1.6rem 0 .5rem}
+h3{font-size:1.02rem;color:#fff;margin:1.2rem 0 .3rem}
+p{margin:.55rem 0} code{background:var(--card);border:1px solid #2a3140;border-radius:5px;
+padding:.08em .35em;font-size:.86em;font-family:ui-monospace,Menlo,monospace;color:#9ecbff}
+pre{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.8rem;overflow-x:auto}
+pre code{border:none;background:none;padding:0;color:#c9e2a8}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.6rem 0}
+th,td{text-align:left;padding:.45rem;border-bottom:1px solid #2a3140;vertical-align:top}
+th{color:var(--mut)} a{color:var(--acc)}
+ul,ol{margin:.4rem 0 .8rem;padding-left:1.3rem} li{margin:.3rem 0}
+hr{border:none;border-top:1px solid #2a3140;margin:1.4rem 0}
+strong{color:#fff} .tag{color:var(--mut);font-size:.85rem}
+
+.toc{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.7rem .9rem;margin:1rem 0}
+.toc-h{color:var(--mut);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
+.toc ul{margin:.2rem 0;padding-left:1.1rem}.toc li{margin:.18rem 0}.toc a{text-decoration:none}
+@media (max-width:640px){
+  body{padding:.8rem;font-size:16px}
+  table,thead,tbody,tr,th,td{display:block;width:100%}
+  thead{display:none}
+  tr{border:1px solid #2a3140;border-radius:8px;padding:.4rem;margin:.6rem 0;background:var(--card)}
+  td{border:none;padding:.3rem .4rem;display:flex;gap:.6rem}
+  td::before{content:attr(data-label);color:var(--mut);flex:0 0 38%;font-size:.82rem;
+             text-transform:uppercase;letter-spacing:.03em}
+  td:empty{display:none}
+  pre{font-size:.82rem}
+}
+</style></head><body>
+<h1>Capability audit — measured on this host, 2026-09-27</h1>
+<p>Raw output of <code>probe/capability-probe.sh</code> plus two mechanism proofs compiled and run the</p>
+<p>same session. Every line below is re-runnable from this directory; nothing here is</p>
+<p>inferred.</p>
+<pre><code>
+$ bash capability-probe.sh
+== host ==            7.0.0-31-generic / cores=16 / uid=1000
+== cgroup ==          fstype=cgroup2fs
+                      controllers=cpuset cpu io memory hugetlb pids rdma misc dmem
+                      subtree=cpuset cpu io memory hugetlb pids rdma misc dmem
+== user delegation == /sys/fs/cgroup/user.slice/user-1000.slice (root-owned)
+                      user_cgroup_controllers=cpu memory pids
+== cgroup create ==   cgroup_mkdir=DENIED(unprivileged)
+== psi ==             cpu io memory   (io some avg10=19.35 avg60=18.94 total=44178336648)
+== sudo ==            passwordless_sudo=OK
+== tools ==           cc gcc tc ip unshare nsenter dmsetup losetup mkfs.ext4 fsfreeze
+                      strace jq socat present;  zig=MISSING
+== namespaces ==      max_user_ns=243115; unshare --time --boottime 1000 true -&gt; EPERM
+== seccomp ==         Seccomp: 0 (probe process unfiltered)
+== docker ==          docker=29.1.3 cgroup=2
+== loop/devmapper ==  /dev/loop-control /dev/mapper/control present; loop_free=/dev/loop27
+</code></pre>
+<pre><code>
+$ cc -shared -fPIC -O2 -o libfault-probe.so libfault-probe.c -ldl &amp;&amp; cc -O2 -o victim victim.c
+$ cc -O2 -o seccomp-probe seccomp-probe.c &amp;&amp; ./seccomp-probe
+seccomp_user_notify=SUPPORTED notif=80 resp=24 notif_sizes_probe=OK
+
+$ ./victim /tmp/mc-victim.txt                       # A: control run, no fault
+write(/tmp/mc-victim.txt) -&gt; 6 errno=-
+write(/dev/null) -&gt; 6 errno=-
+-rw------- 1 kara kara 6 /tmp/mc-victim.txt          # 6 bytes written
+
+$ MCFAULT=&quot;write:mc-victim.txt:EIO&quot; LD_PRELOAD=./libfault-probe.so ./victim /tmp/mc-victim.txt
+write(/tmp/mc-victim.txt) -&gt; -1 errno=Input/output error   # &lt;-- fault LANDED
+write(/dev/null) -&gt; 6 errno=-                              # unaffected fd keeps working
+/tmp/mc-victim.txt -&gt; 0 bytes                              # target state proves the fault
+/tmp/mc-fault-hits.&lt;pid&gt; -&gt; &quot;hits=1 rule=write:mc-victim.txt:EIO&quot;   # &lt;-- LANDED-PROOF
+$ MCFAULT=&quot;write:mc-victim.txt:EIO:1&quot; LD_PRELOAD=./libfault-probe.so ./victim /tmp/mc-victim.txt
+write(/tmp/mc-victim.txt) -&gt; -1 errno=Input/output error   # bounded fault: exactly one hit
+</code></pre>
+<pre><code>
+$ sudo ip netns add mc-probe-ns                  # network fault substrate
+netns_add=OK
+$ sudo ip netns exec mc-probe-ns tc qdisc add dev lo root netem loss 100%
+netem_loss100=OK
+$ sudo ip netns exec mc-probe-ns tc qdisc show dev lo
+qdisc netem 8001: root refcnt 2 limit 1000 loss 100% seed 844288704255200251
+$ sudo ip netns exec mc-probe-ns timeout 5 ping -c1 127.0.0.1 ; echo rc=$?
+rc=2                                             # the fault LANDED (loopback blackholed)
+$ sudo ip netns del mc-probe-ns &amp;&amp; echo netns_del=OK
+netns_del=OK                                     # revert proven in the same minute
+
+$ unshare -Un sh -c &#x27;ip link add veth0 type veth peer name veth1&#x27;
+RTNETLINK answers: Operation not permitted        # Ubuntu AppArmor userns restriction
+</code></pre>
+<pre><code>
+$ systemd-run --user --scope -p MemoryMax=64M -p CPUQuota=10% -p TasksMax=32 true
+Running as unit: run-p483350-i201489806.scope      # rootless resource limits WORK
+$ systemctl --user freeze --help &gt;/dev/null &amp;&amp; echo user_freeze_verb=present
+user_freeze_verb=present                           # systemd 259
+$ sudo mkdir /sys/fs/cgroup/mc-probe &amp;&amp; ls /sys/fs/cgroup/mc-probe | grep -cE &#x27;cgroup.freeze|memory.max|cpu.max&#x27;
+4                                                  # a child cgroup (as root) HAS cgroup.freeze
+</code></pre>
+<h2 id="summary">Summary</h2>
+<table>
+<tr><th>capability</th><th>state on this host</th><th>consequence for the design</th></tr>
+<tr><td data-label="capability">cgroup v2 unified</td><th>PROVEN</th><th>resource faults are cgroup-shaped</th></tr>
+<tr><td data-label="capability">rootless resource limits (<code>systemd-run --user</code> scope)</td><th>PROVEN</th><th>L1 tier needs no privileges</th></tr>
+<tr><td data-label="capability">cgroup mkdir as uid 1000</td><th>DENIED</th><th>privileged helper or transient scopes only</th></tr>
+<tr><td data-label="capability">cgroup freezer</td><th>PROVEN as a root-created child cgroup</th><th>freeze/hang faults are L2</th></tr>
+<tr><td data-label="capability">PSI (cpu/io/memory)</td><th>PROVEN</th><th>pressure faults and the load gate</th></tr>
+<tr><td data-label="capability">seccomp user-notify</td><th>PROVEN (<code>notif=80 resp=24</code>)</th><th>syscall error-injection backend</th></tr>
+<tr><td data-label="capability">LD_PRELOAD fault + landed-proof</td><th>PROVEN end-to-end</th><th>the flagship rootless primitive and the proof contract</th></tr>
+<tr><td data-label="capability">netns + netem (+ revert)</td><th>PROVEN with sudo</th><th>L2 network faults; helper required</th></tr>
+<tr><td data-label="capability">unprivileged userns network</td><th>PARTIAL (<code>ip link add</code> EPERM)</th><th>docker becomes a first-class backend</th></tr>
+<tr><td data-label="capability">time namespaces</td><th>NOT AVAILABLE rootless</th><th>T layer is shim-based, ships last</th></tr>
+<tr><td data-label="capability">docker</td><th>PROVEN (29.1.3, cgroup v2)</th><th>container nodes; NET_ADMIN fallback</th></tr>
+<tr><td data-label="capability">loop / device-mapper</td><th>UNPROVEN (tools present)</th><th>M2 behind the L2 helper, selftest-gated</th></tr>
+</table>
+<h2 id="conclusions-that-changed-the-design">Conclusions that changed the design</h2>
+<ol>
+<li><strong>Rootless resource faults are real</strong> (<code>systemd-run --user --scope</code> with <code>MemoryMax</code>,</li>
+</ol>
+<p><code>CPUQuota</code>, <code>TasksMax</code>): the L1 tier needs no privileges at all. My first probe claimed</p>
+<p><code>freezer=absent</code> — <strong>wrong</strong>: freezer is a cgroup v2 core feature, not a controller, and</p>
+<p>the root cgroup has no <code>cgroup.freeze</code>; a child cgroup does.</p>
+<ol>
+<li><strong>Unprivileged user+net namespaces are effectively unavailable for network faults</strong></li>
+</ol>
+<p>(<code>unshare -Un</code> works, <code>ip link add</code> is refused by the host&#x27;s AppArmor userns</p>
+<p>restriction), so network faults need either the narrow privileged helper or a</p>
+<p><code>NET_ADMIN</code> container. That is why docker is a first-class backend, not an extra.</p>
+<ol>
+<li><strong>Time namespaces need privilege</strong> (<code>unshare --time</code> → <code>EPERM</code>), so the T layer is</li>
+</ol>
+<p>shim-based in v0.1 and ships last.</p>
+<ol>
+<li><strong>seccomp user-notify is present</strong> (<code>notif=80 resp=24</code>), so syscall error injection</li>
+</ol>
+<p>has a rootless backend alongside the shim.</p>
+<ol>
+<li><strong>The landed-proof contract is implementable as designed</strong> — the shim proved a fault</li>
+</ol>
+<p>landed and wrote an independent counter file, in the same run that the control had no</p>
+<p>counter. This is the mechanism the whole design is built on.</p>
+<ol>
+<li><code>zig</code> is missing on this host (relevant to any cross-compiled <code>.so</code> release step).</li>
+</ol>
+</body></html>

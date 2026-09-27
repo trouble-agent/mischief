@@ -1,0 +1,14 @@
+id: T-001
+name: clock-jump-forward
+what: clock_gettime/gettimeofday jump forward (e.g. +1h) for the target
+    breaks: TTLs, leases, retry windows, monotonic-vs-wall assumptions, token validity
+params: {pid: selector, delta: "1h", syscalls: [clock_gettime, gettimeofday]}
+landed_proof:
+  kind: shim-counter + target reading
+  check: "the shim counted >= 1 rewritten clock call AND the target's own log shows the shifted time"
+inverse: {action: detach-shim-rule, verify: "the target's clock reading matches the host"}
+capability: none (shim); time namespaces NOT available rootless on this host
+tier: L1
+backend: shim
+maturity: L1-only
+expect_when_healthy: "expired leases are renewed without data loss and without a crash loop"
