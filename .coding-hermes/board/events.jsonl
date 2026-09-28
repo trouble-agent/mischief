@@ -18,3 +18,5 @@
 {"id":18,"timestamp":"2026-09-27 11:18:16.855251","event_type":"task_created","task_id":"MSF-018","actor":"operator","detail":"{\"source\": \"mischief v0.1 draft PRD (operator session 2026-09-27): five open decisions + 18 design/build rows\", \"tick\": 0}","tick_number":null}
 {"id":19,"timestamp":"2026-09-27 11:18:16.855251","event_type":"task_created","task_id":"MSF-019","actor":"operator","detail":"{\"source\": \"mischief v0.1 draft PRD (operator session 2026-09-27): five open decisions + 18 design/build rows\", \"tick\": 0}","tick_number":null}
 {"id":20,"timestamp":"2026-09-27 16:18:30.904016","event_type":"task_updated","task_id":"MSF-001","actor":"foreman","detail":"{\"status\":\"blocked\"}","tick_number":null}
+{"id":21,"timestamp":"2026-09-28 01:24:27.229861","event_type":"task_created","task_id":"BT-053-ROLLOUT-2026-09-28","actor":"foreman","detail":"{\"id\":\"BT-053-ROLLOUT-2026-09-28\",\"status\":\"complete\"}","tick_number":null}
+{"id":22,"timestamp":"2026-09-28 23:58:36.45542","event_type":"task_completed","task_id":"MSF-001","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
