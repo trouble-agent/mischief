@@ -20,3 +20,6 @@
 {"id":20,"timestamp":"2026-09-27 16:18:30.904016","event_type":"task_updated","task_id":"MSF-001","actor":"foreman","detail":"{\"status\":\"blocked\"}","tick_number":null}
 {"id":21,"timestamp":"2026-09-28 01:24:27.229861","event_type":"task_created","task_id":"BT-053-ROLLOUT-2026-09-28","actor":"foreman","detail":"{\"id\":\"BT-053-ROLLOUT-2026-09-28\",\"status\":\"complete\"}","tick_number":null}
 {"id":22,"timestamp":"2026-09-28 23:58:36.45542","event_type":"task_completed","task_id":"MSF-001","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":23,"timestamp":"2026-09-29 00:28:59.965501","event_type":"task_created","task_id":"MSF-020","actor":"foreman","detail":"{\"id\":\"MSF-020\",\"status\":\"pending\"}","tick_number":null}
+{"id":24,"timestamp":"2026-09-29 00:28:59.980514","event_type":"task_created","task_id":"MSF-021","actor":"foreman","detail":"{\"id\":\"MSF-021\",\"status\":\"pending\"}","tick_number":null}
+{"id":25,"timestamp":"2026-09-29 00:28:59.990464","event_type":"task_created","task_id":"MSF-022","actor":"foreman","detail":"{\"id\":\"MSF-022\",\"status\":\"pending\"}","tick_number":null}

@@ -232,6 +232,34 @@ a green-but-meaningless run would otherwise take. A vocabulary without them is h
 | L4 | provider **simulator** | none | cloud shapes (429s, 5xx, eventual consistency, stale reads, token expiry, spot reclaim, volume loss, DNS propagation) |
 | L5 | **real** cloud provider | opt-in `--allow-real` + allowlist + spend cap | reversible, non-destructive verbs only; `destroy_class=permanent` **refused in v0.1** |
 
+**Where mischief ITSELF is allowed to run (SPEC-13, MSF-020).** Every other project in
+this fleet may build and test on the host the scheduler lives on. This one may not,
+because its work *is* the fault. The rule:
+
+> **Mischief's own development, selftest and battery runs execute on an ephemeral
+> sanctioned host — a bunker instance — never on the fleet's main host.**
+
+The main host carries the scheduler, the gateway, the memory daemon and the live lanes;
+a fault injector pointed at it by accident is not a bug, it is an outage. So the main
+host is a **protected target that refuses**, and the refusal is mechanical rather than
+documentary:
+
+- A host admits mischief only when it carries an explicit **sanction marker** (file +
+  env). Absence is a REFUSAL with a non-zero exit, not a warning — fail closed.
+- Protected targets (the scheduler, the gateway, the memory daemon, PID 1, kernel
+  threads, mischief's own process tree and its reverter) are evaluated at **target
+  resolution**, before an actuator is chosen, so naming a different primitive cannot
+  route around them.
+- The load gate refuses to land a fault on a saturated host. An injector that adds load
+  to a struggling box manufactures the incident it claims to observe.
+
+**The interaction the spec must state, because it constrains the catalogue:** a bunker
+agent is unprivileged (measured: uid ≠ 0, no passwordless `sudo`, `unshare -rn` fails at
+the `uid_map` write), so the **L2/L3 primitives cannot be exercised there**. The spec
+names, per tier, the sanctioned environment — and which primitives are L0/L1-only in
+v0.1 because no fleeting sanctioned host can run them. **A primitive that cannot be
+proven on a sanctioned host does not ship.**
+
 **Held at all times:**
 
 - **TTL + detached reverter.** The inverse is recorded (write-ahead) *before* the fault
@@ -306,6 +334,8 @@ capability that is not already present on this host.
 |---|---|---|
 | **M0** decision | name, repo home, privilege model, public/private (§13) | owner answers; repo + board exist |
 | **M1** chassis | experiment schema, catalog loader, journal writer, verdict engine, rails, `plan`/`status`/`revert`/`doctor`, reverter daemon + boot reconcile | `selftest --all` green on L0 for the 3 primitives that need no privileges |
+| **M1a** isolation contract | SPEC-13 (MSF-020): the sanction marker, the protected-target refusal at resolution, the load gate — enforced, with a test that fails if the marker check is neutered | running mischief's selftest on an unsanctioned host refuses with a named reason and writes nothing; the same run on a sanctioned host proceeds |
+| **M1b** bunker test plane | MSF-021: every tick that exercises a primitive runs on an ephemeral agent — obtain, ship, build (no `make` on a bare agent), run, pull evidence, destroy | one command yields evidence with zero residue on the main host; an unobtainable agent is a recorded SKIP, never a pass |
 | **M2** L1 primitives | signals/TTL, `systemd-run` scope limits, LD_PRELOAD shim (counted), seccomp supervisor, HTTP/DNS/TLS proxy | each primitive passes selftest + one battery cell; landed-proof published in the catalog |
 | **M3** L2/L3 primitives | netns+netem, dm/loop I/O errors, fsfreeze, RO remount, container lifecycle, volume loss | `mischief doctor` reports each as available with its proof; the sudo allowlist is the only new privilege |
 | **M4** trouble loop | `observe.trouble`, detection matrix artifact, `battery --quick` replacing the 5 bash cells (parity proof) | the §12 replays pass; the bash cells are deleted with their replacement named |

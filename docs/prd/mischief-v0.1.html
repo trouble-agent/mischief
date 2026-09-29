@@ -2,221 +2,116 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mischief V0.1</title>
 <style>
-:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
-font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:46rem;margin-inline:auto}
-h1{font-size:1.45rem;line-height:1.3;color:#fff;margin:.2rem 0 .6rem}
-h2{font-size:1.15rem;color:var(--acc);border-bottom:1px solid #2a3140;padding-bottom:.3rem;margin:1.6rem 0 .5rem}
-h3{font-size:1.02rem;color:#fff;margin:1.2rem 0 .3rem}
-p{margin:.55rem 0} code{background:var(--card);border:1px solid #2a3140;border-radius:5px;
-padding:.08em .35em;font-size:.86em;font-family:ui-monospace,Menlo,monospace;color:#9ecbff}
-pre{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.8rem;overflow-x:auto}
-pre code{border:none;background:none;padding:0;color:#c9e2a8}
-table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.6rem 0}
-th,td{text-align:left;padding:.45rem;border-bottom:1px solid #2a3140;vertical-align:top}
-th{color:var(--mut)} a{color:var(--acc)}
-ul,ol{margin:.4rem 0 .8rem;padding-left:1.3rem} li{margin:.3rem 0}
-hr{border:none;border-top:1px solid #2a3140;margin:1.4rem 0}
-strong{color:#fff} .tag{color:var(--mut);font-size:.85rem}
-
-.toc{background:var(--card);border:1px solid #2a3140;border-radius:8px;padding:.7rem .9rem;margin:1rem 0}
-.toc-h{color:var(--mut);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.3rem}
-.toc ul{margin:.2rem 0;padding-left:1.1rem}.toc li{margin:.18rem 0}.toc a{text-decoration:none}
-@media (max-width:640px){
-  body{padding:.8rem;font-size:16px}
-  table,thead,tbody,tr,th,td{display:block;width:100%}
-  thead{display:none}
-  tr{border:1px solid #2a3140;border-radius:8px;padding:.4rem;margin:.6rem 0;background:var(--card)}
-  td{border:none;padding:.3rem .4rem;display:flex;gap:.6rem}
-  td::before{content:attr(data-label);color:var(--mut);flex:0 0 38%;font-size:.82rem;
-             text-transform:uppercase;letter-spacing:.03em}
-  td:empty{display:none}
-  pre{font-size:.82rem}
-}
-</style></head><body>
+:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22;--bd:#242a35}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:52rem;margin-inline:auto}
+h1{font-size:1.5rem;line-height:1.3;color:#fff;margin:1.2rem 0 .6rem}
+h2{font-size:1.22rem;color:#fff;margin:2.2rem 0 .6rem;border-bottom:1px solid var(--bd);padding-bottom:.3rem}
+h3{font-size:1.02rem;color:var(--acc);margin:1.5rem 0 .4rem}
+h4{font-size:.95rem;color:#fff;margin:1.2rem 0 .3rem}
+a{color:var(--acc)}
+code{background:#1b2028;padding:.12em .35em;border-radius:4px;font-size:.88em}
+pre{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:.9rem;overflow-x:auto;font-size:.85rem}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid var(--acc);margin:1rem 0;padding:.2rem 1rem;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid var(--bd);padding:.45rem .6rem;text-align:left}
+th{background:var(--card);color:#fff}
+ul,ol{padding-left:1.4rem}
+li{margin:.2rem 0}
+hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
+@media(max-width:600px){body{font-size:15px;padding:.8rem}}
+</style></head>
+<body>
 <h1>mischief — fault injection for a fleet of Linux daemons</h1>
-<p><strong>Draft v0.1 PRD · status: PROPOSED · working name (owner&#x27;s call)</strong></p>
-<p>Repo home (proposed): <code>github.com/trouble-agent/mischief</code> · org-adjacent to <code>trouble</code></p>
-<p>Date: 2026-09-27 · Author: the fleet agent, from live evidence on this host</p>
-<p>&gt; This is the front door. The annexes are <code>docs/FAULT-CATALOG.md</code> (every fault</p>
-<p>&gt; primitive, what it breaks, how it proves it landed, how it is reverted) and</p>
-<p>&gt; <code>docs/SPEC-PLAN.md</code> (the spec set and the spec→AC map for the build).</p>
-<p>&gt; <code>probe/RESULTS.md</code> carries the measured capability audit this design rests on.</p>
+<p><strong>Draft v0.1 PRD · status: PROPOSED · working name (owner's call)</strong> Repo home (proposed): <code>github.com/trouble-agent/mischief</code> · org-adjacent to <code>trouble</code> Date: 2026-09-27 · Author: the fleet agent, from live evidence on this host</p>
+<blockquote><p>This is the front door. The annexes are <code>docs/FAULT-CATALOG.md</code> (every fault primitive, what it breaks, how it proves it landed, how it is reverted) and <code>docs/SPEC-PLAN.md</code> (the spec set and the spec→AC map for the build). <code>probe/RESULTS.md</code> carries the measured capability audit this design rests on.</p></blockquote>
 <hr>
-<nav class="toc"><div class="toc-h">Contents</div><ul><li><a href="#1-one-liner">1. One-liner</a></li>
-<li><a href="#2-the-problem-with-the-fleet-s-own-case-files">2. The problem — with the fleet&#x27;s own case files</a></li>
-<li><a href="#3-who-it-is-for">3. Who it is for</a></li>
-<li><a href="#4-what-it-does-the-loop-and-what-closes-it">4. What it does — the loop, and what closes it</a></li>
-<li><a href="#5-the-one-architectural-decision">5. The one architectural decision</a></li>
-<li><a href="#6-interface">6. Interface</a></li>
-<li><a href="#7-safety-doctrine-the-part-that-decides-whether-this-is-allo">7. Safety doctrine — the part that decides whether this is allowed to exist</a></li>
-<li><a href="#8-division-of-labour-with-trouble-and-the-hooks-that-make-th">8. Division of labour with <code>trouble</code>, and the hooks that make this adoptable</a></li>
-<li><a href="#9-platform-audit-measured-on-this-host-before-the-build-2026">9. Platform audit — measured on this host, before the build (2026-09-27)</a></li>
-<li><a href="#10-build-plan">10. Build plan</a></li>
-<li><a href="#11-acceptance-criteria">11. Acceptance criteria</a></li>
-<li><a href="#12-success-criteria-replayable-against-real-history">12. Success criteria — replayable against real history</a></li>
-<li><a href="#13-out-of-scope-boundaries">13. Out of scope / boundaries</a></li>
-<li><a href="#14-open-decisions-owner-s-each-with-a-recommendation">14. Open decisions (owner&#x27;s — each with a recommendation)</a></li>
-<li><a href="#15-why-anyone-outside-this-fleet-wants-it">15. Why anyone outside this fleet wants it</a></li></ul></nav>
-<hr>
-<h2 id="1-one-liner">1. One-liner</h2>
-<p>mischief declares a fault, lands it inside a named Linux target (process, cgroup,</p>
-<p>container, host or simulated cloud resource), <strong>proves the fault actually landed</strong>,</p>
-<p>holds it under a TTL owned by a reverting watchdog that outlives the CLI, and grades</p>
-<p>whether the target recovered — so &quot;it recovers&quot; stops being an assumption and becomes</p>
-<p>a verdict with a journal behind it.</p>
-<h2 id="2-the-problem-with-the-fleet-s-own-case-files">2. The problem — with the fleet&#x27;s own case files</h2>
-<h3 id="2-1-the-fleet-s-entire-fault-injection-surface-is-5-bash-cel">2.1 The fleet&#x27;s entire fault-injection surface is 5 bash cells, and 4 of them have lied</h3>
-<p><code>~/.hermes/scripts/bunker-qa.sh</code> is the only fleet-owned thing that injects faults.</p>
-<p>It carries five cells — <code>chaos-disconnect</code>, <code>chaos-shutdown</code>, <code>chaos-corruption</code>,</p>
-<p><code>chaos-resource</code>, <code>chaos-errorpath</code> — and its own comments record that each has</p>
-<p>graded something that was not the product (counted live from the file today):</p>
-<table>
-<tr><th>case file</th><th>what the cell graded</th><th>what was actually true</th></tr>
-<tr><td data-label="case file">QA-TROUBLE-3</td><th><code>chaos-corruption</code> — false <strong>green</strong></th><th>the harness ran <code>go run .</code> and never started the app (repo&#x27;s main packages live in <code>cmd/</code>); the restart path was never exercised</th></tr>
-<tr><td data-label="case file">QA-TROUBLE-2</td><th><code>chaos-disconnect</code> verdict</th><th>a harness artifact: the 120 s window was shorter than the ~2.5 min suite, later resized to 2×+30 s</th></tr>
-<tr><td data-label="case file">QA-TROUBLE-6</td><th><code>chaos-resource</code> INFO</th><th>the full suite OOM&#x27;d inside the harness&#x27;s own 3 GB cap — a statement about the cap, not the product</th></tr>
-<tr><td data-label="case file">QA-TROUBLE-8</td><th><code>chaos-shutdown</code> FAIL rc=125</th><th>the JIT agent&#x27;s static docker CLI was missing; the cell measured the harness</th></tr>
-<tr><td data-label="case file">9router family (QA-9ROUTER-19/20)</td><th><code>chaos-corruption</code>/<code>chaos-errorpath</code></th><th>vacuous <code>rc=1</code> verdicts on a build that never completed</th></tr>
-</table>
-<p>**5 cells, at least 4 of which have produced a verdict about the harness rather than</p>
-<p>the product.** None of them can distinguish *&quot;the fault landed and the product</p>
-<p>survived&quot;<em> from </em>&quot;the fault never landed&quot;* — which is the single most expensive false</p>
-<p>green in this class, and it is the reason the file now carries a <code>build_incomplete</code></p>
-<p>predicate and a 40-line comment about false passes instead of a fault library.</p>
-<h3 id="2-2-where-recovery-was-unproven-it-cost-real-things">2.2 Where recovery was unproven, it cost real things</h3>
-<ul>
-<li><strong>TRBL-031 (light-hub)</strong>: after Redis came back, the runtime never re-ran</li>
-</ul>
-<p><code>EnsureGroup</code>, so an empty server on the same address left ingestion dead. The</p>
-<p>recovery code existed and was unreachable; a hand-made <code>docker stop</code> probe found it,</p>
-<p>no battery could have.</p>
-<ul>
-<li><strong>TRBL-040/041 (flow spool)</strong>: <code>Desk.EnqueueSpool</code> was <em>durable in name only</em> — it</li>
-</ul>
-<p>wrote payloads under a key no replay loop ever lists. A live probe proved it; a</p>
-<p><code>kill -9</code>-between-enqueue-and-drain experiment is the test that would have found it</p>
-<p>by construction.</p>
-<ul>
-<li><strong>The 2026-08-29/30 archive hole</strong>: backups existed, the restore path had never been</li>
-</ul>
-<p>exercised under a <em>live</em> writer, and two days of chat archive are permanently gone.</p>
-<p>The fault that caused it (<code>state.db</code> replaced underneath a running process) is a</p>
-<p>production incident the fleet hit and never tested.</p>
-<ul>
-<li><strong>bunker 0.1.4 <code>reconciliation.mode=adopt</code></strong>: a boot with a missing registry record</li>
-</ul>
+<h2>1. One-liner</h2>
+<p>mischief declares a fault, lands it inside a named Linux target (process, cgroup, container, host or simulated cloud resource), <strong>proves the fault actually landed</strong>, holds it under a TTL owned by a reverting watchdog that outlives the CLI, and grades whether the target recovered — so "it recovers" stops being an assumption and becomes a verdict with a journal behind it.</p>
+<h2>2. The problem — with the fleet's own case files</h2>
+<h3>2.1 The fleet's entire fault-injection surface is 5 bash cells, and 4 of them have lied</h3>
+<p><code>~/.hermes/scripts/bunker-qa.sh</code> is the only fleet-owned thing that injects faults. It carries five cells — <code>chaos-disconnect</code>, <code>chaos-shutdown</code>, <code>chaos-corruption</code>, <code>chaos-resource</code>, <code>chaos-errorpath</code> — and its own comments record that each has graded something that was not the product (counted live from the file today):</p>
+<table><thead><tr><th>case file</th><th>what the cell graded</th><th>what was actually true</th></tr></thead><tbody>
+<tr><td>QA-TROUBLE-3</td><td><code>chaos-corruption</code> — false <strong>green</strong></td><td>the harness ran <code>go run .</code> and never started the app (repo's main packages live in <code>cmd/</code>); the restart path was never exercised</td></tr>
+<tr><td>QA-TROUBLE-2</td><td><code>chaos-disconnect</code> verdict</td><td>a harness artifact: the 120 s window was shorter than the ~2.5 min suite, later resized to 2×+30 s</td></tr>
+<tr><td>QA-TROUBLE-6</td><td><code>chaos-resource</code> INFO</td><td>the full suite OOM'd inside the harness's own 3 GB cap — a statement about the cap, not the product</td></tr>
+<tr><td>QA-TROUBLE-8</td><td><code>chaos-shutdown</code> FAIL rc=125</td><td>the JIT agent's static docker CLI was missing; the cell measured the harness</td></tr>
+<tr><td>9router family (QA-9ROUTER-19/20)</td><td><code>chaos-corruption</code>/<code>chaos-errorpath</code></td><td>vacuous <code>rc=1</code> verdicts on a build that never completed</td></tr>
+</tbody></table>
+<p><strong>5 cells, at least 4 of which have produced a verdict about the harness rather than the product.</strong> None of them can distinguish <em>"the fault landed and the product survived"</em> from <em>"the fault never landed"</em> — which is the single most expensive false green in this class, and it is the reason the file now carries a <code>build_incomplete</code> predicate and a 40-line comment about false passes instead of a fault library.</p>
+<h3>2.2 Where recovery was unproven, it cost real things</h3>
+<ul><li><strong>TRBL-031 (light-hub)</strong>: after Redis came back, the runtime never re-ran</li></ul>
+<p><code>EnsureGroup</code>, so an empty server on the same address left ingestion dead. The recovery code existed and was unreachable; a hand-made <code>docker stop</code> probe found it, no battery could have.</p>
+<ul><li><strong>TRBL-040/041 (flow spool)</strong>: <code>Desk.EnqueueSpool</code> was <em>durable in name only</em> — it</li></ul>
+<p>wrote payloads under a key no replay loop ever lists. A live probe proved it; a <code>kill -9</code>-between-enqueue-and-drain experiment is the test that would have found it by construction.</p>
+<ul><li><strong>The 2026-08-29/30 archive hole</strong>: backups existed, the restore path had never been</li></ul>
+<p>exercised under a <em>live</em> writer, and two days of chat archive are permanently gone. The fault that caused it (<code>state.db</code> replaced underneath a running process) is a production incident the fleet hit and never tested.</p>
+<ul><li><strong>bunker 0.1.4 <code>reconciliation.mode=adopt</code></strong>: a boot with a missing registry record</li></ul>
 <p><em>destroyed</em> a running agent. A restart is a fault. Nothing in the fleet models it.</p>
-<h3 id="2-3-there-is-nothing-to-ask-does-x-recover-from-y-and-get-a-">2.3 There is nothing to ask &quot;does X recover from Y?&quot; and get a number</h3>
-<ul>
-<li><strong>527 lanes</strong> registered on the scheduler (<strong>347 enabled</strong>) — the fleet&#x27;s own</li>
-</ul>
+<h3>2.3 There is nothing to ask "does X recover from Y?" and get a number</h3>
+<ul><li><strong>527 lanes</strong> registered on the scheduler (<strong>347 enabled</strong>) — the fleet's own</li></ul>
 <p>registry, read live with <code>?limit=1000</code>.</p>
-<ul>
-<li><strong>30 of 149</strong> scanned repos carry at least one fault-shaped primitive inside their</li>
-</ul>
-<p>own test files (<code>SIGSTOP</code>/<code>SIGKILL</code>/<code>netem</code>/<code>ENOSPC</code>/<code>LD_PRELOAD</code>): ad-hoc,</p>
-<p>per-repo, unstandardised, no shared catalog, no verdict vocabulary, no landed-proof.</p>
-<ul>
-<li>The only shared harness is the 5-cell battery in §2.1.</li>
-</ul>
-<p>The asymmetry is stark: inducing a fault costs seconds on a box the fleet already</p>
-<p>owns; the recovery bugs it finds currently escape into production and cost days.</p>
-<h2 id="3-who-it-is-for">3. Who it is for</h2>
-<table>
-<tr><th>role</th><th>what changes for them</th></tr>
-<tr><td data-label="role">Fleet operator</td><th>&quot;does project X recover when its dependency dies / its disk fills / its queue is killed mid-write?&quot; gets a verdict, a journal and a duration — not a guess</th></tr>
-<tr><td data-label="role">The incident brain (<code>trouble</code>)</td><th>it gets an adversary that induces exactly the faults its sensors claim to detect, so its <strong>detection coverage</strong> becomes a measured matrix instead of an assertion</th></tr>
-<tr><td data-label="role">A project&#x27;s foreman (an agent on a tick)</td><th>a fault battery is a job it can run and file findings from, like any other test suite — regressions in resilience become rows</th></tr>
-<tr><td data-label="role">A project&#x27;s maintainer / its CI</td><th><code>mischief run</code> is a pass/fail command with a machine-readable verdict; the fault catalogue is data, so a project adds a case without writing Go</th></tr>
-<tr><td data-label="role">An outside contributor</td><th>a reported recovery failure replays from a journal + seed on their own laptop</th></tr>
-</table>
-<h2 id="4-what-it-does-the-loop-and-what-closes-it">4. What it does — the loop, and what closes it</h2>
-<pre><code>
-declare ─▶ plan ─▶ arm ─▶ LAND ─▶ prove landed ─▶ hold ─▶ observe ─▶ revert ─▶ prove reverted ─▶ grade ─▶ journal ─▶ findings
+<ul><li><strong>30 of 149</strong> scanned repos carry at least one fault-shaped primitive inside their</li></ul>
+<p>own test files (<code>SIGSTOP</code>/<code>SIGKILL</code>/<code>netem</code>/<code>ENOSPC</code>/<code>LD_PRELOAD</code>): ad-hoc, per-repo, unstandardised, no shared catalog, no verdict vocabulary, no landed-proof.</p>
+<ul><li>The only shared harness is the 5-cell battery in §2.1.</li></ul>
+<p>The asymmetry is stark: inducing a fault costs seconds on a box the fleet already owns; the recovery bugs it finds currently escape into production and cost days.</p>
+<h2>3. Who it is for</h2>
+<table><thead><tr><th>role</th><th>what changes for them</th></tr></thead><tbody>
+<tr><td>Fleet operator</td><td>"does project X recover when its dependency dies / its disk fills / its queue is killed mid-write?" gets a verdict, a journal and a duration — not a guess</td></tr>
+<tr><td>The incident brain (<code>trouble</code>)</td><td>it gets an adversary that induces exactly the faults its sensors claim to detect, so its <strong>detection coverage</strong> becomes a measured matrix instead of an assertion</td></tr>
+<tr><td>A project's foreman (an agent on a tick)</td><td>a fault battery is a job it can run and file findings from, like any other test suite — regressions in resilience become rows</td></tr>
+<tr><td>A project's maintainer / its CI</td><td><code>mischief run</code> is a pass/fail command with a machine-readable verdict; the fault catalogue is data, so a project adds a case without writing Go</td></tr>
+<tr><td>An outside contributor</td><td>a reported recovery failure replays from a journal + seed on their own laptop</td></tr>
+</tbody></table>
+<h2>4. What it does — the loop, and what closes it</h2>
+<pre><code>declare ─▶ plan ─▶ arm ─▶ LAND ─▶ prove landed ─▶ hold ─▶ observe ─▶ revert ─▶ prove reverted ─▶ grade ─▶ journal ─▶ findings
  (yaml)   (no side   (actuator + detached          (probes +                 (inverse,                (7 verdicts)  (jsonl)    (board rows)
-           effects)   reverter, TTL)                assertions)               measured)
-</code></pre>
+           effects)   reverter, TTL)                assertions)               measured)</code></pre>
 <p><strong>Closure rules (each loop states what makes it closed):</strong></p>
-<ol>
-<li><strong>Fault loop</strong> — closed when the fault&#x27;s <code>landed_proof</code> reports landing AND its</li>
-</ol>
-<p><code>inverse</code> reports reverted, both measured out-of-band. A fault that was armed and</p>
-<p>reverted but never landed is <strong><code>no_op</code> and the run FAILS</strong> — it is not a pass.</p>
-<ol>
-<li><strong>Recovery loop</strong> — closed when the pre-fault baseline probe set is green again</li>
-</ol>
-<p>within the declared budget AND the integrity oracle (checksums/counters/ledger</p>
-<p>sequence) shows no loss. Liveness alone never closes it.</p>
-<ol>
-<li><strong>Detection loop</strong> (when <code>observe.trouble</code> is declared) — closed when the target&#x27;s</li>
-</ol>
-<p>incident ledger contains the expected record within the window, or when it is</p>
-<p>recorded as a <strong>detection gap</strong> on the owning project&#x27;s board. A detection gap is a</p>
-<p>finding, not a run failure.</p>
-<ol>
-<li><strong>Adoption loop</strong> — a primitive is closed when it is in the catalog, has a</li>
-</ol>
-<p>published landed-proof, passes <code>mischief selftest --primitive &lt;id&gt;</code>, and has a</p>
-<p>battery cell. Until then it is marked <code>L1-only</code> and refuses to run outside a</p>
-<p>scratch scope. A primitive with no selftest cannot run on a shared host.</p>
+<ol><li><strong>Fault loop</strong> — closed when the fault's <code>landed_proof</code> reports landing AND its</li></ol>
+<p><code>inverse</code> reports reverted, both measured out-of-band. A fault that was armed and reverted but never landed is <strong><code>no_op</code> and the run FAILS</strong> — it is not a pass.</p>
+<ol><li><strong>Recovery loop</strong> — closed when the pre-fault baseline probe set is green again</li></ol>
+<p>within the declared budget AND the integrity oracle (checksums/counters/ledger sequence) shows no loss. Liveness alone never closes it.</p>
+<ol><li><strong>Detection loop</strong> (when <code>observe.trouble</code> is declared) — closed when the target's</li></ol>
+<p>incident ledger contains the expected record within the window, or when it is recorded as a <strong>detection gap</strong> on the owning project's board. A detection gap is a finding, not a run failure.</p>
+<ol><li><strong>Adoption loop</strong> — a primitive is closed when it is in the catalog, has a</li></ol>
+<p>published landed-proof, passes <code>mischief selftest --primitive &lt;id&gt;</code>, and has a battery cell. Until then it is marked <code>L1-only</code> and refuses to run outside a scratch scope. A primitive with no selftest cannot run on a shared host.</p>
 <p><strong>Two execution modes, one engine:</strong></p>
-<ul>
-<li><strong>experiment mode</strong> (<code>mischief run|battery</code>) — deterministic, seeded, CI-able, one</li>
-</ul>
+<ul><li><strong>experiment mode</strong> (<code>mischief run|battery</code>) — deterministic, seeded, CI-able, one</li></ul>
 <p>declared fault set, one verdict. This is the mode the fleet consumes.</p>
-<ul>
-<li><strong>monkey mode</strong> (<code>mischief monkey</code>) — random but <em>seeded and catalog-bounded</em>:</li>
-</ul>
-<p>a profile picks from the catalog under a concurrency cap, a window and an abort</p>
-<p>file; every pick is logged before it lands, and every pick is revertible. Randomness</p>
-<p>lives in the <em>selection</em>, never in the <em>inverse</em>.</p>
-<h2 id="5-the-one-architectural-decision">5. The one architectural decision</h2>
-<p>&gt; **A fault is data with three obligations: an <code>inverse</code>, a <code>landed_proof</code>, and an</p>
-<p>&gt; enumerable <code>blast</code> — delivered by an actuator that may be privileged and a reverter</p>
-<p>&gt; that must not die with it.**</p>
+<ul><li><strong>monkey mode</strong> (<code>mischief monkey</code>) — random but <em>seeded and catalog-bounded</em>:</li></ul>
+<p>a profile picks from the catalog under a concurrency cap, a window and an abort file; every pick is logged before it lands, and every pick is revertible. Randomness lives in the <em>selection</em>, never in the <em>inverse</em>.</p>
+<h2>5. The one architectural decision</h2>
+<blockquote><p><strong>A fault is data with three obligations: an <code>inverse</code>, a <code>landed_proof</code>, and an enumerable <code>blast</code> — delivered by an actuator that may be privileged and a reverter that must not die with it.</strong></p></blockquote>
 <p>Alternatives, and why they were rejected:</p>
-<table>
-<tr><th>shape</th><th>why not</th></tr>
-<tr><td data-label="shape">fault = a shell snippet (what today&#x27;s 5 cells are)</td><th>cannot be inverted reliably, cannot prove it landed, blast = whatever the author remembered</th></tr>
-<tr><td data-label="shape">fault = ptrace only</td><th>cannot express resource, network, storage or cloud faults</th></tr>
-<tr><td data-label="shape">fault = cgroup only</td><th>cannot express syscall, filesystem or network faults</th></tr>
-<tr><td data-label="shape">fault = a k8s CRD (Chaos Mesh shape)</td><th>the fleet is not k8s; a CRD model imports an API server, a controller loop and a CRD schema for 5 hosts&#x27; worth of durability</th></tr>
-<tr><td data-label="shape"><strong>fault = data + pluggable primitive backends behind one contract</strong></td><th>adopted — catalog is data, backend is code, and <em>every</em> fault inherits the three obligations instead of re-implementing them</th></tr>
-</table>
-<p><strong>Backends (chosen after the capability audit in §9, not before):</strong></p>
-<p>LD_PRELOAD shim (rootless, path-aware, counted), seccomp user-notify supervisor</p>
-<p>(rootless, syscall+path aware), <code>systemd-run --user</code> transient scope (rootless</p>
-<p>resource limits), signal/<code>prlimit</code> primitives, privileged helper over a narrow</p>
-<p><code>sudo</code> allowlist (netns+netem, dm/loop, cgroup freezer, fsfreeze), docker API</p>
-<p>(container nodes), a userspace HTTP/DNS/TLS proxy (network faults with zero</p>
-<p>privileges), and a provider <strong>simulator</strong> (cloud shapes without a cloud).</p>
-<p><strong>The wrong turn this closes</strong>: a global &quot;armed faults&quot; file. The armed set is</p>
-<p><strong>per-run session state</strong> — <code>mischief run</code> arms exactly the primitives its experiment</p>
-<p>declares, and two concurrent runs must not see each other&#x27;s faults. The catalog is</p>
-<p>constant; the armed set is per-run and mutable; execution state (supervisor fds,</p>
-<p>shim counters, helper sockets) is per-run and never pooled.</p>
-<p><strong>The other wrong turn</strong>: growing the surface per target. The tool count is fixed by</p>
-<p>the <em>verb</em> count; the target is an <strong>argument</strong> resolved explicit-argument →</p>
-<p>experiment-declared scope → refusal. There is no default target, ever.</p>
-<h2 id="6-interface">6. Interface</h2>
-<h3 id="6-1-verbs-parameters-not-verb-names">6.1 Verbs (parameters, not verb names)</h3>
-<table>
-<tr><th>verb</th><th>arguments</th><th>returns / side effects</th></tr>
-<tr><td data-label="verb"><code>mischief plan -f &lt;exp.yaml&gt; [--json] [--scratch D]</code></td><th>experiment file</th><th>resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. <strong>No side effects.</strong> exit 0 clean / 2 refused</th></tr>
-<tr><td data-label="verb"><code>mischief run -f &lt;exp.yaml&gt; [--seed N] [--ttl 60s] [--dry-run] [--out &lt;journal.jsonl&gt;] [--observe trouble=&lt;ns&gt;]</code></td><th>experiment + overrides</th><th>run id, verdict, journal path, timings</th></tr>
-<tr><td data-label="verb"><code>mischief status [--json] [--active]</code></td><th>—</th><th>armed/held faults, TTL remaining, reverter pid, <code>stuck</code> leftovers from previous boots</th></tr>
-<tr><td data-label="verb">`mischief revert (--all \</td><th>--run &lt;id&gt; \</th><th>--fault &lt;id&gt;)`</th><th>selector</th><th>forced revert + the measurement proving reverted</th></tr>
-<tr><td data-label="verb">`mischief catalog [--layer P\</td><th>S\</th><th>R\</th><th>F\</th><th>N\</th><th>C\</th><th>I\</th><th>T] [--json]`</th><th>filter</th><th>per primitive: id, layer, params schema, landed-proof, inverse, capability requirement, safety class, default blast</th></tr>
-<tr><td data-label="verb">`mischief selftest (--all \</td><th>--primitive &lt;id&gt;) [--scratch-dir D]`</th><th>scope</th><th>per primitive: land, prove landed, revert, prove reverted on a scratch target. exit 0 only if all proofs pass</th></tr>
-<tr><td data-label="verb"><code>mischief monkey --target &lt;selector&gt; --profile &lt;name&gt; --seed N [--max-concurrent 1] [--window 30m] [--max-faults K] [--abort-file &lt;path&gt;]</code></td><th>target <strong>required</strong></th><th>seeded selection log, verdicts, findings</th></tr>
-<tr><td data-label="verb"><code>mischief battery -f &lt;matrix.yaml&gt; [--project &lt;p&gt;] [--quick] [--file-rows]</code></td><th>matrix</th><th>coverage matrix artifact + findings filed as board rows on the owning project</th></tr>
-<tr><td data-label="verb"><code>mischief doctor [--json]</code></td><th>—</th><th>capability table; unsupported primitives return <code>capability_unavailable</code> <strong>naming what is absent</strong></th></tr>
-<tr><td data-label="verb"><code>mischiefd</code></td><th>config</th><th>the reverter/watchdog daemon; owns TTLs, reconciles leftovers at boot, serves <code>/health.json</code></th></tr>
-</table>
-<h3 id="6-2-experiment-a-fault-case-is-data">6.2 Experiment (a fault case is data)</h3>
-<pre><code>
-id: redis-loss-recovery            # display name; the RUN id is content-derived
+<table><thead><tr><th>shape</th><th>why not</th></tr></thead><tbody>
+<tr><td>fault = a shell snippet (what today's 5 cells are)</td><td>cannot be inverted reliably, cannot prove it landed, blast = whatever the author remembered</td></tr>
+<tr><td>fault = ptrace only</td><td>cannot express resource, network, storage or cloud faults</td></tr>
+<tr><td>fault = cgroup only</td><td>cannot express syscall, filesystem or network faults</td></tr>
+<tr><td>fault = a k8s CRD (Chaos Mesh shape)</td><td>the fleet is not k8s; a CRD model imports an API server, a controller loop and a CRD schema for 5 hosts' worth of durability</td></tr>
+<tr><td><strong>fault = data + pluggable primitive backends behind one contract</strong></td><td>adopted — catalog is data, backend is code, and <em>every</em> fault inherits the three obligations instead of re-implementing them</td></tr>
+</tbody></table>
+<p><strong>Backends (chosen after the capability audit in §9, not before):</strong> LD_PRELOAD shim (rootless, path-aware, counted), seccomp user-notify supervisor (rootless, syscall+path aware), <code>systemd-run --user</code> transient scope (rootless resource limits), signal/<code>prlimit</code> primitives, privileged helper over a narrow <code>sudo</code> allowlist (netns+netem, dm/loop, cgroup freezer, fsfreeze), docker API (container nodes), a userspace HTTP/DNS/TLS proxy (network faults with zero privileges), and a provider <strong>simulator</strong> (cloud shapes without a cloud).</p>
+<p><strong>The wrong turn this closes</strong>: a global "armed faults" file. The armed set is <strong>per-run session state</strong> — <code>mischief run</code> arms exactly the primitives its experiment declares, and two concurrent runs must not see each other's faults. The catalog is constant; the armed set is per-run and mutable; execution state (supervisor fds, shim counters, helper sockets) is per-run and never pooled.</p>
+<p><strong>The other wrong turn</strong>: growing the surface per target. The tool count is fixed by the <em>verb</em> count; the target is an <strong>argument</strong> resolved explicit-argument → experiment-declared scope → refusal. There is no default target, ever.</p>
+<h2>6. Interface</h2>
+<h3>6.1 Verbs (parameters, not verb names)</h3>
+<table><thead><tr><th>verb</th><th>arguments</th><th>returns / side effects</th></tr></thead><tbody>
+<tr><td><code>mischief plan -f &lt;exp.yaml&gt; [--json] [--scratch D]</code></td><td>experiment file</td><td>resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. <strong>No side effects.</strong> exit 0 clean / 2 refused</td></tr>
+<tr><td><code>mischief run -f &lt;exp.yaml&gt; [--seed N] [--ttl 60s] [--dry-run] [--out &lt;journal.jsonl&gt;] [--observe trouble=&lt;ns&gt;]</code></td><td>experiment + overrides</td><td>run id, verdict, journal path, timings</td></tr>
+<tr><td><code>mischief status [--json] [--active]</code></td><td>—</td><td>armed/held faults, TTL remaining, reverter pid, <code>stuck</code> leftovers from previous boots</td></tr>
+<tr><td>`mischief revert (--all \</td><td>--run &lt;id&gt; \</td><td>--fault &lt;id&gt;)`</td><td>selector</td><td>forced revert + the measurement proving reverted</td></tr>
+<tr><td>`mischief catalog [--layer P\</td><td>S\</td><td>R\</td><td>F\</td><td>N\</td><td>C\</td><td>I\</td><td>T] [--json]`</td><td>filter</td><td>per primitive: id, layer, params schema, landed-proof, inverse, capability requirement, safety class, default blast</td></tr>
+<tr><td>`mischief selftest (--all \</td><td>--primitive &lt;id&gt;) [--scratch-dir D]`</td><td>scope</td><td>per primitive: land, prove landed, revert, prove reverted on a scratch target. exit 0 only if all proofs pass</td></tr>
+<tr><td><code>mischief monkey --target &lt;selector&gt; --profile &lt;name&gt; --seed N [--max-concurrent 1] [--window 30m] [--max-faults K] [--abort-file &lt;path&gt;]</code></td><td>target <strong>required</strong></td><td>seeded selection log, verdicts, findings</td></tr>
+<tr><td><code>mischief battery -f &lt;matrix.yaml&gt; [--project &lt;p&gt;] [--quick] [--file-rows]</code></td><td>matrix</td><td>coverage matrix artifact + findings filed as board rows on the owning project</td></tr>
+<tr><td><code>mischief doctor [--json]</code></td><td>—</td><td>capability table; unsupported primitives return <code>capability_unavailable</code> <strong>naming what is absent</strong></td></tr>
+<tr><td><code>mischiefd</code></td><td>config</td><td>the reverter/watchdog daemon; owns TTLs, reconciles leftovers at boot, serves <code>/health.json</code></td></tr>
+</tbody></table>
+<h3>6.2 Experiment (a fault case is data)</h3>
+<pre><code>id: redis-loss-recovery            # display name; the RUN id is content-derived
 target:
   selector: container:trouble-hub  # process | cgroup | container | host | cloud
   scratch: false                   # true ⇒ refuse non-scratch blast
@@ -237,250 +132,128 @@ budget: {recover_within: 120s, max_error_rate: 0.05}
 observe:
   trouble: {namespace: trouble, expect_record: TROUBLE-HUB-004, within: 60s}
 integrity: {files: [&quot;&lt;state_root&gt;/ledger/*.jsonl&quot;], mode: hash-and-append-check}
-seed: 20260927
-</code></pre>
-<h3 id="6-3-journal-append-only-jsonl-the-evidence-same-doctrine-as-">6.3 Journal (append-only JSONL — the evidence, same doctrine as <code>trouble</code>&#x27;s ledger)</h3>
-<p>Record types: <code>run_planned</code>, <code>fault_armed</code>, <code>fault_landed</code> (carries the proof),</p>
-<p><code>probe_sample</code>, <code>assertion_result</code>, <code>observe_result</code>, <code>fault_reverted</code> (carries the</p>
-<p>revert proof), <code>verdict</code>, <code>run_closed</code>, <code>finding</code>. Group-commit + fsync, content-derived</p>
-<p>run ids (<code>hex(sha256(spec+seed))[:16]</code>), never re-serialised in place.</p>
-<h3 id="6-4-verdict-vocabulary-closed-and-every-value-is-representab">6.4 Verdict vocabulary (closed, and every value is representable end to end)</h3>
-<p><code>recovered</code> · <code>degraded</code> (passes with a measured cost) · <code>not_recovered</code> · <code>hung</code> ·</p>
-<p><code>corrupted</code> (data loss detected) · <strong><code>no_op</code></strong> (fault never landed) · <code>aborted</code></p>
-<p>(rails/TTL/blast refusal) · <code>flaky</code> (N runs disagree) · <code>void</code> (control run not green).</p>
-<p><code>no_op</code>, <code>aborted</code>, <code>corrupted</code> and <code>flaky</code> exist for one reason: they are the shapes</p>
-<p>a green-but-meaningless run would otherwise take. A vocabulary without them is how the</p>
-<p>5 cells in §2.1 kept passing.</p>
-<h2 id="7-safety-doctrine-the-part-that-decides-whether-this-is-allo">7. Safety doctrine — the part that decides whether this is allowed to exist</h2>
+seed: 20260927</code></pre>
+<h3>6.3 Journal (append-only JSONL — the evidence, same doctrine as <code>trouble</code>'s ledger)</h3>
+<p>Record types: <code>run_planned</code>, <code>fault_armed</code>, <code>fault_landed</code> (carries the proof), <code>probe_sample</code>, <code>assertion_result</code>, <code>observe_result</code>, <code>fault_reverted</code> (carries the revert proof), <code>verdict</code>, <code>run_closed</code>, <code>finding</code>. Group-commit + fsync, content-derived run ids (<code>hex(sha256(spec+seed))[:16]</code>), never re-serialised in place.</p>
+<h3>6.4 Verdict vocabulary (closed, and every value is representable end to end)</h3>
+<p><code>recovered</code> · <code>degraded</code> (passes with a measured cost) · <code>not_recovered</code> · <code>hung</code> · <code>corrupted</code> (data loss detected) · <strong><code>no_op</code></strong> (fault never landed) · <code>aborted</code> (rails/TTL/blast refusal) · <code>flaky</code> (N runs disagree) · <code>void</code> (control run not green).</p>
+<p><code>no_op</code>, <code>aborted</code>, <code>corrupted</code> and <code>flaky</code> exist for one reason: they are the shapes a green-but-meaningless run would otherwise take. A vocabulary without them is how the 5 cells in §2.1 kept passing.</p>
+<h2>7. Safety doctrine — the part that decides whether this is allowed to exist</h2>
 <p><strong>Never, by construction:</strong></p>
-<ul>
-<li><strong>No default target.</strong> A verb without a resolved target refuses (exit 2).</li>
-<li><strong>Never its own tree</strong>: mischief&#x27;s own process tree, its reverter, PID 1 and kernel</li>
-</ul>
+<ul><li><strong>No default target.</strong> A verb without a resolved target refuses (exit 2).</li><li><strong>Never its own tree</strong>: mischief's own process tree, its reverter, PID 1 and kernel</li></ul>
 <p>threads are excluded at the resolver, not by convention.</p>
-<ul>
-<li><strong>No global armed set.</strong> Faults live in a run, not in config.</li>
-<li><strong>Never a global-config side effect for a per-run choice</strong> (the enabled primitive</li>
-</ul>
+<ul><li><strong>No global armed set.</strong> Faults live in a run, not in config.</li><li><strong>Never a global-config side effect for a per-run choice</strong> (the enabled primitive</li></ul>
 <p>set is run state; the catalog is immutable).</p>
 <p><strong>Scope ladder (which primitive set is reachable at which tier):</strong></p>
-<table>
-<tr><th>tier</th><th>scope</th><th>privileges</th><th>what runs</th></tr>
-<tr><td data-label="tier">L0</td><th>scratch harness owned by mischief</th><th>none</th><th>everything, always allowed — where <code>selftest</code> lives</th></tr>
-<tr><td data-label="tier">L1</td><th>a transient <code>systemd-run --user</code> scope / a process tree</th><th>rootless (<strong>proven live</strong>)</th><th>resource limits, signals, LD_PRELOAD, seccomp, HTTP/DNS proxy</th></tr>
-<tr><td data-label="tier">L2</td><th>host-scoped (netns, dm, loop, freezer, fsfreeze)</th><th>via a <strong>narrow <code>sudo</code> allowlist</strong> — no setuid, ever</th><th>network, storage, host-level faults</th></tr>
-<tr><td data-label="tier">L3</td><th>container/node lifecycle</th><th>docker API</th><th>stop/kill/pause/OOM/restart-loop/volume-loss</th></tr>
-<tr><td data-label="tier">L4</td><th>provider <strong>simulator</strong></th><th>none</th><th>cloud shapes (429s, 5xx, eventual consistency, stale reads, token expiry, spot reclaim, volume loss, DNS propagation)</th></tr>
-<tr><td data-label="tier">L5</td><th><strong>real</strong> cloud provider</th><th>opt-in <code>--allow-real</code> + allowlist + spend cap</th><th>reversible, non-destructive verbs only; <code>destroy_class=permanent</code> <strong>refused in v0.1</strong></th></tr>
-</table>
+<table><thead><tr><th>tier</th><th>scope</th><th>privileges</th><th>what runs</th></tr></thead><tbody>
+<tr><td>L0</td><td>scratch harness owned by mischief</td><td>none</td><td>everything, always allowed — where <code>selftest</code> lives</td></tr>
+<tr><td>L1</td><td>a transient <code>systemd-run --user</code> scope / a process tree</td><td>rootless (<strong>proven live</strong>)</td><td>resource limits, signals, LD_PRELOAD, seccomp, HTTP/DNS proxy</td></tr>
+<tr><td>L2</td><td>host-scoped (netns, dm, loop, freezer, fsfreeze)</td><td>via a <strong>narrow <code>sudo</code> allowlist</strong> — no setuid, ever</td><td>network, storage, host-level faults</td></tr>
+<tr><td>L3</td><td>container/node lifecycle</td><td>docker API</td><td>stop/kill/pause/OOM/restart-loop/volume-loss</td></tr>
+<tr><td>L4</td><td>provider <strong>simulator</strong></td><td>none</td><td>cloud shapes (429s, 5xx, eventual consistency, stale reads, token expiry, spot reclaim, volume loss, DNS propagation)</td></tr>
+<tr><td>L5</td><td><strong>real</strong> cloud provider</td><td>opt-in <code>--allow-real</code> + allowlist + spend cap</td><td>reversible, non-destructive verbs only; <code>destroy_class=permanent</code> <strong>refused in v0.1</strong></td></tr>
+</tbody></table>
+<p><strong>Where mischief ITSELF is allowed to run (SPEC-13, MSF-020).</strong> Every other project in this fleet may build and test on the host the scheduler lives on. This one may not, because its work <em>is</em> the fault. The rule:</p>
+<blockquote><p><strong>Mischief's own development, selftest and battery runs execute on an ephemeral sanctioned host — a bunker instance — never on the fleet's main host.</strong></p></blockquote>
+<p>The main host carries the scheduler, the gateway, the memory daemon and the live lanes; a fault injector pointed at it by accident is not a bug, it is an outage. So the main host is a <strong>protected target that refuses</strong>, and the refusal is mechanical rather than documentary:</p>
+<ul><li>A host admits mischief only when it carries an explicit <strong>sanction marker</strong> (file +</li></ul>
+<p>env). Absence is a REFUSAL with a non-zero exit, not a warning — fail closed.</p>
+<ul><li>Protected targets (the scheduler, the gateway, the memory daemon, PID 1, kernel</li></ul>
+<p>threads, mischief's own process tree and its reverter) are evaluated at <strong>target resolution</strong>, before an actuator is chosen, so naming a different primitive cannot route around them.</p>
+<ul><li>The load gate refuses to land a fault on a saturated host. An injector that adds load</li></ul>
+<p>to a struggling box manufactures the incident it claims to observe.</p>
+<p><strong>The interaction the spec must state, because it constrains the catalogue:</strong> a bunker agent is unprivileged (measured: uid ≠ 0, no passwordless <code>sudo</code>, <code>unshare -rn</code> fails at the <code>uid_map</code> write), so the <strong>L2/L3 primitives cannot be exercised there</strong>. The spec names, per tier, the sanctioned environment — and which primitives are L0/L1-only in v0.1 because no fleeting sanctioned host can run them. <strong>A primitive that cannot be proven on a sanctioned host does not ship.</strong></p>
 <p><strong>Held at all times:</strong></p>
-<ul>
-<li><strong>TTL + detached reverter.</strong> The inverse is recorded (write-ahead) <em>before</em> the fault</li>
-</ul>
-<p>lands; a separate process owns the TTL and reverts even if the CLI is <code>kill -9</code>ed.</p>
-<p>Boot reconcile marks leftover faults <code>stuck</code> and surfaces them in <code>status</code>/<code>/health.json</code>.</p>
-<ul>
-<li><strong>Kill switch</strong> <code>mischief revert --all</code> — proven reverted, not merely issued.</li>
-<li><strong>Load gate.</strong> Refuses to land faults when the host is already saturated (PSI/loadavg)</li>
-</ul>
+<ul><li><strong>TTL + detached reverter.</strong> The inverse is recorded (write-ahead) <em>before</em> the fault</li></ul>
+<p>lands; a separate process owns the TTL and reverts even if the CLI is <code>kill -9</code>ed. Boot reconcile marks leftover faults <code>stuck</code> and surfaces them in <code>status</code>/<code>/health.json</code>.</p>
+<ul><li><strong>Kill switch</strong> <code>mischief revert --all</code> — proven reverted, not merely issued.</li><li><strong>Load gate.</strong> Refuses to land faults when the host is already saturated (PSI/loadavg)</li></ul>
 <p>— the same doctrine the fleet applies to itself.</p>
-<ul>
-<li><strong>Protected targets.</strong> The scheduler, gateway, memory daemon and the fleet&#x27;s control</li>
-</ul>
-<p>planes are <code>protected=true</code> and unreachable from the automatic (monkey) path; an</p>
-<p>operator can name them for an experiment, and the run then says so in the journal.</p>
-<ul>
-<li><strong>State, not data.</strong> File/storage faults act on declared scratch paths unless the</li>
-</ul>
-<p>experiment names a real path <em>and</em> carries a backup assertion. Nothing destructive is</p>
-<p>in scope for v0.1.</p>
-<ul>
-<li><strong>No secrets in the journal.</strong> The journal is scrubbed on write (credential shapes,</li>
-</ul>
+<ul><li><strong>Protected targets.</strong> The scheduler, gateway, memory daemon and the fleet's control</li></ul>
+<p>planes are <code>protected=true</code> and unreachable from the automatic (monkey) path; an operator can name them for an experiment, and the run then says so in the journal.</p>
+<ul><li><strong>State, not data.</strong> File/storage faults act on declared scratch paths unless the</li></ul>
+<p>experiment names a real path <em>and</em> carries a backup assertion. Nothing destructive is in scope for v0.1.</p>
+<ul><li><strong>No secrets in the journal.</strong> The journal is scrubbed on write (credential shapes,</li></ul>
 <p>tokens) — the same contract as <code>trouble</code> SPEC-02.</p>
-<h2 id="8-division-of-labour-with-trouble-and-the-hooks-that-make-th">8. Division of labour with <code>trouble</code>, and the hooks that make this adoptable</h2>
-<table>
-<tr><th></th><th><code>trouble</code></th><th><code>mischief</code></th></tr>
-<tr><td data-label="">one question</td><th><em>what happened, and what fixes it?</em></th><th><em>what breaks, and does it come back?</em></th></tr>
-<tr><td data-label="">altitude</td><th>detect → record → research → remediate (plays)</th><th>induce → prove → hold → revert → grade</th></tr>
-<tr><td data-label="">blind spot</td><th>cannot prove its own detection coverage; its plays are unpriced until a fault arrives</th><th>cannot remediate; an injected fault with no observer is just damage</th></tr>
-</table>
+<h2>8. Division of labour with <code>trouble</code>, and the hooks that make this adoptable</h2>
+<table><thead><tr><th></th><th><code>trouble</code></th><th><code>mischief</code></th></tr></thead><tbody>
+<tr><td>one question</td><td><em>what happened, and what fixes it?</em></td><td><em>what breaks, and does it come back?</em></td></tr>
+<tr><td>altitude</td><td>detect → record → research → remediate (plays)</td><td>induce → prove → hold → revert → grade</td></tr>
+<tr><td>blind spot</td><td>cannot prove its own detection coverage; its plays are unpriced until a fault arrives</td><td>cannot remediate; an injected fault with no observer is just damage</td></tr>
+</tbody></table>
 <p><strong>Integration points, ordered by process-change cost (all additive until #4):</strong></p>
-<ol>
-<li><strong><code>observe.trouble</code> — read-only assertion.</strong> An experiment may declare &quot;the target&#x27;s</li>
-</ol>
-<p>ledger must contain record R within N seconds&quot;. Costs <code>trouble</code> nothing; turns its</p>
-<p>detection claims into a measured matrix (fault × detected × time-to-detect).</p>
-<p><strong>This is the hook that decides adoption</strong>, because it is the only one that needs</p>
-<p>zero changes to any existing project.</p>
-<ol>
-<li><strong><code>mischief battery --file-rows</code></strong> — findings become rows on the <em>owning</em> project&#x27;s</li>
-</ol>
-<p>board, in that board&#x27;s own vocabulary. Additive, uses the existing filing path.</p>
-<ol>
-<li><strong><code>mischief battery --quick</code> as a QA cell source</strong> — the five bash cells in §2.1 are</li>
-</ol>
-<p>replaced by catalog primitives that carry landed-proofs. This <em>deletes</em> code, so it</p>
-<p>is a migration with a parity proof, not a rewrite.</p>
-<ol>
-<li><strong><code>mischief verify-play</code></strong> (later) — after <code>trouble</code> records a play that fired,</li>
-</ol>
-<p>re-inject the original fault to check the fix held. Needs <code>trouble</code>&#x27;s ledger schema</p>
-<p>read-only; the only hook that makes <code>mischief</code> part of a closed remediation loop.</p>
-<ol>
-<li><strong>A <code>-chaos</code> satellite lane</strong> (opt-in, per project, its own namespace) that runs the</li>
-</ol>
-<p>project&#x27;s fault matrix on a cadence and files findings. New convention ⇒ last.</p>
-<h2 id="9-platform-audit-measured-on-this-host-before-the-build-2026">9. Platform audit — measured on this host, before the build (2026-09-27)</h2>
-<p>Required capability → probed live → consequence. <code>probe/RESULTS.md</code> carries the raw</p>
-<p>output, <code>probe/</code> carries the scripts, so every row is re-runnable.</p>
-<table>
-<tr><th>capability</th><th>state</th><th>measured evidence</th><th>consequence for the design</th></tr>
-<tr><td data-label="capability">cgroup v2 unified</td><th><strong>PROVEN</strong></th><th><code>fstype=cgroup2fs</code>; controllers <code>cpuset cpu io memory hugetlb pids rdma misc dmem</code></th><th>resource faults are cgroup-shaped</th></tr>
-<tr><td data-label="capability">rootless resource limits</td><th><strong>PROVEN</strong></th><th><code>systemd-run --user --scope -p MemoryMax=64M -p CPUQuota=10% -p TasksMax=32 true</code> → OK</th><th>L1 default: memory/CPU/pids faults with <strong>no privileges</strong></th></tr>
-<tr><td data-label="capability">cgroup mkdir at root as uid 1000</td><th><strong>DENIED</strong></th><th><code>cgroup_mkdir=DENIED(unprivileged)</code>; own slice exposes <code>cpu memory pids</code> but is not writable</th><th>privileged helper, or transient scopes only</th></tr>
-<tr><td data-label="capability">cgroup freezer</td><th><strong>PROVEN as root child</strong> (my first probe was wrong)</th><th>root cgroup has no <code>cgroup.freeze</code>; a child cgroup created under sudo exposes <code>cgroup.freeze</code> + limit files (4 matches)</th><th>freeze/hang faults need L2; freezer is a core feature, not a v2 controller</th></tr>
-<tr><td data-label="capability">PSI</td><th><strong>PROVEN</strong></th><th><code>/proc/pressure/{cpu,io,memory}</code> present, <code>io some avg10=19.35</code></th><th>pressure faults + the load gate</th></tr>
-<tr><td data-label="capability">seccomp user-notify</td><th><strong>PROVEN (API)</strong></th><th><code>seccomp_user_notify=SUPPORTED notif=80 resp=24</code></th><th>syscall/path error injection backend</th></tr>
-<tr><td data-label="capability">LD_PRELOAD fault <strong>with landed-proof</strong></td><th><strong>PROVEN end-to-end</strong></th><th>control: <code>write(...) -&gt; 6</code>; faulted: <code>write(...) -&gt; -1 errno=Input/output error</code>, target file 0 B, per-pid counter file written</th><th>the flagship rootless primitive AND the proof-of-landing rule</th></tr>
-<tr><td data-label="capability">netns + netem</td><th><strong>PROVEN with sudo</strong></th><th><code>ip netns add</code> OK; <code>tc qdisc add dev lo root netem loss 100%</code> OK (qdisc reported <code>loss 100% seed 844288704255200251</code>); <code>ping</code> rc=2; <code>netns del</code> OK</th><th>L2 network faults; revert proven the same minute</th></tr>
-<tr><td data-label="capability">unprivileged userns network</td><th><strong>PARTIAL</strong></th><th><code>unshare -Un true</code> OK, but <code>ip link add veth</code> → <code>EPERM</code> (Ubuntu AppArmor userns restriction)</th><th>network faults need the helper <strong>or</strong> a <code>NET_ADMIN</code> container — this is why docker is a first-class backend</th></tr>
-<tr><td data-label="capability">time namespaces</td><th><strong>NOT AVAILABLE rootless</strong></th><th><code>unshare --time --boottime 1000 true</code> → <code>Operation not permitted</code></th><th>clock faults (T-layer) go through the shim/helper, or stay out of v0.1</th></tr>
-<tr><td data-label="capability">docker</td><th><strong>PROVEN</strong></th><th><code>docker=29.1.3 cgroup=2</code></th><th>container nodes; fallback for <code>NET_ADMIN</code></th></tr>
-<tr><td data-label="capability">loop / device-mapper</td><th><strong>UNPROVEN</strong> (tools present)</th><th><code>/dev/loop-control</code>, <code>/dev/mapper/control</code>, <code>losetup -f → /dev/loop27</code>, <code>dmsetup</code> + <code>mkfs.ext4</code> present</th><th>EIO/slow-disk classes land at M2 behind the L2 helper, each gated by selftest</th></tr>
-</table>
-<p><strong>Resized scope, one line:</strong> 6 of 11 required capabilities already ship; 2 need the</p>
-<p>narrow privileged helper, 1 needs a container, 1 needs the shim, and 1 (time</p>
-<p>namespaces) stays out of the rootless set. Nothing in the build list depends on a</p>
-<p>capability that is not already present on this host.</p>
-<h2 id="10-build-plan">10. Build plan</h2>
-<table>
-<tr><th>milestone</th><th>content</th><th>done when</th></tr>
-<tr><td data-label="milestone"><strong>M0</strong> decision</td><th>name, repo home, privilege model, public/private (§13)</th><th>owner answers; repo + board exist</th></tr>
-<tr><td data-label="milestone"><strong>M1</strong> chassis</td><th>experiment schema, catalog loader, journal writer, verdict engine, rails, <code>plan</code>/<code>status</code>/<code>revert</code>/<code>doctor</code>, reverter daemon + boot reconcile</th><th><code>selftest --all</code> green on L0 for the 3 primitives that need no privileges</th></tr>
-<tr><td data-label="milestone"><strong>M2</strong> L1 primitives</td><th>signals/TTL, <code>systemd-run</code> scope limits, LD_PRELOAD shim (counted), seccomp supervisor, HTTP/DNS/TLS proxy</th><th>each primitive passes selftest + one battery cell; landed-proof published in the catalog</th></tr>
-<tr><td data-label="milestone"><strong>M3</strong> L2/L3 primitives</td><th>netns+netem, dm/loop I/O errors, fsfreeze, RO remount, container lifecycle, volume loss</th><th><code>mischief doctor</code> reports each as available with its proof; the sudo allowlist is the only new privilege</th></tr>
-<tr><td data-label="milestone"><strong>M4</strong> trouble loop</td><th><code>observe.trouble</code>, detection matrix artifact, <code>battery --quick</code> replacing the 5 bash cells (parity proof)</th><th>the §12 replays pass; the bash cells are deleted with their replacement named</th></tr>
-<tr><td data-label="milestone"><strong>M5</strong> cloud + monkey</td><th>provider simulator, real-provider adapter behind <code>--allow-real</code>, seeded monkey mode, soak</th><th>a 24 h monkey soak on a scratch host with zero <code>stuck</code> faults and zero manual reverts</th></tr>
-<tr><td data-label="milestone"><strong>M6</strong> fleet adoption</td><th><code>-chaos</code> satellite lane, per-project fault matrices, public docs</th><th>N projects carry a matrix; findings arrive as rows without an operator in the loop</th></tr>
-</table>
-<h2 id="11-acceptance-criteria">11. Acceptance criteria</h2>
-<p>Form: <code>AC-n: Given &lt;state&gt;, when &lt;action&gt;, then &lt;observable result&gt; — proof: &lt;command/test/artifact&gt;. (T|C|M)</code></p>
-<p>T = automated test, C = command/probe with expected output, M = artifact that must exist.</p>
-<p>These transfer verbatim into the board rows&#x27; <code>acceptance_criteria</code> and the worker briefs.</p>
-<ul>
-<li><strong>AC-1: Given any experiment, when <code>mischief plan -f exp.yaml</code> runs, then no target state changes — proof: plan on a running target leaves <code>status</code> empty, the journal file absent and the target&#x27;s own checksum/pid set byte-identical. (T)</strong></li>
-<li><strong>AC-2: Given any verb that lands or holds a fault, when invoked without a resolved target, then it exits 2 and lands nothing — proof: <code>mischief run -f no-target.yaml; echo $?</code> → 2, and <code>mischief status</code> shows no armed fault. (C)</strong></li>
-<li><strong>AC-3 (anti-gaming): Given a primitive whose <code>landed_proof</code> never fires (stub backend, wrong target, or a start command that never starts), when the run completes, then the verdict is <code>no_op</code> and the run FAILS — proof: inject a deliberately no-op primitive; the journal carries <code>fault_armed</code> with no <code>fault_landed</code>, and the exit code is non-zero. A green-but-did-nothing implementation cannot pass this. (T)</strong></li>
-<li><strong>AC-4: Given any landed fault, when it is reverted, then the revert is MEASURED (the inverse proof), not asserted — proof: <code>fault_reverted</code> carries a proof record, and an experiment whose inverse is sabotaged fails the run instead of reporting <code>recovered</code>. (T)</strong></li>
-<li><strong>AC-5: Given a fault held under a TTL, when the CLI process is <code>kill -9</code>ed mid-hold, then the fault is still reverted at TTL expiry — proof: kill the CLI, wait TTL+5s, show the target&#x27;s pre-fault state restored and the journal&#x27;s <code>fault_reverted</code> written by the reverter&#x27;s own pid. (T)</strong></li>
-<li><strong>AC-6: Given a host with N armed faults (including one left by a previous boot), when <code>mischief revert --all</code> runs, then every fault is reverted within 2 s and each revert is proven — proof: command output plus <code>mischief status</code> empty; leftover faults from a previous boot are listed <code>stuck</code> before the call. (C)</strong></li>
-<li><strong>AC-7: Given the default configuration, when an experiment names a protected target (scheduler/gateway/memory daemon) or runs in monkey mode, then the run refuses — proof: <code>plan</code> on a protected target exits 2 naming the protection; the same target runs only with the explicit operator flag and the journal records it. (C)</strong></li>
-<li><strong>AC-8: Given a host above the configured load/PSI threshold, when a run is attempted, then the fault is refused with <code>aborted</code> and the reason names the measurement — proof: force load, run, read the refusal&#x27;s measured numbers. (C)</strong></li>
-<li><strong>AC-9: Given the full verdict vocabulary, when a run ends in each of <code>no_op</code>, <code>aborted</code>, <code>corrupted</code>, <code>flaky</code>, <code>void</code>, <code>degraded</code>, then that value survives end to end (journal → CLI output → findings row) — proof: one test per verdict asserting the journal value and the printed verdict agree. (T)</strong></li>
-<li><strong>AC-10: Given the same experiment file and seed, when it is run twice, then the run id is identical and the fault set is identical — proof: two runs, one <code>diff</code> of the fault set in the journal, and a third run with a different seed producing a different id. (T)</strong></li>
-<li><strong>AC-11: Given a primitive the host cannot support, when it is requested, then the verb stays available and returns <code>capability_unavailable</code> naming what is absent — proof: request a dm-error primitive without the helper; assert the error text names the missing capability and that <code>mischief catalog</code> still lists the primitive. (T)</strong></li>
-<li><strong>AC-12: Given two concurrent runs with different fault sets, when they execute in the same minute, then neither sees the other&#x27;s faults — proof: two runs, each <code>status</code> showing only its own armed set, and the global config file byte-identical before and after. (T)</strong></li>
-<li><strong>AC-13: Given a probe design, when a run reports <code>recovered</code>, then no part of the verdict rests on the fault&#x27;s own exit code — proof: a fault backend that always exits 0 without landing grades <code>no_op</code>; a target that is alive but not serving fails the probe set and does not grade <code>recovered</code>. (T)</strong></li>
-<li><strong>AC-14: Given a scratch <code>trouble</code> instance, when <code>I-002</code> (dependency loss) is injected with <code>observe.trouble</code> declared, then the run reports whether the expected ledger record appeared within the window — proof: the journal&#x27;s <code>observe_result</code> plus the ledger line it matched; a missing record is filed as a detection gap row. (C)</strong></li>
-<li><strong>AC-15: Given a fault class that can destroy data, when the experiment declares no integrity oracle, then the run refuses to grade <code>recovered</code> — proof: run a file-truncation experiment without <code>integrity:</code>; verdict is <code>degraded</code>/<code>not_recovered</code>, never <code>recovered</code>. (T)</strong></li>
-<li><strong>AC-16: Given any experiment, when it is run with faults disabled (<code>--no-fault</code>), then the control run must be green — proof: a control run on the pre-fault tree; a red control makes the experiment <code>void</code> and the harness, not the target, is the finding. (T)</strong></li>
-<li><strong>AC-17: Given the cloud plane, when a real-provider fault is requested without <code>--allow-real</code> and a resource tag, then it refuses and runs against the simulator instead — proof: command output naming the refusal, plus the simulator&#x27;s own request log showing the fault landed there. (C)</strong></li>
-<li><strong>AC-18: Given <code>mischief battery --file-rows</code>, when a battery completes, then each finding lands as a row on the OWNING project&#x27;s board with the journal path in its reasoning — proof: the board diff, plus <code>boardctl validate</code> clean. (C)</strong></li>
-<li><strong>AC-19: Given a primitive, when it has no green <code>selftest</code> on this host, then it refuses to run outside an L0 scratch scope — proof: request an un-selftested primitive against a shared target; assert exit 2 with the reason naming the missing selftest. (C)</strong></li>
-<li><strong>AC-20: Given a journal, when it is written, then it contains no credential-shaped material — proof: the scrub test suite (token/key/bearer/DSN shapes) over generated journals, plus a scan of a real run&#x27;s journal. (T)</strong></li>
-</ul>
-<h2 id="12-success-criteria-replayable-against-real-history">12. Success criteria — replayable against real history</h2>
-<ul>
-<li><strong>S-1 (kills the §2.1 false green).</strong> Replay QA-TROUBLE-3&#x27;s shape: a <code>cmd/</code>-layout</li>
-</ul>
-<p>repo whose &quot;start&quot; command never starts the app. The old cell graded OK; <code>mischief</code></p>
-<p>must grade <strong><code>no_op</code></strong> with no landed-proof in the journal. <em>Proof:</em> the journal of</p>
-<p>that run, plus the same experiment against a fixed start command grading</p>
-<p><code>recovered</code>/<code>not_recovered</code> instead of <code>no_op</code>.</p>
-<ul>
-<li><strong>S-2 (TRBL-031).</strong> <code>I-002 redis-loss</code> with <code>mode: cold-return</code> — grade</li>
-</ul>
-<p><code>not_recovered</code> on the pre-fix commit, <code>recovered</code> on current <code>main</code>, with the rewire</p>
-<p>(fresh empty server, same port) visible in the journal. <em>Proof:</em> two journals.</p>
-<ul>
-<li><strong>S-3 (the 08-29/30 hole).</strong> <code>F-009 file-replaced-under-live-writer</code> against a live</li>
-</ul>
-<p>session reproduces the in-flight death → <code>corrupted</code>; with the driver&#x27;s fallback the</p>
-<p>same experiment grades <code>recovered</code>. <em>Proof:</em> journal + the session&#x27;s own error text.</p>
-<ul>
-<li><strong>S-4 (TRBL-041).</strong> <code>P-006 kill-between-enqueue-and-drain</code> on the pre-fix spool →</li>
-</ul>
-<p><code>not_recovered</code> with an orphaned spool entry; post-fix <code>recovered</code>. <em>Proof:</em> two</p>
-<p>journals + the spool directory listing.</p>
-<ul>
-<li><strong>S-5 (fleet coverage).</strong> One <code>battery</code> over N projects emits a</li>
-</ul>
-<p>fault × detection × recovery matrix, and the 5 bash cells in §2.1 are gone, replaced</p>
-<p>by catalog primitives that carry landed-proofs. <em>Proof:</em> the matrix artifact + the</p>
-<p>diff that deletes the cells.</p>
-<h2 id="13-out-of-scope-boundaries">13. Out of scope / boundaries</h2>
-<ul>
-<li>Not a load generator (that is <code>k6</code>/<code>locust</code>-shaped work; mischief may <em>accompany</em> one).</li>
-<li>Not an exploit kit or a pentest tool: no privilege escalation, no payloads, no</li>
-</ul>
+<ol><li><strong><code>observe.trouble</code> — read-only assertion.</strong> An experiment may declare "the target's</li></ol>
+<p>ledger must contain record R within N seconds". Costs <code>trouble</code> nothing; turns its detection claims into a measured matrix (fault × detected × time-to-detect). <strong>This is the hook that decides adoption</strong>, because it is the only one that needs zero changes to any existing project.</p>
+<ol><li><strong><code>mischief battery --file-rows</code></strong> — findings become rows on the <em>owning</em> project's</li></ol>
+<p>board, in that board's own vocabulary. Additive, uses the existing filing path.</p>
+<ol><li><strong><code>mischief battery --quick</code> as a QA cell source</strong> — the five bash cells in §2.1 are</li></ol>
+<p>replaced by catalog primitives that carry landed-proofs. This <em>deletes</em> code, so it is a migration with a parity proof, not a rewrite.</p>
+<ol><li><strong><code>mischief verify-play</code></strong> (later) — after <code>trouble</code> records a play that fired,</li></ol>
+<p>re-inject the original fault to check the fix held. Needs <code>trouble</code>'s ledger schema read-only; the only hook that makes <code>mischief</code> part of a closed remediation loop.</p>
+<ol><li><strong>A <code>-chaos</code> satellite lane</strong> (opt-in, per project, its own namespace) that runs the</li></ol>
+<p>project's fault matrix on a cadence and files findings. New convention ⇒ last.</p>
+<h2>9. Platform audit — measured on this host, before the build (2026-09-27)</h2>
+<p>Required capability → probed live → consequence. <code>probe/RESULTS.md</code> carries the raw output, <code>probe/</code> carries the scripts, so every row is re-runnable.</p>
+<table><thead><tr><th>capability</th><th>state</th><th>measured evidence</th><th>consequence for the design</th></tr></thead><tbody>
+<tr><td>cgroup v2 unified</td><td><strong>PROVEN</strong></td><td><code>fstype=cgroup2fs</code>; controllers <code>cpuset cpu io memory hugetlb pids rdma misc dmem</code></td><td>resource faults are cgroup-shaped</td></tr>
+<tr><td>rootless resource limits</td><td><strong>PROVEN</strong></td><td><code>systemd-run --user --scope -p MemoryMax=64M -p CPUQuota=10% -p TasksMax=32 true</code> → OK</td><td>L1 default: memory/CPU/pids faults with <strong>no privileges</strong></td></tr>
+<tr><td>cgroup mkdir at root as uid 1000</td><td><strong>DENIED</strong></td><td><code>cgroup_mkdir=DENIED(unprivileged)</code>; own slice exposes <code>cpu memory pids</code> but is not writable</td><td>privileged helper, or transient scopes only</td></tr>
+<tr><td>cgroup freezer</td><td><strong>PROVEN as root child</strong> (my first probe was wrong)</td><td>root cgroup has no <code>cgroup.freeze</code>; a child cgroup created under sudo exposes <code>cgroup.freeze</code> + limit files (4 matches)</td><td>freeze/hang faults need L2; freezer is a core feature, not a v2 controller</td></tr>
+<tr><td>PSI</td><td><strong>PROVEN</strong></td><td><code>/proc/pressure/{cpu,io,memory}</code> present, <code>io some avg10=19.35</code></td><td>pressure faults + the load gate</td></tr>
+<tr><td>seccomp user-notify</td><td><strong>PROVEN (API)</strong></td><td><code>seccomp_user_notify=SUPPORTED notif=80 resp=24</code></td><td>syscall/path error injection backend</td></tr>
+<tr><td>LD_PRELOAD fault <strong>with landed-proof</strong></td><td><strong>PROVEN end-to-end</strong></td><td>control: <code>write(...) -&gt; 6</code>; faulted: <code>write(...) -&gt; -1 errno=Input/output error</code>, target file 0 B, per-pid counter file written</td><td>the flagship rootless primitive AND the proof-of-landing rule</td></tr>
+<tr><td>netns + netem</td><td><strong>PROVEN with sudo</strong></td><td><code>ip netns add</code> OK; <code>tc qdisc add dev lo root netem loss 100%</code> OK (qdisc reported <code>loss 100% seed 844288704255200251</code>); <code>ping</code> rc=2; <code>netns del</code> OK</td><td>L2 network faults; revert proven the same minute</td></tr>
+<tr><td>unprivileged userns network</td><td><strong>PARTIAL</strong></td><td><code>unshare -Un true</code> OK, but <code>ip link add veth</code> → <code>EPERM</code> (Ubuntu AppArmor userns restriction)</td><td>network faults need the helper <strong>or</strong> a <code>NET_ADMIN</code> container — this is why docker is a first-class backend</td></tr>
+<tr><td>time namespaces</td><td><strong>NOT AVAILABLE rootless</strong></td><td><code>unshare --time --boottime 1000 true</code> → <code>Operation not permitted</code></td><td>clock faults (T-layer) go through the shim/helper, or stay out of v0.1</td></tr>
+<tr><td>docker</td><td><strong>PROVEN</strong></td><td><code>docker=29.1.3 cgroup=2</code></td><td>container nodes; fallback for <code>NET_ADMIN</code></td></tr>
+<tr><td>loop / device-mapper</td><td><strong>UNPROVEN</strong> (tools present)</td><td><code>/dev/loop-control</code>, <code>/dev/mapper/control</code>, <code>losetup -f → /dev/loop27</code>, <code>dmsetup</code> + <code>mkfs.ext4</code> present</td><td>EIO/slow-disk classes land at M2 behind the L2 helper, each gated by selftest</td></tr>
+</tbody></table>
+<p><strong>Resized scope, one line:</strong> 6 of 11 required capabilities already ship; 2 need the narrow privileged helper, 1 needs a container, 1 needs the shim, and 1 (time namespaces) stays out of the rootless set. Nothing in the build list depends on a capability that is not already present on this host.</p>
+<h2>10. Build plan</h2>
+<table><thead><tr><th>milestone</th><th>content</th><th>done when</th></tr></thead><tbody>
+<tr><td><strong>M0</strong> decision</td><td>name, repo home, privilege model, public/private (§13)</td><td>owner answers; repo + board exist</td></tr>
+<tr><td><strong>M1</strong> chassis</td><td>experiment schema, catalog loader, journal writer, verdict engine, rails, <code>plan</code>/<code>status</code>/<code>revert</code>/<code>doctor</code>, reverter daemon + boot reconcile</td><td><code>selftest --all</code> green on L0 for the 3 primitives that need no privileges</td></tr>
+<tr><td><strong>M1a</strong> isolation contract</td><td>SPEC-13 (MSF-020): the sanction marker, the protected-target refusal at resolution, the load gate — enforced, with a test that fails if the marker check is neutered</td><td>running mischief's selftest on an unsanctioned host refuses with a named reason and writes nothing; the same run on a sanctioned host proceeds</td></tr>
+<tr><td><strong>M1b</strong> bunker test plane</td><td>MSF-021: every tick that exercises a primitive runs on an ephemeral agent — obtain, ship, build (no <code>make</code> on a bare agent), run, pull evidence, destroy</td><td>one command yields evidence with zero residue on the main host; an unobtainable agent is a recorded SKIP, never a pass</td></tr>
+<tr><td><strong>M2</strong> L1 primitives</td><td>signals/TTL, <code>systemd-run</code> scope limits, LD_PRELOAD shim (counted), seccomp supervisor, HTTP/DNS/TLS proxy</td><td>each primitive passes selftest + one battery cell; landed-proof published in the catalog</td></tr>
+<tr><td><strong>M3</strong> L2/L3 primitives</td><td>netns+netem, dm/loop I/O errors, fsfreeze, RO remount, container lifecycle, volume loss</td><td><code>mischief doctor</code> reports each as available with its proof; the sudo allowlist is the only new privilege</td></tr>
+<tr><td><strong>M4</strong> trouble loop</td><td><code>observe.trouble</code>, detection matrix artifact, <code>battery --quick</code> replacing the 5 bash cells (parity proof)</td><td>the §12 replays pass; the bash cells are deleted with their replacement named</td></tr>
+<tr><td><strong>M5</strong> cloud + monkey</td><td>provider simulator, real-provider adapter behind <code>--allow-real</code>, seeded monkey mode, soak</td><td>a 24 h monkey soak on a scratch host with zero <code>stuck</code> faults and zero manual reverts</td></tr>
+<tr><td><strong>M6</strong> fleet adoption</td><td><code>-chaos</code> satellite lane, per-project fault matrices, public docs</td><td>N projects carry a matrix; findings arrive as rows without an operator in the loop</td></tr>
+</tbody></table>
+<h2>11. Acceptance criteria</h2>
+<p>T = automated test, C = command/probe with expected output, M = artifact that must exist. These transfer verbatim into the board rows' <code>acceptance_criteria</code> and the worker briefs.</p>
+<ul><li><strong>AC-1: Given any experiment, when <code>mischief plan -f exp.yaml</code> runs, then no target state changes — proof: plan on a running target leaves <code>status</code> empty, the journal file absent and the target's own checksum/pid set byte-identical. (T)</strong></li><li><strong>AC-2: Given any verb that lands or holds a fault, when invoked without a resolved target, then it exits 2 and lands nothing — proof: <code>mischief run -f no-target.yaml; echo $?</code> → 2, and <code>mischief status</code> shows no armed fault. (C)</strong></li><li><strong>AC-3 (anti-gaming): Given a primitive whose <code>landed_proof</code> never fires (stub backend, wrong target, or a start command that never starts), when the run completes, then the verdict is <code>no_op</code> and the run FAILS — proof: inject a deliberately no-op primitive; the journal carries <code>fault_armed</code> with no <code>fault_landed</code>, and the exit code is non-zero. A green-but-did-nothing implementation cannot pass this. (T)</strong></li><li><strong>AC-4: Given any landed fault, when it is reverted, then the revert is MEASURED (the inverse proof), not asserted — proof: <code>fault_reverted</code> carries a proof record, and an experiment whose inverse is sabotaged fails the run instead of reporting <code>recovered</code>. (T)</strong></li><li><strong>AC-5: Given a fault held under a TTL, when the CLI process is <code>kill -9</code>ed mid-hold, then the fault is still reverted at TTL expiry — proof: kill the CLI, wait TTL+5s, show the target's pre-fault state restored and the journal's <code>fault_reverted</code> written by the reverter's own pid. (T)</strong></li><li><strong>AC-6: Given a host with N armed faults (including one left by a previous boot), when <code>mischief revert --all</code> runs, then every fault is reverted within 2 s and each revert is proven — proof: command output plus <code>mischief status</code> empty; leftover faults from a previous boot are listed <code>stuck</code> before the call. (C)</strong></li><li><strong>AC-7: Given the default configuration, when an experiment names a protected target (scheduler/gateway/memory daemon) or runs in monkey mode, then the run refuses — proof: <code>plan</code> on a protected target exits 2 naming the protection; the same target runs only with the explicit operator flag and the journal records it. (C)</strong></li><li><strong>AC-8: Given a host above the configured load/PSI threshold, when a run is attempted, then the fault is refused with <code>aborted</code> and the reason names the measurement — proof: force load, run, read the refusal's measured numbers. (C)</strong></li><li><strong>AC-9: Given the full verdict vocabulary, when a run ends in each of <code>no_op</code>, <code>aborted</code>, <code>corrupted</code>, <code>flaky</code>, <code>void</code>, <code>degraded</code>, then that value survives end to end (journal → CLI output → findings row) — proof: one test per verdict asserting the journal value and the printed verdict agree. (T)</strong></li><li><strong>AC-10: Given the same experiment file and seed, when it is run twice, then the run id is identical and the fault set is identical — proof: two runs, one <code>diff</code> of the fault set in the journal, and a third run with a different seed producing a different id. (T)</strong></li><li><strong>AC-11: Given a primitive the host cannot support, when it is requested, then the verb stays available and returns <code>capability_unavailable</code> naming what is absent — proof: request a dm-error primitive without the helper; assert the error text names the missing capability and that <code>mischief catalog</code> still lists the primitive. (T)</strong></li><li><strong>AC-12: Given two concurrent runs with different fault sets, when they execute in the same minute, then neither sees the other's faults — proof: two runs, each <code>status</code> showing only its own armed set, and the global config file byte-identical before and after. (T)</strong></li><li><strong>AC-13: Given a probe design, when a run reports <code>recovered</code>, then no part of the verdict rests on the fault's own exit code — proof: a fault backend that always exits 0 without landing grades <code>no_op</code>; a target that is alive but not serving fails the probe set and does not grade <code>recovered</code>. (T)</strong></li><li><strong>AC-14: Given a scratch <code>trouble</code> instance, when <code>I-002</code> (dependency loss) is injected with <code>observe.trouble</code> declared, then the run reports whether the expected ledger record appeared within the window — proof: the journal's <code>observe_result</code> plus the ledger line it matched; a missing record is filed as a detection gap row. (C)</strong></li><li><strong>AC-15: Given a fault class that can destroy data, when the experiment declares no integrity oracle, then the run refuses to grade <code>recovered</code> — proof: run a file-truncation experiment without <code>integrity:</code>; verdict is <code>degraded</code>/<code>not_recovered</code>, never <code>recovered</code>. (T)</strong></li><li><strong>AC-16: Given any experiment, when it is run with faults disabled (<code>--no-fault</code>), then the control run must be green — proof: a control run on the pre-fault tree; a red control makes the experiment <code>void</code> and the harness, not the target, is the finding. (T)</strong></li><li><strong>AC-17: Given the cloud plane, when a real-provider fault is requested without <code>--allow-real</code> and a resource tag, then it refuses and runs against the simulator instead — proof: command output naming the refusal, plus the simulator's own request log showing the fault landed there. (C)</strong></li><li><strong>AC-18: Given <code>mischief battery --file-rows</code>, when a battery completes, then each finding lands as a row on the OWNING project's board with the journal path in its reasoning — proof: the board diff, plus <code>boardctl validate</code> clean. (C)</strong></li><li><strong>AC-19: Given a primitive, when it has no green <code>selftest</code> on this host, then it refuses to run outside an L0 scratch scope — proof: request an un-selftested primitive against a shared target; assert exit 2 with the reason naming the missing selftest. (C)</strong></li><li><strong>AC-20: Given a journal, when it is written, then it contains no credential-shaped material — proof: the scrub test suite (token/key/bearer/DSN shapes) over generated journals, plus a scan of a real run's journal. (T)</strong></li></ul>
+<h2>12. Success criteria — replayable against real history</h2>
+<ul><li><strong>S-1 (kills the §2.1 false green).</strong> Replay QA-TROUBLE-3's shape: a <code>cmd/</code>-layout</li></ul>
+<p>repo whose "start" command never starts the app. The old cell graded OK; <code>mischief</code> must grade <strong><code>no_op</code></strong> with no landed-proof in the journal. <em>Proof:</em> the journal of that run, plus the same experiment against a fixed start command grading <code>recovered</code>/<code>not_recovered</code> instead of <code>no_op</code>.</p>
+<ul><li><strong>S-2 (TRBL-031).</strong> <code>I-002 redis-loss</code> with <code>mode: cold-return</code> — grade</li></ul>
+<p><code>not_recovered</code> on the pre-fix commit, <code>recovered</code> on current <code>main</code>, with the rewire (fresh empty server, same port) visible in the journal. <em>Proof:</em> two journals.</p>
+<ul><li><strong>S-3 (the 08-29/30 hole).</strong> <code>F-009 file-replaced-under-live-writer</code> against a live</li></ul>
+<p>session reproduces the in-flight death → <code>corrupted</code>; with the driver's fallback the same experiment grades <code>recovered</code>. <em>Proof:</em> journal + the session's own error text.</p>
+<ul><li><strong>S-4 (TRBL-041).</strong> <code>P-006 kill-between-enqueue-and-drain</code> on the pre-fix spool →</li></ul>
+<p><code>not_recovered</code> with an orphaned spool entry; post-fix <code>recovered</code>. <em>Proof:</em> two journals + the spool directory listing.</p>
+<ul><li><strong>S-5 (fleet coverage).</strong> One <code>battery</code> over N projects emits a</li></ul>
+<p>fault × detection × recovery matrix, and the 5 bash cells in §2.1 are gone, replaced by catalog primitives that carry landed-proofs. <em>Proof:</em> the matrix artifact + the diff that deletes the cells.</p>
+<h2>13. Out of scope / boundaries</h2>
+<ul><li>Not a load generator (that is <code>k6</code>/<code>locust</code>-shaped work; mischief may <em>accompany</em> one).</li><li>Not an exploit kit or a pentest tool: no privilege escalation, no payloads, no</li></ul>
 <p>scanning of hosts it was not pointed at.</p>
-<ul>
-<li>Not a k8s operator / CRD set. The fleet is plain Linux boxes and containers.</li>
-<li>Not a Windows/macOS tool. Time-namespace faults are out of the rootless set.</li>
-<li>Not an owner of remediation — that is <code>trouble</code>&#x27;s play rung; mischief may <em>verify</em> a</li>
-</ul>
+<ul><li>Not a k8s operator / CRD set. The fleet is plain Linux boxes and containers.</li><li>Not a Windows/macOS tool. Time-namespace faults are out of the rootless set.</li><li>Not an owner of remediation — that is <code>trouble</code>'s play rung; mischief may <em>verify</em> a</li></ul>
 <p>play, never perform one.</p>
-<ul>
-<li>Never a permanently-destructive fault in v0.1 (<code>destroy_class=permanent</code> is</li>
-</ul>
-<p>simulator-only), and never the fleet&#x27;s control planes by default.</p>
-<ul>
-<li>Not a SaaS, and no telemetry leaves the box.</li>
-</ul>
-<h2 id="14-open-decisions-owner-s-each-with-a-recommendation">14. Open decisions (owner&#x27;s — each with a recommendation)</h2>
-<ol>
-<li><strong>Name + repo home.</strong> Recommend <code>mischief</code> in <code>github.com/trouble-agent</code> (a</li>
-</ol>
-<p>partner for <code>trouble</code>; all candidate names are free in the org as of today).</p>
-<p>Alternates: <code>accomplice</code>, <code>monkeywrench</code>, <code>poltergeist</code>.</p>
-<ol>
-<li><strong>Private first, or public from day one.</strong> Recommend <strong>private first</strong>: the board and</li>
-</ol>
-<p>the replay journals will name fleet internals (project names, incident text), and</p>
-<p>flipping to public later is one command. If public, the repo needs the sibling</p>
-<p>contract first (MIT, <code>SECURITY.md</code>, <code>CONTRIBUTING.md</code>, no absolute paths anywhere).</p>
-<ol>
-<li><strong>Privilege model.</strong> Recommend <strong>rootless-first with a narrow <code>sudo</code> allowlist</strong> for</li>
-</ol>
-<p>the L2 set; no setuid binary, ever. The alternative — a <code>NET_ADMIN</code> container as the</p>
-<p>mandatory substrate — costs the ability to fault a <em>plain process on the host</em>, which</p>
-<p>is where 2 of the 4 case files live.</p>
-<ol>
-<li><strong>Cloud plane timing.</strong> Recommend the simulator in v0.1 and the real-provider adapter</li>
-</ol>
-<p>behind <code>--allow-real</code> in v0.2, pointed only at a scratch project — never at the</p>
-<p>fleet&#x27;s own hosts.</p>
-<ol>
-<li><strong>Lane now or later.</strong> Recommend: repo + board + this PRD now; arm the base lane and</li>
-</ol>
-<p>a <code>-chaos</code> satellite only after this draft is reviewed, so the first tick implements</p>
-<p>rather than re-derives.</p>
-<p><strong>The one fork worth naming:</strong> if the C shim is unacceptable (single-binary purity),</p>
-<p>syscall-level faults move to the seccomp-notify backend alone. That keeps the file-level</p>
-<p>and syscall faults and loses the cheap path-aware write interception and the shim&#x27;s</p>
-<p>per-pid counters — the landed-proof then has to come from the supervisor&#x27;s own</p>
-<p>notification counter, which works but is a heavier runtime (one supervisor per target).</p>
-<h2 id="15-why-anyone-outside-this-fleet-wants-it">15. Why anyone outside this fleet wants it</h2>
-<p>The upstream field is k8s-shaped (Chaos Mesh, Litmus, AWS Chaos Monkey) or</p>
-<p>load/network-shaped (toxiproxy, <code>tc</code>, <code>strace --inject</code>). The tier this tool owns —</p>
-<p>**rootless, host-level, path-aware faults against plain Linux daemons, with a</p>
-<p>mandatory landed-proof and a graded recovery verdict** — is the tier where the</p>
-<p>false greens live: every chaos tool can tell you it ran, and almost none can tell you</p>
-<p><em>the fault arrived</em>. Copy-targets are pinned to a tier, not adopted wholesale:</p>
-<p>Gremlin&#x27;s failure taxonomy (taxonomy only — resource/network/state tiers), toxiproxy&#x27;s</p>
-<p>userspace-proxy trick (network faults with zero privileges), <code>strace --inject</code>&#x27;s</p>
-<p>existence proof that syscall error injection is a real primitive, and Pumba/chaosblade&#x27;s</p>
-<p>container-fault list. The differentiator is not the fault list; it is the two rules</p>
-<p>nobody else enforces — <em>prove it landed</em> and <em>prove it reverted</em>.</p>
+<ul><li>Never a permanently-destructive fault in v0.1 (<code>destroy_class=permanent</code> is</li></ul>
+<p>simulator-only), and never the fleet's control planes by default.</p>
+<ul><li>Not a SaaS, and no telemetry leaves the box.</li></ul>
+<h2>14. Open decisions (owner's — each with a recommendation)</h2>
+<ol><li><strong>Name + repo home.</strong> Recommend <code>mischief</code> in <code>github.com/trouble-agent</code> (a</li></ol>
+<p>partner for <code>trouble</code>; all candidate names are free in the org as of today). Alternates: <code>accomplice</code>, <code>monkeywrench</code>, <code>poltergeist</code>.</p>
+<ol><li><strong>Private first, or public from day one.</strong> Recommend <strong>private first</strong>: the board and</li></ol>
+<p>the replay journals will name fleet internals (project names, incident text), and flipping to public later is one command. If public, the repo needs the sibling contract first (MIT, <code>SECURITY.md</code>, <code>CONTRIBUTING.md</code>, no absolute paths anywhere).</p>
+<ol><li><strong>Privilege model.</strong> Recommend <strong>rootless-first with a narrow <code>sudo</code> allowlist</strong> for</li></ol>
+<p>the L2 set; no setuid binary, ever. The alternative — a <code>NET_ADMIN</code> container as the mandatory substrate — costs the ability to fault a <em>plain process on the host</em>, which is where 2 of the 4 case files live.</p>
+<ol><li><strong>Cloud plane timing.</strong> Recommend the simulator in v0.1 and the real-provider adapter</li></ol>
+<p>behind <code>--allow-real</code> in v0.2, pointed only at a scratch project — never at the fleet's own hosts.</p>
+<ol><li><strong>Lane now or later.</strong> Recommend: repo + board + this PRD now; arm the base lane and</li></ol>
+<p>a <code>-chaos</code> satellite only after this draft is reviewed, so the first tick implements rather than re-derives.</p>
+<p><strong>The one fork worth naming:</strong> if the C shim is unacceptable (single-binary purity), syscall-level faults move to the seccomp-notify backend alone. That keeps the file-level and syscall faults and loses the cheap path-aware write interception and the shim's per-pid counters — the landed-proof then has to come from the supervisor's own notification counter, which works but is a heavier runtime (one supervisor per target).</p>
+<h2>15. Why anyone outside this fleet wants it</h2>
+<p>The upstream field is k8s-shaped (Chaos Mesh, Litmus, AWS Chaos Monkey) or load/network-shaped (toxiproxy, <code>tc</code>, <code>strace --inject</code>). The tier this tool owns — <strong>rootless, host-level, path-aware faults against plain Linux daemons, with a mandatory landed-proof and a graded recovery verdict</strong> — is the tier where the false greens live: every chaos tool can tell you it ran, and almost none can tell you <em>the fault arrived</em>. Copy-targets are pinned to a tier, not adopted wholesale: Gremlin's failure taxonomy (taxonomy only — resource/network/state tiers), toxiproxy's userspace-proxy trick (network faults with zero privileges), <code>strace --inject</code>'s existence proof that syscall error injection is a real primitive, and Pumba/chaosblade's container-fault list. The differentiator is not the fault list; it is the two rules nobody else enforces — <em>prove it landed</em> and <em>prove it reverted</em>.</p>
 </body></html>
