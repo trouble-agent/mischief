@@ -4,10 +4,76 @@
   "base_sha": "db13ba0",
   "budget": 9,
   "workers": [
-    {"task_id": "MSF-027", "cluster": ["MSF-027"], "worktree": "/home/kara/worktrees/mischief-MSF-027", "branch": "wt/MSF-027", "brief": "/tmp/msf-wave/MSF-027.brief.md", "model": "glm-5.3-flash", "provider": "zai-glm-default", "log": "/tmp/msf-wave/MSF-027.worker.log"},
-    {"task_id": "README-1", "cluster": ["README-1", "DOC-4"], "worktree": "/home/kara/worktrees/mischief-README-1", "branch": "wt/README-1", "brief": "/tmp/msf-wave/README-1.brief.md", "model": "glm-5.3-flash", "provider": "zai-glm-default", "log": "/tmp/msf-wave/README-1.worker.log"},
-    {"task_id": "DOC-1", "cluster": ["DOC-1", "DOC-2"], "worktree": "/home/kara/worktrees/mischief-DOC-1", "branch": "wt/DOC-1", "brief": "/tmp/msf-wave/DOC-1.brief.md", "model": "glm-5.3-flash", "provider": "zai-glm-default", "log": "/tmp/msf-wave/DOC-1.worker.log"},
-    {"task_id": "DOC-3", "cluster": ["DOC-3"], "worktree": "/home/kara/worktrees/mischief-DOC-3", "branch": "wt/DOC-3", "brief": "/tmp/msf-wave/DOC-3.brief.md", "model": "glm-5.3-flash", "provider": "zai-glm-default", "log": "/tmp/msf-wave/DOC-3.worker.log"},
-    {"task_id": "DOC-5", "cluster": ["DOC-5"], "worktree": "/home/kara/worktrees/mischief-DOC-5", "branch": "wt/DOC-5", "brief": "/tmp/msf-wave/DOC-5.brief.md", "model": "glm-5.3-flash", "provider": "zai-glm-default", "log": "/tmp/msf-wave/DOC-5.worker.log"}
-  ]
+    {
+      "task_id": "MSF-027",
+      "cluster": [
+        "MSF-027"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-MSF-027",
+      "branch": "wt/MSF-027",
+      "brief": "/tmp/msf-wave/MSF-027.brief.md",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "log": "/tmp/msf-wave/MSF-027.worker.log"
+    },
+    {
+      "task_id": "README-1",
+      "cluster": [
+        "README-1",
+        "DOC-4"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-README-1",
+      "branch": "wt/README-1",
+      "brief": "/tmp/msf-wave/README-1.brief.md",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "log": "/tmp/msf-wave/README-1.worker.log"
+    },
+    {
+      "task_id": "DOC-1",
+      "cluster": [
+        "DOC-1",
+        "DOC-2"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-DOC-1",
+      "branch": "wt/DOC-1",
+      "brief": "/tmp/msf-wave/DOC-1.brief.md",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "log": "/tmp/msf-wave/DOC-1.worker.log"
+    },
+    {
+      "task_id": "DOC-3",
+      "cluster": [
+        "DOC-3"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-DOC-3",
+      "branch": "wt/DOC-3",
+      "brief": "/tmp/msf-wave/DOC-3.brief.md",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "log": "/tmp/msf-wave/DOC-3.worker.log"
+    },
+    {
+      "task_id": "DOC-5",
+      "cluster": [
+        "DOC-5"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-DOC-5",
+      "branch": "wt/DOC-5",
+      "brief": "/tmp/msf-wave/DOC-5.brief.md",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "log": "/tmp/msf-wave/DOC-5.worker.log"
+    }
+  ],
+  "finished_at": "2026-10-02T09:05:00Z",
+  "result": "all 5 workers merged, gated, judged, pushed; 7 board rows closed",
+  "merges": {
+    "MSF-027": "4717e63",
+    "README-1": "55f9c8e",
+    "DOC-1": "3a677a6",
+    "DOC-3": "731ca4c",
+    "DOC-5": "79b9e5e + fixup 000e576"
+  }
 }
