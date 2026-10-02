@@ -17,6 +17,6 @@ int main(void) {
   long rc = syscall(SYS_seccomp, SECCOMP_GET_NOTIF_SIZES, 0, &s);
   if (rc != 0) { printf("seccomp_user_notify=UNSUPPORTED errno=%s\n", strerror(errno)); return 1; }
   printf("seccomp_user_notify=SUPPORTED notif=%zu resp=%zu notif_sizes_probe=OK\n",
-         s.seccomp_notif, s.seccomp_notif_resp);
+         (size_t)s.seccomp_notif, (size_t)s.seccomp_notif_resp);
   return 0;
 }
