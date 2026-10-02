@@ -42,3 +42,10 @@
 {"id": 42, "timestamp": "2026-10-02 07:49:07", "event_type": "task_updated", "task_id": "DOC-1", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"in_progress\"}"}
 {"id": 43, "timestamp": "2026-10-02 07:49:07", "event_type": "task_updated", "task_id": "DOC-3", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"in_progress\"}"}
 {"id": 44, "timestamp": "2026-10-02 07:49:07", "event_type": "task_updated", "task_id": "DOC-5", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"in_progress\"}"}
+{"id": 45, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "MSF-027", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 46, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "README-1", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 47, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-1", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 48, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-2", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 49, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-3", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 50, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-4", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 51, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-5", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
