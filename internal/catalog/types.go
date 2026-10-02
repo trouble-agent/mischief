@@ -33,6 +33,12 @@
 //     rather than being guessed into a type.
 //   - Version is content-derived: it changes when descriptor bytes change
 //     and proves nothing beyond the bytes it hashes.
+//
+// Usage: LoadDir loads a directory of descriptor YAML files, refusing a
+// malformed one by name; LoadDefault loads the in-repo corpus
+// (catalog/faults), resolving the directory from the working directory
+// upward. The developer path — loading, the descriptor schema, and the
+// content-derived version — is documented in docs/CATALOG.md.
 package catalog
 
 import "fmt"
@@ -130,15 +136,25 @@ func (s SelftestState) RefusesOutsideL0() bool {
 type ParamKind string
 
 const (
-	KindStr      ParamKind = "str"
-	KindInt      ParamKind = "int"
-	KindFloat    ParamKind = "float"
-	KindBool     ParamKind = "bool"
-	KindDur      ParamKind = "dur"
-	KindIPPort   ParamKind = "ip:port"
+	// KindStr is a string param ("str").
+	KindStr ParamKind = "str"
+	// KindInt is an integer param ("int").
+	KindInt ParamKind = "int"
+	// KindFloat is a floating-point param ("float").
+	KindFloat ParamKind = "float"
+	// KindBool is a boolean param ("bool").
+	KindBool ParamKind = "bool"
+	// KindDur is a duration param ("dur", e.g. "100ms").
+	KindDur ParamKind = "dur"
+	// KindIPPort is a host:port endpoint param ("ip:port").
+	KindIPPort ParamKind = "ip:port"
+	// KindSelector is a selector param naming a target ("selector").
 	KindSelector ParamKind = "selector"
-	KindList     ParamKind = "list"
-	KindAny      ParamKind = "any"
+	// KindList is a list param (declared as a YAML sequence of values).
+	KindList ParamKind = "list"
+	// KindAny is the fallback kind: the declaration named no known kind
+	// (an example or constraint value is kept verbatim in Decl).
+	KindAny ParamKind = "any"
 )
 
 func knownKind(k ParamKind) bool {
@@ -268,7 +284,9 @@ func splitPipe(s string) []string {
 // LandedProof is the observable condition proving the fault landed,
 // independent of the fault's own exit code (AC-13 shape; SPEC-05 grades).
 type LandedProof struct {
-	Kind  string `yaml:"kind"`
+	// Kind names the proof mechanism ("proc_state", "command_exit", ...).
+	Kind string `yaml:"kind"`
+	// Check is the concrete probe expression ("state T for N samples").
 	Check string `yaml:"check"`
 }
 
@@ -389,18 +407,35 @@ func isSpaceByte(c byte) bool {
 // Descriptor is the primitive descriptor: the machine-readable fault
 // contract of one primitive.
 type Descriptor struct {
-	ID          string        `yaml:"id"`
-	Name        string        `yaml:"name"`
-	What        string        `yaml:"what"`
-	Breaks      string        `yaml:"breaks"`
-	Params      Params        `yaml:"params"`
-	LandedProof LandedProof   `yaml:"landed_proof"`
-	Inverse     Inverse       `yaml:"inverse"`
-	Capability  Capability    `yaml:"capability"`
-	Tier        *Tier         `yaml:"tier"`
-	Backend     string        `yaml:"backend"`
-	Maturity    string        `yaml:"maturity"`
-	Selftest    SelftestState `yaml:"selftest"`
+	// ID is the primitive id ("P-001"); unique across the catalog.
+	ID string `yaml:"id"`
+	// Name is the short human name.
+	Name string `yaml:"name"`
+	// What states what the fault does (prose, verbatim).
+	What string `yaml:"what"`
+	// Breaks states what the fault breaks — the failure mode being tested.
+	Breaks string `yaml:"breaks"`
+	// Params is the declared param schema, keyed by param name.
+	Params Params `yaml:"params"`
+	// LandedProof is the independent observable condition proving the fault
+	// landed (required by the fault contract).
+	LandedProof LandedProof `yaml:"landed_proof"`
+	// Inverse is the recorded reverter contract (required by the fault
+	// contract; the loader refuses a primitive without one).
+	Inverse Inverse `yaml:"inverse"`
+	// Capability is the host support the primitive needs ("none", or a
+	// named capability such as "NET_ADMIN").
+	Capability Capability `yaml:"capability"`
+	// Tier is the scope ladder placement; Tier.Min is the minimum L-level.
+	Tier *Tier `yaml:"tier"`
+	// Backend names the injection backend (see docs/FAULT-CATALOG.md legend:
+	// sig, shim, sec, scope, helper, net, dm, docker, proxy, sim).
+	Backend string `yaml:"backend"`
+	// Maturity is the declared maturity ("planned", "landed", ...).
+	Maturity string `yaml:"maturity"`
+	// Selftest is the declared selftest state; absent decodes to
+	// SelftestUnknown, which refuses outside L0 (AC-19).
+	Selftest SelftestState `yaml:"selftest"`
 }
 
 // validate enforces the fault contract and field rules, naming the offending
