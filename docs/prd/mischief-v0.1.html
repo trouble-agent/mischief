@@ -25,7 +25,7 @@ hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
 </style></head>
 <body>
 <h1>mischief — fault injection for a fleet of Linux daemons</h1>
-<p><strong>Draft v0.1 PRD · status: ACCEPTED · name: mischief (decided 2026-09-28, MSF-001)</strong> Repo home: <code>github.com/trouble-agent/mischief</code> · org-adjacent to <code>trouble</code> · Visibility: private-first. Decided by the owner in MSF-001 (complete 2026-09-28, commit b36acc1). Date: 2026-09-27 · Author: the fleet agent, from live evidence on this host</p>
+<p><strong>Draft v0.1 PRD · status: ACCEPTED · name: mischief (decided 2026-09-28, MSF-001)</strong> Repo home: <code>github.com/trouble-agent/mischief</code> · org-adjacent to <code>trouble</code> · Visibility: private-first Decided by the owner in MSF-001 (complete 2026-09-28, commit b36acc1). Drafted 2026-09-27 · Author: the fleet agent, from live evidence on this host</p>
 <blockquote><p>This is the front door. The annexes are <code>docs/FAULT-CATALOG.md</code> (every fault primitive, what it breaks, how it proves it landed, how it is reverted) and <code>docs/SPEC-PLAN.md</code> (the spec set and the spec→AC map for the build). <code>probe/RESULTS.md</code> carries the measured capability audit this design rests on.</p></blockquote>
 <hr>
 <h2>1. One-liner</h2>
@@ -243,8 +243,8 @@ seed: 20260927</code></pre>
 <p>simulator-only), and never the fleet's control planes by default.</p>
 <ul><li>Not a SaaS, and no telemetry leaves the box.</li></ul>
 <h2>14. Open decisions (owner's — each with a recommendation)</h2>
-<ol><li><strong>Name + repo home.</strong> Recommend <code>mischief</code> in <code>github.com/trouble-agent</code> (a</li></ol>
-<p>partner for <code>trouble</code>; all candidate names are free in the org as of today). Alternates: <code>accomplice</code>, <code>monkeywrench</code>, <code>poltergeist</code>.</p>
+<ol><li>**DECIDED (2026-09-28, MSF-001 actioned): name = <code>mischief</code>, repo home =</li></ol>
+<p><code>github.com/trouble-agent/mischief</code>.** ~~Recommend <code>mischief</code> in <code>github.com/trouble-agent</code> (a partner for <code>trouble</code>; all candidate names are free in the org as of today). Alternates: <code>accomplice</code>, <code>monkeywrench</code>, <code>poltergeist</code>.~~</p>
 <ol><li><strong>Private first, or public from day one.</strong> Recommend <strong>private first</strong>: the board and</li></ol>
 <p>the replay journals will name fleet internals (project names, incident text), and flipping to public later is one command. If public, the repo needs the sibling contract first (MIT, <code>SECURITY.md</code>, <code>CONTRIBUTING.md</code>, no absolute paths anywhere).</p>
 <ol><li><strong>Privilege model.</strong> Recommend <strong>rootless-first with a narrow <code>sudo</code> allowlist</strong> for</li></ol>

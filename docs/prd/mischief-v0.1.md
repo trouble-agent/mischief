@@ -406,9 +406,11 @@ These transfer verbatim into the board rows' `acceptance_criteria` and the worke
 
 ## 14. Open decisions (owner's — each with a recommendation)
 
-1. **Name + repo home.** Recommend `mischief` in `github.com/trouble-agent` (a
-   partner for `trouble`; all candidate names are free in the org as of today).
-   Alternates: `accomplice`, `monkeywrench`, `poltergeist`.
+1. **DECIDED (2026-09-28, MSF-001 actioned): name = `mischief`, repo home =
+   `github.com/trouble-agent/mischief`.** ~~Recommend `mischief` in
+   `github.com/trouble-agent` (a partner for `trouble`; all candidate names are
+   free in the org as of today). Alternates: `accomplice`, `monkeywrench`,
+   `poltergeist`.~~
 2. **Private first, or public from day one.** Recommend **private first**: the board and
    the replay journals will name fleet internals (project names, incident text), and
    flipping to public later is one command. If public, the repo needs the sibling
