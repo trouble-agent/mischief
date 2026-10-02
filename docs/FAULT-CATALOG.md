@@ -213,14 +213,15 @@ lowest maturity until their selftest is green.
 id: S-001
 name: write-eio
 what: write()/pwrite() to a NAMED path returns EIO
+breaks: durability, append paths, error handling that has never executed
 params: {path_substr: str, errno: EIO, budget: int?}
-landed_proof: {kind: shim-counter, check: "<run_dir>/shim.<pid>.json hits >= 1"}
+landed_proof: {kind: shim-counter, check: "/tmp/mc-fault-hits.<pid> hits >= 1"}
 inverse: {action: detach-shim-rule, verify: "the next write to the path succeeds"}
 capability: none
 tier: L1
 backend: shim
 maturity: proven          # L1-only | proven | fielded
-expect_when_healthy: "the failure is recorded and the operation is not acknowledged"
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 ```
 
 Every row in the tables above is publishable in this form; ten of them ship as real

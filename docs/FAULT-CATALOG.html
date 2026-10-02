@@ -181,14 +181,15 @@ hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
 <pre><code>id: S-001
 name: write-eio
 what: write()/pwrite() to a NAMED path returns EIO
+breaks: durability, append paths, error handling that has never executed
 params: {path_substr: str, errno: EIO, budget: int?}
-landed_proof: {kind: shim-counter, check: &quot;&lt;run_dir&gt;/shim.&lt;pid&gt;.json hits &gt;= 1&quot;}
+landed_proof: {kind: shim-counter, check: &quot;/tmp/mc-fault-hits.&lt;pid&gt; hits &gt;= 1&quot;}
 inverse: {action: detach-shim-rule, verify: &quot;the next write to the path succeeds&quot;}
 capability: none
 tier: L1
 backend: shim
 maturity: proven          # L1-only | proven | fielded
-expect_when_healthy: &quot;the failure is recorded and the operation is not acknowledged&quot;</code></pre>
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)</code></pre>
 <p>Every row in the tables above is publishable in this form; ten of them ship as real files in <code>catalog/faults/</code>, and the four replay cases ship in <code>catalog/experiments/</code>.</p>
 <h2>Maturity ladder (which primitives may run where)</h2>
 <table><thead><tr><th>rung</th><th>requirement</th><th>reachable scope</th></tr></thead><tbody>
