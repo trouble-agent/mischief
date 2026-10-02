@@ -49,3 +49,7 @@
 {"id": 49, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-3", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
 {"id": 50, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-4", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
 {"id": 51, "timestamp": "2026-10-02 08:09:27", "event_type": "task_completed", "task_id": "DOC-5", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"status\":\"complete\"}"}
+{"id": 52, "timestamp": "2026-10-02 09:12:51", "event_type": "task_created", "task_id": "MSF-028", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"id\":\"MSF-028\",\"status\":\"pending\"}"}
+{"id": 53, "timestamp": "2026-10-02 09:13:10", "event_type": "task_created", "task_id": "MSF-029", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"id\":\"MSF-029\",\"status\":\"pending\"}"}
+{"id": 54, "timestamp": "2026-10-02 09:13:29", "event_type": "task_created", "task_id": "MSF-030", "actor": "foreman", "tick_number": null, "tick": null, "detail": "{\"id\":\"MSF-030\",\"status\":\"pending\"}"}
+{"id": 55, "timestamp": "2026-10-02 12:18:45", "event_type": "task_created", "task_id": "QA-MISCHIEF-001", "actor": "qa", "tick_number": null, "tick": null, "detail": "{\"id\":\"QA-MISCHIEF-001\",\"status\":\"pending\"}"}
