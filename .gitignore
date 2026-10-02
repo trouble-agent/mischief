@@ -19,3 +19,6 @@ mc-victim.txt
 .idea/
 *.swp
 .DS_Store
+
+# board scrub safety copies must never be committed
+*.prescrub
