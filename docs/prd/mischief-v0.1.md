@@ -1,8 +1,9 @@
 # mischief — fault injection for a fleet of Linux daemons
 
-**Draft v0.1 PRD · status: PROPOSED · working name (owner's call)**
-Repo home (proposed): `github.com/trouble-agent/mischief` · org-adjacent to `trouble`
-Date: 2026-09-27 · Author: the fleet agent, from live evidence on this host
+**Draft v0.1 PRD · status: ACCEPTED · name: mischief (decided 2026-09-28, MSF-001)**
+Repo home: `github.com/trouble-agent/mischief` · org-adjacent to `trouble` · Visibility: private-first
+Decided by the owner in MSF-001 (complete 2026-09-28, commit b36acc1). Drafted 2026-09-27 ·
+Author: the fleet agent, from live evidence on this host
 
 > This is the front door. The annexes are `docs/FAULT-CATALOG.md` (every fault
 > primitive, what it breaks, how it proves it landed, how it is reverted) and
