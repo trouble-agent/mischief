@@ -43,11 +43,17 @@ const (
 // LoadError is a named refusal: it carries the file, the primitive id when
 // known, and a reason naming the offending field or parse failure.
 type LoadError struct {
-	File   string
-	ID     string
+	// File is the descriptor file the refusal names; empty when the failure
+	// concerns the catalog directory itself (unreadable, no .yaml files).
+	File string
+	// ID is the primitive id, when the failure is attributable to one.
+	ID string
+	// Reason names the offending field or the parse failure.
 	Reason string
 }
 
+// Error renders "file (id): reason", "file: reason", or the bare reason,
+// depending on which fields are set.
 func (e *LoadError) Error() string {
 	switch {
 	case e.File != "" && e.ID != "":
@@ -104,9 +110,13 @@ const (
 
 // StatusResult is the derived availability of one primitive.
 type StatusResult struct {
-	ID     string
+	// ID is the primitive id this status belongs to.
+	ID string
+	// Status is the derived status: StatusReady, or
+	// StatusCapabilityUnavailable.
 	Status Status
-	// UnavailableNames is the absent capability (empty when ready).
+	// UnavailableNames is the absent capability kind ("NET_ADMIN", "cgroup2",
+	// ...); empty when Status is ready.
 	UnavailableNames string
 }
 
@@ -137,6 +147,9 @@ func (c *Catalog) Len() int { return len(c.Primitives) }
 // every descriptor against the fault contract and refuses malformed ones with
 // a named reason (which file, which primitive, which field). Duplicate ids are
 // refused. It never touches the engine.
+//
+// The catalog's Version is content-derived; adding, editing or removing a
+// descriptor file changes it (see Catalog.Version).
 func LoadDir(dir string) (*Catalog, error) {
 	ents, err := os.ReadDir(dir)
 	if err != nil {
