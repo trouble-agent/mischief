@@ -10,5 +10,6 @@ inverse: {action: delete-qdisc, verify: "the probe succeeds and tc -s shows no d
 capability: NET_ADMIN
 tier: L2
 backend: net
-maturity: proven        # netns + netem + revert verified live on this host
+maturity: L1-only        # netns + netem + revert verified live on this host; no selftest yet
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 expect_when_healthy: "requests fail fast or queue with backpressure; no unbounded memory growth"

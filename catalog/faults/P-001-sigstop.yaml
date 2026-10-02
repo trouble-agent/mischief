@@ -11,5 +11,6 @@ inverse: {primitive: P-001, params: {signal: SIGCONT}, verify: "state is 'R' or 
 capability: none
 tier: L1
 backend: sig
-maturity: proven       # selftest green on this host, battery cell present
+maturity: L1-only        # needs its selftest + a battery cell before any shared target
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 expect_when_healthy: "liveness probe fails or the health endpoint stalls; no silent success"

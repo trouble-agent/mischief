@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -520,5 +521,83 @@ func TestLoadDirMissingDirNamesReason(t *testing.T) {
 	_, err = LoadDir(empty)
 	if err == nil || !strings.Contains(err.Error(), "no .yaml files") {
 		t.Fatalf("empty dir not refused with named reason: %v", err)
+	}
+}
+
+// maturityLies is the honesty-ladder predicate (MSF-030): a descriptor may
+// claim proven/fielded only on a green selftest. One predicate, two surfaces
+// (the corpus invariant and the constructed positive case) so the guard and
+// its positive control cannot drift apart.
+func maturityLies(d *Descriptor) bool {
+	claimed := d.Maturity == "proven" || d.Maturity == "fielded"
+	return claimed && d.Selftest != SelftestGreen
+}
+
+// TestHonestyLadderCorpusInvariant: after LoadDefault, NO descriptor may
+// claim proven (or fielded) unless its selftest is green — the maturity
+// ladder is not pre-spent (MSF-030 regression guard; AC-19 already refuses
+// a non-green selftest outside L0, so such a claim is a lie by schema).
+//
+// ch:trace row=MSF-030 evidence=internal/catalog/catalog_test.go witness=none:no-live-host-run-in-worktree
+func TestHonestyLadderCorpusInvariant(t *testing.T) {
+	cat, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	var liars []string
+	for _, id := range cat.IDs {
+		if d := cat.Get(id); maturityLies(d) {
+			liars = append(liars, fmt.Sprintf("%s: maturity=%q selftest=%q", d.ID, d.Maturity, d.Selftest))
+		}
+	}
+	if len(liars) != 0 {
+		t.Fatalf("maturity ladder pre-spent: %d descriptor(s) claim proven/fielded without a green selftest:\n	%s",
+			len(liars), strings.Join(liars, "\n	"))
+	}
+}
+
+// TestHonestyLadderGreenMayClaimProven: the guard refuses the lie, not the
+// rung — a descriptor with a green selftest MAY claim proven, and the same
+// body with the selftest dropped (absent decodes to unknown) is caught. The
+// mutation control proves the corpus invariant above can never pass vacuously.
+//
+// ch:trace row=MSF-030 evidence=internal/catalog/catalog_test.go witness=none:no-live-host-run-in-worktree
+func TestHonestyLadderGreenMayClaimProven(t *testing.T) {
+	dir := t.TempDir()
+	body := `id: H-001
+name: honesty-positive
+what: a fault whose selftest is green
+params: {path: str}
+landed_proof: {kind: counter, check: "hits >= 1"}
+inverse: restore
+capability: none
+tier: L1
+backend: fs
+maturity: proven
+selftest: green
+`
+	if err := os.WriteFile(filepath.Join(dir, "h.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat, err := LoadDir(dir)
+	if err != nil {
+		t.Fatalf("green selftest refused proven: %v", err)
+	}
+	if maturityLies(cat.Get("H-001")) {
+		t.Fatal("a green-selftest descriptor must be allowed to claim proven")
+	}
+	// mutation control: the same descriptor with selftest absent (-> unknown)
+	// IS a ladder lie — the predicate detects it, so a green pass on the
+	// corpus is evidence, not a blind spot.
+	noSt := strings.Replace(body, "selftest: green\n", "", 1)
+	if err := os.WriteFile(filepath.Join(dir, "h.yaml"), []byte(noSt), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat, err = LoadDir(dir)
+	if err != nil {
+		t.Fatalf("load without selftest field: %v", err)
+	}
+	if !maturityLies(cat.Get("H-001")) {
+		t.Fatal("proven without a selftest must read as a ladder lie")
 	}
 }

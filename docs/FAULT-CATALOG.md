@@ -220,7 +220,7 @@ inverse: {action: detach-shim-rule, verify: "the next write to the path succeeds
 capability: none
 tier: L1
 backend: shim
-maturity: proven          # L1-only | proven | fielded
+maturity: L1-only         # L1-only | proven | fielded
 selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 ```
 
