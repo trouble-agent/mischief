@@ -4,9 +4,12 @@
 target, **prove it landed**, hold it under a TTL owned by a reverting watchdog that
 outlives the CLI, and get a verdict on whether the target recovered.
 
-> **Status: DRAFT.** These are the design artifacts. No code yet.
-> Working name (owner's call); sibling to [`trouble`](https://github.com/trouble-agent/trouble) —
-> `trouble` detects and remediates, `mischief` induces and grades.
+> **Status: ACTIVE DEVELOPMENT.** Name and repo home are decided (MSF-001): `mischief`, at
+> [`trouble-agent/mischief`](https://github.com/trouble-agent/mischief), private-first. Sibling to
+> [`trouble`](https://github.com/trouble-agent/trouble) — `trouble` detects and remediates,
+> `mischief` induces and grades. SPEC-01 has shipped: a tested fault catalog lives under
+> [`internal/catalog/`](internal/catalog/) (~1,600 lines of Go: schema types, loader, tests), with
+> the spec under [`docs/`](docs/).
 
 ## Why
 
