@@ -11,5 +11,6 @@ inverse: {action: stop-proxy, verify: "the upstream answers directly and the cou
 capability: none
 tier: L0
 backend: proxy
-maturity: proven
+maturity: L1-only
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 expect_when_healthy: "the client honours Retry-After, bounds its retries and never duplicates a write"

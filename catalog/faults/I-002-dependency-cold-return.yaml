@@ -11,5 +11,6 @@ inverse: {action: restore-state + restart-consumers, verify: "the dependent serv
 capability: docker API (or the simulator)
 tier: L3 / L4
 backend: docker | sim
-maturity: proven        # replayed by hand during TRBL-031
+maturity: L1-only        # replayed by hand during TRBL-031; no selftest yet
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 expect_when_healthy: "the consumer re-creates its group/registration and resumes without a restart"

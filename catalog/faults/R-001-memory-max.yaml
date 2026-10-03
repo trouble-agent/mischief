@@ -10,5 +10,6 @@ inverse: {action: raise-or-remove-limit, verify: "memory.current settles below t
 capability: cgroup2 + user scope
 tier: L1
 backend: scope
-maturity: proven
+maturity: L1-only
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 expect_when_healthy: "the service sheds load / refuses requests / restarts cleanly — it does not die silently"
