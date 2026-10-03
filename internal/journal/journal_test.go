@@ -319,7 +319,7 @@ func ac20Record() Record {
 		Verdict: VerdictDegraded,
 		Fields: map[string]string{
 			"probe_cmd":        "curl -s -X POST 'http://h/api/1/event/?sentry_key=abc123def'",
-			"note":             "recovered with token=abc123def456 in env",
+			"note":             "recovered with token=abc123def456 in env", // gitleaks:allow test fixture
 			"authorization=BS": "x", // a key NAME carrying a credential shape
 			"benign":           "mode=truncate service=redis",
 		},

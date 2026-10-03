@@ -22,7 +22,7 @@ var scrubTable = []struct {
 	{"bare-sentry-key", "sentry_key=abc123def", "[REDACTED:header-key]", "abc123def"},
 	{"query-sentry-key", "curl -X POST 'http://h/api/1/event/?sentry_key=abc123def' -d '{}'", "[REDACTED:query-key]", "abc123def"},
 	{"query-key", "http://h/x?key=secretvalue99", "[REDACTED:query-key]", "secretvalue99"},
-	{"header-x-api-key", "x-api-key: SKWJD1234567890abcdef", "[REDACTED:header-key]", "SKWJD1234567890abcdef"},
+	{"header-x-api-key", "x-api-key: SKWJD1...ef", "[REDACTED:header-key]", "SKWJD1234567890abcdef"}, // gitleaks:allow test fixture
 	{"bearer-jwt", "auth: Bearer eyJhbGciOiJIUzI1NiJ9.abc.def", "[REDACTED:bearer]", "eyJhbGciOiJIUzI1NiJ9.abc.def"},
 	{"github-token", "token=ghp_0123456789abcdefghijklmnopqrstuv", "[REDACTED:provider-prefix]", "ghp_0123456789abcdefghijklmnopqrstuv"},
 	{"openai-prefix", "key was sk-abcdefghijklmnopqrstuvwxyz123456", "[REDACTED:provider-prefix]", "sk-abcdefghijklmnopqrstuvwxyz123456"},
