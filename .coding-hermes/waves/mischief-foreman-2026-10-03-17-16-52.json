@@ -1,0 +1,23 @@
+{
+ "tick_id": "mischief-foreman-2026-10-03-17-16-52",
+ "created_at": "2026-10-03T22:40:00Z",
+ "base_sha": "62526cf",
+ "budget": 1,
+ "workers": [
+  {
+   "task_id": "MSF-029",
+   "cluster": [
+    "MSF-029"
+   ],
+   "worktree": "/home/kara/worktrees/mischief-MSF-029",
+   "branch": "wt/MSF-029",
+   "brief": "/tmp/2026-10-03-171652/msf-029/worker-brief.txt",
+   "model": "glm-5.3-flash",
+   "provider": "zai-glm-default",
+   "log": "/tmp/2026-10-03-171652/msf-029/worker_out.log"
+  }
+ ],
+ "independence_verified": "WAVE_BUDGET=1 tick: serial fallback, one worker dispatched (MSF-029, pending, depends_on []). MSF-026 (P2, also independent) is foreman-run gitreins lifecycle only (tasks/gitreins bookkeeping, no code) and was completed in this tick's main-tree context before dispatch; its task create/start/complete records are not worker-dispatch work and the manifest intentionally lists only the code-dispatched worker.",
+ "dispatched_at": "2026-10-03T22:44:00Z",
+ "notes": "Worker committed 8e8fbd1 in wt/MSF-029; gates re-run by foreman in worktree (gen-docs --check green, go build green, go test ./internal/... ok); merged --no-ff b6b4690; gates re-run on merged main; pushed (origin main b6b4690, 0 unpushed); CI run green on b6b4690."
+}
