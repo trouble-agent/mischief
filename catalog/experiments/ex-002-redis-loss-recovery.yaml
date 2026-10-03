@@ -1,3 +1,12 @@
+# Rehearsal-only: YES. DO NOT RUN outside a scratch host. On fleet hosts live
+# stacks answer the adjacent ports this file hardcodes (127.0.0.1:7699 and
+# 127.0.0.1:7661 are placeholder probes, not targets), and the inverse restore
+# has no backup assertion -- an operator following the YAML verbatim against a
+# real target would wipe live state (the I-002 shape). Two preconditions before
+# any real run: (1) selectors stay unresolvable until SPEC-03 lands; (2) this
+# experiment must first gain a state-backup assertion -- take and verify a
+# backup of the target state before arming I-002, and assert the inverse
+# actually restored it. Until then this file is rehearsal material only.
 # Replay S-2 / TRBL-031: dependency loss where the recovery code was unreachable.
 id: ex-002-redis-loss-recovery
 target: {selector: "container:trouble-hub", scratch: true}

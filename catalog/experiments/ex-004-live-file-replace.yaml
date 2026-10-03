@@ -1,3 +1,9 @@
+# Rehearsal-only: YES. DO NOT RUN outside a scratch host. This experiment
+# replaces a live state.db underneath a running gateway; against anything but a
+# scratch copy that is data destruction, not rehearsal. Selectors and the
+# <state_root> / <oracle> placeholders are unresolvable until SPEC-03 lands.
+# Read this header before every run. A rehearsal YAML is never an authorization
+# to run outside a scratch host.
 # Replay S-3: the 2026-08-29/30 archive hole.
 # state.db replaced underneath a live session killed the session; the restore path had
 # never been exercised, and two days of archive are permanently gone.

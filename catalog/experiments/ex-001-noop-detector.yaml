@@ -1,3 +1,8 @@
+# Rehearsal-only: NO. This is the one experiment runnable today: the target
+# selector "host:." resolves without SPEC-03. It is still scratch-only -- run it
+# ONLY on an L0 scratch host, never on a fleet host: the fault truncates a live
+# writer's state file. Read this header before every run. A rehearsal YAML is
+# never an authorization to run outside a scratch host.
 # Replay S-1 / QA-TROUBLE-3: the false green.
 # A repo whose "start" command never starts the app (main packages live in cmd/) was
 # graded OK by the legacy chaos-corruption cell. mischief must grade no_op, because the
