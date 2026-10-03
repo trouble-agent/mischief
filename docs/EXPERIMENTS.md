@@ -1,0 +1,43 @@
+# Experiments
+
+The four replay experiments under `catalog/experiments/` are rehearsal material,
+not run books. Each YAML carries a header block that states its status; this
+page is the contract that binds all four. Nothing on this page overrides a
+header — read both before touching a target.
+
+## Status of each experiment
+
+| file | runnable today | why |
+|---|---|---|
+| `catalog/experiments/ex-001-noop-detector.yaml` | yes | target selector `host:.` resolves without SPEC-03; still scratch-only, and still read its header first — the fault truncates a live writer's state file |
+| `catalog/experiments/ex-002-redis-loss-recovery.yaml` | no, rehearsal-only | container selector is unresolvable without SPEC-03, the hardcoded `127.0.0.1:7699` / `7661` probes are placeholders, and the inverse restore carries no state-backup assertion (see below) |
+| `catalog/experiments/ex-003-spool-kill-between.yaml` | no, rehearsal-only | process selector and the `<state_root>` probes are unresolvable without SPEC-03 |
+| `catalog/experiments/ex-004-live-file-replace.yaml` | no, rehearsal-only | replaces a live `state.db` under a running process; selectors and `<state_root>` / `<oracle>` placeholders are unresolvable without SPEC-03 |
+
+## The ex-002 backup precondition
+
+ex-002 rehearses a live redis-loss recovery with a `mode: fresh-empty` fault and
+an inverse `mode: restore` that asserts nothing: the YAML nowhere proves a
+backup existed or that the restore actually brought the state back. On fleet
+hosts live stacks answer adjacent ports to the hardcoded `127.0.0.1:7699` /
+`7661` probe endpoints, so an operator following the YAML verbatim against a
+real target would wipe live state (the I-002 shape). Before any real run,
+ex-002 must first gain a state-backup assertion: take and verify a backup of the
+target state before arming the fault, and assert after the inverse that the
+state was actually restored.
+
+## Placeholders are literals
+
+`<state_root>`, `<key>`, `<stream>`, `<group>`, `<date>`, `<app>`, `<oracle>`
+and every other angle-bracketed token in the experiment YAMLs are placeholder
+literals. Nothing fills them in: not the loader, not the planner, not the docs.
+They mark values that must be substituted BY HAND, for a specific scratch
+target, by the operator who runs the experiment — and in the rehearsal-only
+files the surrounding selectors do not resolve at all until SPEC-03 lands.
+
+## The contract
+
+A rehearsal YAML is never an authorization to run outside an L0 scratch host.
+Runnable-today status in the table above means "the selectors resolve"; it does
+not mean "safe on a fleet host". Every experiment, including ex-001, runs on a
+scratch host or not at all.

@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Experiments</title>
+<style>
+:root{--bg:#0f1115;--fg:#d7dae0;--mut:#8b93a1;--acc:#5eb0ef;--card:#161a22;--bd:#242a35}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font:17px/1.65 -apple-system,'Segoe UI',Roboto,sans-serif;padding:1.1rem;max-width:52rem;margin-inline:auto}
+h1{font-size:1.5rem;line-height:1.3;color:#fff;margin:1.2rem 0 .6rem}
+h2{font-size:1.22rem;color:#fff;margin:2.2rem 0 .6rem;border-bottom:1px solid var(--bd);padding-bottom:.3rem}
+h3{font-size:1.02rem;color:var(--acc);margin:1.5rem 0 .4rem}
+h4{font-size:.95rem;color:#fff;margin:1.2rem 0 .3rem}
+a{color:var(--acc)}
+code{background:#1b2028;padding:.12em .35em;border-radius:4px;font-size:.88em}
+pre{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:.9rem;overflow-x:auto;font-size:.85rem}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid var(--acc);margin:1rem 0;padding:.2rem 1rem;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}
+th,td{border:1px solid var(--bd);padding:.45rem .6rem;text-align:left}
+th{background:var(--card);color:#fff}
+ul,ol{padding-left:1.4rem}
+li{margin:.2rem 0}
+hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
+@media(max-width:600px){body{font-size:15px;padding:.8rem}}
+</style></head>
+<body>
+<h1>Experiments</h1>
+<p>The four replay experiments under <code>catalog/experiments/</code> are rehearsal material, not run books. Each YAML carries a header block that states its status; this page is the contract that binds all four. Nothing on this page overrides a header — read both before touching a target.</p>
+<h2>Status of each experiment</h2>
+<table><thead><tr><th>file</th><th>runnable today</th><th>why</th></tr></thead><tbody>
+<tr><td><code>catalog/experiments/ex-001-noop-detector.yaml</code></td><td>yes</td><td>target selector <code>host:.</code> resolves without SPEC-03; still scratch-only, and still read its header first — the fault truncates a live writer's state file</td></tr>
+<tr><td><code>catalog/experiments/ex-002-redis-loss-recovery.yaml</code></td><td>no, rehearsal-only</td><td>container selector is unresolvable without SPEC-03, the hardcoded <code>127.0.0.1:7699</code> / <code>7661</code> probes are placeholders, and the inverse restore carries no state-backup assertion (see below)</td></tr>
+<tr><td><code>catalog/experiments/ex-003-spool-kill-between.yaml</code></td><td>no, rehearsal-only</td><td>process selector and the <code>&lt;state_root&gt;</code> probes are unresolvable without SPEC-03</td></tr>
+<tr><td><code>catalog/experiments/ex-004-live-file-replace.yaml</code></td><td>no, rehearsal-only</td><td>replaces a live <code>state.db</code> under a running process; selectors and <code>&lt;state_root&gt;</code> / <code>&lt;oracle&gt;</code> placeholders are unresolvable without SPEC-03</td></tr>
+</tbody></table>
+<h2>The ex-002 backup precondition</h2>
+<p>ex-002 rehearses a live redis-loss recovery with a <code>mode: fresh-empty</code> fault and an inverse <code>mode: restore</code> that asserts nothing: the YAML nowhere proves a backup existed or that the restore actually brought the state back. On fleet hosts live stacks answer adjacent ports to the hardcoded <code>127.0.0.1:7699</code> / <code>7661</code> probe endpoints, so an operator following the YAML verbatim against a real target would wipe live state (the I-002 shape). Before any real run, ex-002 must first gain a state-backup assertion: take and verify a backup of the target state before arming the fault, and assert after the inverse that the state was actually restored.</p>
+<h2>Placeholders are literals</h2>
+<p><code>&lt;state_root&gt;</code>, <code>&lt;key&gt;</code>, <code>&lt;stream&gt;</code>, <code>&lt;group&gt;</code>, <code>&lt;date&gt;</code>, <code>&lt;app&gt;</code>, <code>&lt;oracle&gt;</code> and every other angle-bracketed token in the experiment YAMLs are placeholder literals. Nothing fills them in: not the loader, not the planner, not the docs. They mark values that must be substituted BY HAND, for a specific scratch target, by the operator who runs the experiment — and in the rehearsal-only files the surrounding selectors do not resolve at all until SPEC-03 lands.</p>
+<h2>The contract</h2>
+<p>A rehearsal YAML is never an authorization to run outside an L0 scratch host. Runnable-today status in the table above means "the selectors resolve"; it does not mean "safe on a fleet host". Every experiment, including ex-001, runs on a scratch host or not at all.</p>
+</body></html>

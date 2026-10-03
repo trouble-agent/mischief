@@ -43,6 +43,7 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `docs/FAULT-CATALOG.md` | 104 primitives across 8 layers (P 14 · S 14 · R 12 · F 16 · N 18 · C 12 · I 14 · T 4), each with its landed-proof and inverse |
 | `docs/SPEC-PLAN.md` | the spec set and the spec→PRD→AC map |
 | `probe/RESULTS.md` | the measured capability audit the design rests on, with the scripts that produced it |
+| `docs/EXPERIMENTS.md` | the rehearsal contract for `catalog/experiments/`: which experiments are runnable today, why the rest are rehearsal-only, and the scratch-host rule |
 | `catalog/` | machine-readable fault and experiment examples |
 
 ## The loop

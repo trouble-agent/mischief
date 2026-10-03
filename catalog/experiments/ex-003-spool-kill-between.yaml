@@ -1,3 +1,8 @@
+# Rehearsal-only: YES. DO NOT RUN outside a scratch host. The process selector
+# and the <state_root> placeholders in the probes are unresolvable until SPEC-03
+# lands; against a live host this file kills a real process and inspects its
+# spool. Read this header before every run. A rehearsal YAML is never an
+# authorization to run outside a scratch host.
 # Replay S-4 / TRBL-041: the queue that was durable in name only.
 id: ex-003-spool-kill-between
 target: {selector: "process:troubled", scratch: true}
