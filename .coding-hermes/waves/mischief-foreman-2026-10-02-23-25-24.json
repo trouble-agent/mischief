@@ -6,7 +6,9 @@
   "workers": [
     {
       "task_id": "MSF-004",
-      "cluster": ["MSF-004"],
+      "cluster": [
+        "MSF-004"
+      ],
       "worktree": "/home/kara/worktrees/mischief-MSF-004",
       "branch": "wt/MSF-004",
       "brief": "/tmp/msf-wave2/MSF-004.brief.md",
@@ -16,7 +18,9 @@
     },
     {
       "task_id": "MSF-030",
-      "cluster": ["MSF-030"],
+      "cluster": [
+        "MSF-030"
+      ],
       "worktree": "/home/kara/worktrees/mischief-MSF-030",
       "branch": "wt/MSF-030",
       "brief": "/tmp/msf-wave2/MSF-030.brief.md",
@@ -26,7 +30,9 @@
     },
     {
       "task_id": "MSF-003",
-      "cluster": ["MSF-003"],
+      "cluster": [
+        "MSF-003"
+      ],
       "worktree": "/home/kara/worktrees/mischief-MSF-003",
       "branch": "wt/MSF-003",
       "brief": "/tmp/msf-wave2/MSF-003.brief.md",
@@ -35,5 +41,7 @@
       "log": "/tmp/msf-wave2/MSF-003.worker.log"
     }
   ],
-  "independence_verified": "depends_on DAG checked from tasks.jsonl rows: MSF-004 (dep MSF-001 complete), MSF-030 (no deps), MSF-003 (dep MSF-001 complete); no shared file sets (MSF-004 -> new internal/ package, MSF-030 -> catalog/faults/*.yaml + internal/catalog test, MSF-003 -> new internal/ package). MSF-005/006/007/008/014 blocked by pending deps; remaining pending rows are P2-P4 singles too thin to spend a worker on this tick."
+  "independence_verified": "depends_on DAG checked from tasks.jsonl rows: MSF-004 (dep MSF-001 complete), MSF-030 (no deps), MSF-003 (dep MSF-001 complete); no shared file sets (MSF-004 -> new internal/ package, MSF-030 -> catalog/faults/*.yaml + internal/catalog test, MSF-003 -> new internal/ package). MSF-005/006/007/008/014 blocked by pending deps; remaining pending rows are P2-P4 singles too thin to spend a worker on this tick.",
+  "finished_at": "2026-10-03T07:53:44Z",
+  "recovery_note": "Recovered by tick mischief-foreman-2026-10-03-07-49-18: all 3 branches were already merged+judged+pushed by a follow-up lane before this recovery tick; worktrees reaped. MSF-003 closed honestly (AC-9 remainder -> MSF-031)."
 }
