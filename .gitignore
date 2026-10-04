@@ -22,3 +22,12 @@ mc-victim.txt
 
 # board scrub safety copies must never be committed
 *.prescrub
+
+# runtime / tooling residue (RELEASE-002 carry-over: one careless add must not sweep these)
+dagger.db
+dagger.db-shm
+dagger.db-wal
+.gitreins/
+tools/__pycache__/
+__pycache__/
+doc3check_main
