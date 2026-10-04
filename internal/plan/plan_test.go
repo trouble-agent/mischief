@@ -90,6 +90,8 @@ func TestPlanBuildResolvesAndSorts(t *testing.T) {
 // byte-identical output across repeated calls AND across rebuilt plans
 // (two Build calls over the same inputs) — map iteration must never leak
 // into the text.
+//
+// ch:trace row=MSF-014 spec=docs/prd/mischief-v0.1.md evidence=cmd/mischief/ + Makefile witness=none:no-live-target-run-in-worktree
 func TestRenderByteIdentical(t *testing.T) {
 	cat, spec := testSetup(t)
 	exp, err := parseExp(spec)

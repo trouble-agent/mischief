@@ -8,6 +8,7 @@ package doctor
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
 )
@@ -39,6 +40,29 @@ type Report struct {
 	// RegistryNotes records what the capability registry measured (one
 	// line per capability kind actually consulted, sorted).
 	RegistryNotes []string
+	// Rails carries the safety-floor self-checks (MSF-014 deliverable 6:
+	// sanction, load gate read, scope-ladder shape), derived from the LIVE
+	// host when Run was asked to (RunRails=true). Additive: the zero value
+	// renders as no rails section, so existing consumers of Report are
+	// unaffected.
+	Rails []RailsRow
+	// Catalog is the catalog the report was built from (nil on load
+	// failure). RunRailsSelfChecks consumes it; tests may also hand-build
+	// a synthetic catalog and pass it directly.
+	Catalog *catalog.Catalog
+}
+
+// RailsRow is one rails self-check's doctor line.
+type RailsRow struct {
+	// Check is the check name ("sanction_marker", "load_gate",
+	// "scope_ladder").
+	Check string
+	// OK reports whether the check passed on this host right now.
+	OK bool
+	// Detail is the measured one-line reason. On a pass it names what was
+	// measured; on a fail it names WHY (the refusal text — never a bare
+	// "failed").
+	Detail string
 }
 
 // Run loads the catalog at dir ("" = LoadDefault) and derives every
@@ -56,7 +80,7 @@ func Run(dir string, reg catalog.CapabilityRegistry) (*Report, error) {
 	if err != nil {
 		return &Report{LoadErr: err.Error()}, nil
 	}
-	rep := &Report{CatalogVersion: cat.Version}
+	rep := &Report{CatalogVersion: cat.Version, Catalog: cat}
 	asked := map[string]bool{}
 	for _, id := range cat.IDs {
 		d := cat.Primitives[id]
@@ -80,6 +104,72 @@ func Run(dir string, reg catalog.CapabilityRegistry) (*Report, error) {
 	}
 	sort.Slice(rep.RegistryNotes, func(i, j int) bool { return rep.RegistryNotes[i] < rep.RegistryNotes[j] })
 	return rep, nil
+}
+
+// RunRailsSelfChecks derives the rails self-check rows from the LIVE host
+// and appends them to rep.Rails (additive — Run's signature and the
+// existing rows are untouched). The checks, in PRD §7's rail order:
+//
+//   - sanction_marker: the SPEC-13/MSF-020 fail-closed gate. Production
+//     resolution (zero-value Options: live hostname, live env, default
+//     marker path) — on the unsanctioned main host this row FAILS, and the
+//     failure is the report's most important line.
+//   - load_gate: the live /proc reading (rails.ReadLoad) against the same
+//     thresholds mischief's own run path uses (load1 12, PSI io 50%).
+//   - scope_ladder: every descriptor's declared tier parses and sits inside
+//     L0..L5 (the ladder the scope check walks is well-formed).
+//
+// A failing check never aborts the report: each lands as a row with
+// OK=false and the named reason (the refusal text, never a bare "failed");
+// the CLI decides the exit code from the rows.
+func RunRailsSelfChecks(rep *Report, cat *catalog.Catalog) {
+	if rep == nil || cat == nil {
+		return
+	}
+	// 1. sanction marker (SPEC-13) — production resolution by default
+	// (zero-value Options: live hostname, live env, default marker path);
+	// the seam var is package-level so tests can pin both arms without
+	// touching the host's real sanction state.
+	if err := SanctionCheck(); err != nil {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "sanction_marker", OK: false, Detail: err.Error()})
+	} else {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "sanction_marker", OK: true,
+			Detail: "sanction marker present; host admitted for fault injection"})
+	}
+
+	// 2. load gate — the live measurement, checked against the run path's
+	// thresholds; the refusal text names the numbers (AC-8).
+	if reading, err := ReadLoad(); err != nil {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "load_gate", OK: false,
+			Detail: fmt.Sprintf("host load unreadable (%v)", err)})
+	} else if err := CheckLoad(reading); err != nil {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "load_gate", OK: false, Detail: err.Error()})
+	} else {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "load_gate", OK: true,
+			Detail: fmt.Sprintf("loadavg 1m %.2f, 5m %.2f, psi io some avg10 %.2f%% (gate: load<%.0f, psi<%.0f%%)",
+				reading.Load1, reading.Load5, reading.PSIIoSomeAvg10, LoadThreshold, PSIThreshold)})
+	}
+
+	// 3. scope ladder shape — every descriptor's tier inside L0..L5.
+	var bad []string
+	for _, id := range cat.IDs {
+		d := cat.Primitives[id]
+		if d.Tier == nil || d.Tier.Min < 0 || d.Tier.Min > 5 {
+			if d.Tier == nil {
+				bad = append(bad, id+": tier missing")
+			} else {
+				bad = append(bad, fmt.Sprintf("%s: tier min L%d outside L0..L5", id, d.Tier.Min))
+			}
+		}
+	}
+	if len(bad) > 0 {
+		sort.Strings(bad)
+		rep.Rails = append(rep.Rails, RailsRow{Check: "scope_ladder", OK: false,
+			Detail: "ladder violations: " + strings.Join(bad, "; ")})
+	} else {
+		rep.Rails = append(rep.Rails, RailsRow{Check: "scope_ladder", OK: true,
+			Detail: fmt.Sprintf("every descriptor's tier inside L0..L5 (%d primitives)", len(cat.IDs))})
+	}
 }
 
 // Render produces the report's deterministic text form (sorted rows,
@@ -107,7 +197,27 @@ func Render(r *Report) []byte {
 	for _, n := range r.RegistryNotes {
 		appendf("note: %s\n", n)
 	}
+	appendRails(&b, r.Rails)
 	return b
+}
+
+// appendRails renders the rails self-check section (declared order, the
+// rail order of PRD §7 — no re-sort, the order is part of the contract).
+func appendRails(b *[]byte, rows []RailsRow) {
+	if len(rows) == 0 {
+		return
+	}
+	appendf := func(format string, args ...any) {
+		*b = append(*b, fmt.Sprintf(format, args...)...)
+	}
+	appendf("rails self-checks:\n")
+	for _, r := range rows {
+		status := "FAIL"
+		if r.OK {
+			status = "ok"
+		}
+		appendf("  %-4s %-16s %s\n", status, r.Check, r.Detail)
+	}
 }
 
 // truncate caps s at n runes for table alignment (no ellipsis — the row is

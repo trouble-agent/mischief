@@ -21,6 +21,8 @@
 //     (SPEC-13/MSF-020 stub: fail closed, naming host + missing marker);
 //   - the load gate refuses to land on a saturated host (AC-8; M1 reads
 //     the live numbers and surfaces the measurement).
+//
+// ch:trace row=MSF-014 spec=docs/prd/mischief-v0.1.md evidence=cmd/mischief/ + Makefile witness=none:no-live-target-run-in-worktree
 package main
 
 import (
@@ -297,6 +299,7 @@ func cmdDoctor(args []string) int {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
+	selfCheck := fs.Bool("self-check", false, "run the rails self-checks (sanction marker, load gate, scope ladder) and exit non-zero naming what fails")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -305,12 +308,25 @@ func cmdDoctor(args []string) int {
 		fmt.Fprintln(os.Stderr, "doctor:", err)
 		return 1
 	}
+	if *selfCheck {
+		doctor.RunRailsSelfChecks(rep, rep.Catalog)
+	}
 	os.Stdout.Write(doctor.Render(rep))
 	// doctor refuses nothing extra: a load failure is REPORTED (exit 1 —
 	// the doctor could not do its one job), a loaded catalog is exit 0
-	// regardless of how many primitives are capability_unavailable.
+	// regardless of how many primitives are capability_unavailable. With
+	// --self-check, a FAILING rail check is also a non-zero exit (the
+	// brief: "exits non-zero naming what fails" — the report above names
+	// every failing row before the exit).
 	if rep.LoadErr != "" {
 		return 1
+	}
+	if *selfCheck {
+		for _, r := range rep.Rails {
+			if !r.OK {
+				return 1
+			}
+		}
 	}
 	return 0
 }
