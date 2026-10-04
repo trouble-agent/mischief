@@ -1,7 +1,7 @@
 // Package rails is SPEC-03: the refusal rails every fault must pass before a
-// backend is allowed to touch a target — target resolution, the protected
-// list, the scope ladder, the load gate — and the refusal taxonomy they all
-// speak.
+// backend is allowed to touch a target — the host sanction marker, target
+// resolution, the protected list, the scope ladder, the load gate — and the
+// refusal taxonomy they all speak.
 //
 // Design authority: docs/SPEC-PLAN.md (SPEC-03 rails & blast) and
 // docs/prd/mischief-v0.1.md §5 (the target is an argument, resolved
@@ -12,6 +12,12 @@
 //
 // The four rails, in the order a run meets them:
 //
+//   - Host sanction (internal/sanction, SPEC-13 / MSF-020): the host itself
+//     admits mischief only with an explicit reason-bearing sanction marker
+//     (file and/or env) — the FIRST rail, checked before anything else
+//     resolves; the refusal names the host and the missing marker, exit 2,
+//     and nothing is written. A sanctioned host does NOT weaken the rails
+//     below: the protected list still applies at resolution.
 //   - Target resolution (Resolve): no default target (AC-2); the protected
 //     list and the structural exclusions are evaluated at resolution, before
 //     an actuator is chosen, so naming a different primitive cannot route
@@ -44,9 +50,10 @@
 //
 //   - No blast accounting: the blast bound is a SPEC-03 deliverable this
 //     package does not yet carry; nothing here sizes what a fault may break.
-//   - The sanction marker (a host admits mischief only with an explicit
-//     marker) is SPEC-13 / MSF-020, not here; the host-level refusal lands
-//     with that row.
+//   - The sanction marker rail itself is SPEC-13 / MSF-020 and lives in
+//     internal/sanction, not here: this package owns the taxonomy member
+//     (ReasonSanction) it refuses with, and the per-tier sanctioned
+//     environment is doctrine in docs/SPEC-PLAN.md (SPEC-13).
 //   - The load gate measures only when asked; it never watches in the
 //     background and never writes state.
 //   - The armed set is an in-memory record of one run; durability belongs to

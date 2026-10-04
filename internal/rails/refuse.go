@@ -30,6 +30,12 @@ const (
 	// ReasonLoad: the host is at or above the load gate (AC-8); the refusal
 	// text names the measured numbers.
 	ReasonLoad RefusalReason = "load_gate"
+	// ReasonSanction: the host itself is not sanctioned for mischief
+	// (SPEC-13 / MSF-020) — no reason-bearing sanction marker (file and/or
+	// env). The host-admission rail lands with internal/sanction; it is the
+	// FIRST rail, checked before target resolution, the scope ladder or the
+	// load gate.
+	ReasonSanction RefusalReason = "host_not_sanctioned"
 )
 
 // ExitCode is the CLI exit code every refusal maps to: 2. The verb refuses
