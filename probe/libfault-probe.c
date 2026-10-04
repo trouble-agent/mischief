@@ -38,13 +38,47 @@ static void landproof(void) {
   if (f >= 0) { dprintf(f, "hits=%d rule=%s:%s:%s\n", hits, rule_sys, rule_path, rule_errno); close(f); }
 }
 
-static int target_fd_matches(int fd) {
+/* Rule grammar (MSF-028):
+ *   MCFAULT="write:<path>:ERRNO[:count]"
+ * MATCHING IS ANCHORED, not substring: the /proc/self/fd/<fd> target matches a
+ * rule path only if it EQUALS it, or ends with "/<rule_path>" (a component
+ * boundary). A rule "plain" matches ./plain and ./dir/plain but NOT ./plain.txt.
+ * PROOF-CHANNEL EXCLUSION: targets whose basename starts with "mc-fault-hits."
+ * (the shim's own landproof counter) are NEVER evaluated against rules — in any
+ * intercepted call, including write(). The landed-proof channel must be
+ * independent of the target BY CODE, not by write-ordering coincidence.
+ */
+
+/* One helper resolves the proof-path prefix once and answers "is this fd the
+ * proof channel?" — write(), open() and any future interception all funnel
+ * through it, so the exclusion cannot drift out of sync with landproof(). */
+static int fd_is_proof_channel(int fd) {
   char link[64], tgt[512];
   snprintf(link, sizeof link, "/proc/self/fd/%d", fd);
   ssize_t n = readlink(link, tgt, sizeof tgt - 1);
   if (n <= 0) return 0;
   tgt[n] = 0;
-  return strstr(tgt, rule_path) != NULL;
+  /* basename starts with the landproof prefix? */
+  const char *base = strrchr(tgt, '/');
+  base = base ? base + 1 : tgt;
+  return strncmp(base, "mc-fault-hits.", sizeof "mc-fault-hits." - 1) == 0;
+}
+
+static int target_fd_matches(int fd) {
+  if (fd_is_proof_channel(fd)) return 0; /* self-exclusion: proof channel is never a fault target */
+  char link[64], tgt[512];
+  snprintf(link, sizeof link, "/proc/self/fd/%d", fd);
+  ssize_t n = readlink(link, tgt, sizeof tgt - 1);
+  if (n <= 0) return 0;
+  tgt[n] = 0;
+  /* anchored match: equal, or ends with "/<rule_path>" (component boundary) */
+  size_t rl = strlen(rule_path);
+  if (rl == 0) return 0;
+  if (strlen(tgt) == rl && !strcmp(tgt, rule_path)) return 1;
+  if (strlen(tgt) > rl && tgt[strlen(tgt) - rl - 1] == '/' &&
+      !strcmp(tgt + strlen(tgt) - rl, rule_path))
+    return 1;
+  return 0;
 }
 
 ssize_t write(int fd, const void *buf, size_t n) {
