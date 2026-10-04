@@ -37,6 +37,40 @@ func tierMin(d *catalog.Descriptor) int {
 	return d.Tier.Min
 }
 
+// The sanctioned environment, per ladder level (SPEC-13 / MSF-020): a
+// tier's primitives are provable only where their sanctioned environment
+// exists, and a primitive that cannot be proven on a sanctioned host does
+// not ship (PRD §7). The table is doctrine — CheckScope enforces the tier
+// minimum and the selftest state; WHERE a sanctioned host of each shape
+// comes from is the isolation contract's business:
+//
+//	L0  scratch           — unconditionally sanctioned: the scratch harness
+//	                        is mischief-owned by construction (selftest
+//	                        lives here); no marker logic applies to it.
+//	L1  rootless bunker   — the ephemeral sanctioned host (a bunker agent:
+//	                        uid != 0, no passwordless sudo); carries the
+//	                        sanction marker. v0.1 workhorse: signals,
+//	                        prlimit, LD_PRELOAD shim, seccomp, userspace
+//	                        proxy, scratch fs.
+//	L2/L3 host & node     — require a sanctioned NON-fleet box or container
+//	                        with NET_ADMIN (netns, dm/loop, freezer,
+//	                        fsfreeze, docker API): the fleet main host is
+//	                        structurally out — it is the protected target,
+//	                        not a lab.
+//	L4  provider simulator— the simulator process runs on the sanctioned
+//	                        host (L1-shaped) and stands in for the cloud
+//	                        plane; no real provider contact.
+//	L5  real cloud        — opt-in ONLY (--allow-real + allowlist + spend
+//	                        cap, checked above), on an operator-sanctioned
+//	                        environment; v0.1 refuses permanent destroy
+//	                        verbs regardless.
+//
+// L2/L3-only consequence: the unprivileged bunker (measured: `unshare -rn`
+// fails at the uid_map write) cannot exercise NET_ADMIN or docker-API
+// primitives, so those are PROVISIONALLY L0/L1-only-in-catalogue (their
+// live proof ran once, by hand, on the box that had the capability) until a
+// fleeting sanctioned host with NET_ADMIN exists in the fleet.
+//
 // CheckScope enforces the ladder for one primitive at one scope:
 //
 //   - the scope's level must be at or above the primitive's declared

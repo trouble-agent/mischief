@@ -39,16 +39,79 @@ hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
 <tr><td>SPEC-10</td><td>battery &amp; filing</td><td>matrix definition, coverage/detection artifact, findings to board rows (per-board vocabulary), <code>--quick</code> parity with the legacy bash cells</td></tr>
 <tr><td>SPEC-11</td><td>operations</td><td>install, privileged helper + sudoers drop-in, privilege audit, upgrade/downgrade, <code>doctor</code>, self-watchdog, retention/rotation, uninstall</td></tr>
 <tr><td>SPEC-12</td><td>integration</td><td><code>observe.trouble</code> (ledger read-only), detection-gap rows, <code>verify-play</code> (v0.2), lane cadence contract, deliver routing</td></tr>
+<tr><td>SPEC-13</td><td>isolation contract</td><td>host sanction marker (file + env, reason line, fail closed), unsanctioned-host refusal (exit 2, writes nothing), protected list still evaluated at resolution, the L0–L5 ladder, load gate, per-tier sanctioned environments, L0/L1-only primitives in v0.1</td></tr>
 </tbody></table>
 <h2>Spec→PRD mapping (nothing in the PRD may be unowned)</h2>
 <table><thead><tr><th>PRD section</th><th>spec(s)</th><th>acceptance criteria</th></tr></thead><tbody>
 <tr><td>§5 one architectural decision</td><td>SPEC-01, SPEC-02, SPEC-04</td><td>AC-1..AC-5, AC-10, AC-19</td></tr>
 <tr><td>§6 interface &amp; verdicts</td><td>SPEC-02, SPEC-05</td><td>AC-9, AC-13, AC-15, AC-16, AC-20</td></tr>
-<tr><td>§7 safety doctrine</td><td>SPEC-03, SPEC-04, SPEC-07 (allowlist), SPEC-11 (audit)</td><td>AC-2, AC-6, AC-7, AC-8, AC-12, AC-17</td></tr>
+<tr><td>§7 safety doctrine</td><td>SPEC-03, SPEC-13 (isolation), SPEC-04, SPEC-07 (allowlist), SPEC-11 (audit)</td><td>AC-2, AC-6, AC-7, AC-8, AC-12, AC-17, M1a</td></tr>
 <tr><td>§8 integration with trouble</td><td>SPEC-10, SPEC-12</td><td>AC-14, AC-18</td></tr>
 <tr><td>§9 platform audit</td><td>SPEC-06..SPEC-09 (each capability row is a precondition)</td><td>AC-11, AC-19</td></tr>
 <tr><td>§12 success criteria</td><td>SPEC-10 (the replays are battery cases)</td><td>S-1..S-5</td></tr>
 </tbody></table>
+<h2>SPEC-13 — isolation contract ( mischief runs on sanctioned hosts only )</h2>
+<p><strong>Purpose and the question it answers.</strong> Mischief's own work <em>is</em> the fault, so the host it runs on is part of the safety design. SPEC-13 answers: <em>may this process run here at all?</em> — before any target is resolved, before the scope ladder, before the load gate. It is the FIRST rail. The contract: mischief's development, selftest and battery runs execute on an <strong>ephemeral sanctioned host</strong> (a bunker instance), never on the fleet's main host (PRD §7, "Where mischief ITSELF is allowed to run"; M1a).</p>
+<p><strong>State model.</strong> A host is either <em>sanctioned</em> or <em>unsanctioned</em>, and the edge is mechanical:</p>
+<pre><code>unsanctioned ──(marker: reason-bearing file and/or MISCHIEF_SANCTION=1)──▶ sanctioned
+sanctioned  ──(marker removed / host destroyed)──────────────────────────▶ unsanctioned</code></pre>
+<p>There is no third state and no grace period: absence is a REFUSAL, not a warning — fail closed. There is no downgrade path in which a refusal becomes a logged warning.</p>
+<p><strong>The sanction marker (the mechanism).</strong></p>
+<table><thead><tr><th>half</th><th>name</th><th>admits when</th><th>refuses when</th></tr></thead><tbody>
+<tr><td>file</td><td><code>/etc/mischief-sanction</code> (override: <code>MISCHIEF_SANCTION_FILE</code>)</td><td>file is readable AND carries a reason line (first non-empty, non-<code>#</code> line)</td><td>absent, unreadable, empty, whitespace-only, or comment-only</td></tr>
+<tr><td>env</td><td><code>MISCHIEF_SANCTION</code></td><td>set to exactly <code>1</code></td><td>unset, or any other value (<code>true</code>, <code>yes</code>, <code>0</code>, empty — no truthiness zoo)</td></tr>
+<tr><td>admission</td><td>either half</td><td>env set <strong>or</strong> file-with-reason</td><td>neither</td></tr>
+</tbody></table>
+<p>The marker file <strong>must carry a reason line</strong>: the human sentence saying why this host is sanctioned (who sanctioned it, for what wave). An empty marker is a refusal with its own wording ("write the reason the host is sanctioned into the marker"), because an empty yes is how a checkbox replaces a decision.</p>
+<p><strong>The refusal (host admission).</strong> An unsanctioned host refuses with the shared rails contract: a <code>rails.Refusal</code> carrying the taxonomy member <code>host_not_sanctioned</code>, the verdict <code>aborted</code> (PRD §6.4), and CLI <strong>exit 2</strong> via <code>rails.MapExit</code>. The refusal text names the hostname and BOTH marker routes — the missing file path with its env override name, and the env variable with its sanctioning value — so the operator can see exactly which act is missing on which host. The check <strong>writes nothing</strong>: no journal entry, no state file, no marker of its own; its only filesystem contact is one read of the marker path (pinned by test).</p>
+<p><strong>Delivery:</strong> <code>internal/sanction</code> — <code>sanction.Check()</code> (the first rail), <code>Inspect</code> (the evidence: env state, probed marker path, found, reason line), <code>Options</code> (the injected seams: env lookup, hostname, marker read — tests never touch the real host). The taxonomy member lives in <code>internal/rails</code> (<code>ReasonSanction</code>) so the refusal vocabulary stays closed in one place; a sanction refusal satisfies the same shape and exit mapping as every other rail refusal.</p>
+<p><strong>Protected targets still apply — the separation of concerns.</strong> Host admission (sanction) and target protection (SPEC-03) are different rails answering different questions, and neither substitutes for the other:</p>
+<table><thead><tr><th>question</th><th>rail</th><th>evaluated</th></tr></thead><tbody>
+<tr><td>may mischief run on this host at all?</td><td><code>sanction.Check</code> (SPEC-13)</td><td>first, before anything resolves</td></tr>
+<tr><td>may this fault land on that target?</td><td><code>rails.Resolve</code> protected list + structural exclusions (SPEC-03)</td><td>at target resolution, before an actuator is chosen</td></tr>
+</tbody></table>
+<p>A sanctioned host does <strong>not</strong> weaken the protected list: even on a freshly sanctioned bunker, the scheduler, the gateway and the memory daemon still refuse at resolution, PID 1 / kernel threads / mischief's own tree still refuse unconditionally, and the operator-override + journal-recording contract (AC-7) is unchanged. SPEC-13 adds a reason to the taxonomy; it removes no rail.</p>
+<p><strong>The scope ladder (SPEC-03's L0–L5, restated here for the isolation contract).</strong> The ladder bounds WHAT a fault may touch; the sanction bounds WHERE mischief may run; the load gate (AC-8) bounds WHETHER a saturated host takes more. The ladder's refusal taxonomy: below the declared minimum tier → <code>scope_below_minimum</code>; non-green selftest above L0 → <code>selftest_not_green</code> (AC-19); L5 without opt-in + allowlist + spend cap → <code>l5_not_allowed</code>.</p>
+<p><strong>Per-tier sanctioned environments.</strong> A primitive is provable only where its sanctioned environment exists; a primitive that cannot be proven on a sanctioned host does not ship (PRD §7).</p>
+<table><thead><tr><th>tier</th><th>sanctioned environment in v0.1</th><th>carries the sanction marker</th></tr></thead><tbody>
+<tr><td>L0 scratch</td><td>mischief's own scratch harness — unconditionally sanctioned (selftest lives here)</td><td>no (mischief-owned by construction)</td></tr>
+<tr><td>L1 rootless</td><td>the ephemeral sanctioned host: a bunker agent (uid ≠ 0, no passwordless sudo)</td><td>yes — this is the marker's production home</td></tr>
+<tr><td>L2/L3 host &amp; node</td><td>a sanctioned <strong>non-fleet</strong> box or container with NET_ADMIN (netns, dm/loop, freezer, fsfreeze, docker API)</td><td>yes</td></tr>
+<tr><td>L4 simulator</td><td>the simulator process on a sanctioned (L1-shaped) host; no real provider contact</td><td>yes</td></tr>
+<tr><td>L5 real cloud</td><td>opt-in only: <code>--allow-real</code> + allowlist + spend cap, on an operator-sanctioned environment</td><td>yes</td></tr>
+</tbody></table>
+<p><strong>L0/L1-only primitives in v0.1.</strong> The bunker is unprivileged — measured: <code>unshare -rn</code> fails at the <code>uid_map</code> write, no passwordless <code>sudo</code> — so the unprivileged bunker <strong>cannot exercise the L2/L3 primitives</strong> (netns+netem, dm/loop, fsfreeze, RO remount, docker-API node faults). Those primitives are therefore <em>L0/L1-only in v0.1 deployment</em>: their live proofs ran once, by hand, on the box that had the capability, and they ship behind their green selftests until a fleeting sanctioned host with NET_ADMIN exists in the fleet. Concretely from the current catalogue: N-001 (netns partition, L2) and C-009 (docker rolling replace, L3) have no sanctioned environment in v0.1; the L1 primitives (P-001 signals, R-001 scopes, S-001/S-004 shim faults, T-001 clock) are the workhorse, with N-012 (userspace proxy, L0) fully unconditionally sanctioned.</p>
+<p><strong>Wiring.</strong> The CLI's run path calls <code>sanction.Check()</code> before anything else — before target resolution, before the catalog is even loaded (a refused host does no work). The check is pure: env + one file read + hostname. Nothing in <code>internal/sanction</code> imports backends, journal or catalog.</p>
+<p><strong>Edge cases (named).</strong></p>
+<ul><li><em>Marker file missing but env set</em> → admitted by the env half; the refusal arm</li></ul>
+<p>never reads the file twice.</p>
+<ul><li><em>Marker file present but empty, env set</em> → admitted by the env half (the env is</li></ul>
+<p>the explicit act); the empty file alone would refuse.</p>
+<ul><li><em>Hostname lookup fails</em> → the refusal still fires and names the host</li></ul>
+<p><code>&lt;unknown&gt;</code> — a broken hostname lookup must not become an admission.</p>
+<ul><li><em>Marker path override set to an empty string</em> → the file half simply never</li></ul>
+<p>probes; only the env half can admit. Not an error, not a panic.</p>
+<ul><li><em><code>MISCHIEF_SANCTION=true</code></em> → refused, and the refusal names the value: one</li></ul>
+<p>explicit sanctioning value (<code>1</code>), no truthiness zoo.</p>
+<p><strong>Test file + observable threshold per criterion</strong> (all in <code>internal/sanction/sanction_test.go</code>, table-driven, injected seams — no test touches the real marker paths or the process environment):</p>
+<table><thead><tr><th>criterion</th><th>test</th></tr></thead><tbody>
+<tr><td>admission matrix (absent/unreadable/empty/whitespace/comment-only refuse; file-with-reason and env-only admit; <code>true</code>/<code>0</code>/empty env refuse)</td><td><code>TestSanctionRefusalTable</code></td></tr>
+<tr><td>refusal names hostname + file path + env override + env name + value</td><td><code>TestRefusalTextNamesHostAndMissingMarker</code></td></tr>
+<tr><td>empty marker refusal names the reason-line requirement</td><td><code>TestRefusalNamesEmptyMarkerReason</code></td></tr>
+<tr><td>THIS host (no marker) refuses with the real environment — the acceptance run</td><td><code>TestThisHostRefuses</code></td></tr>
+<tr><td>refused host writes nothing (exactly one marker read, no other fs contact)</td><td><code>TestSanctionCheckWritesNothing</code></td></tr>
+<tr><td>first-rail order + sanctioned host still refuses the protected scheduler</td><td><code>TestSanctionFirstRailOrder</code></td></tr>
+<tr><td>env injection cannot leak past the test</td><td><code>TestEnvVarMatrixIsolation</code></td></tr>
+</tbody></table>
+<p><strong>NOT-LIST (what SPEC-13 does not promise).</strong></p>
+<ul><li>No host identity: the package does not detect "this is the main host" (no cloud</li></ul>
+<p>metadata, no fingerprinting). The marker is the only input; a main host carrying a hand-made marker is operator error — the same territory as the protected-list override: recorded acts, not prevented ones.</p>
+<ul><li>No marker expiry/TTL: the ephemeral host's lifetime is the sanction's lifetime;</li></ul>
+<p>revocation is destroying the host or deleting the marker, not a protocol this package runs.</p>
+<ul><li>No per-tier enforcement in code: which tier runs where is doctrine (the table</li></ul>
+<p>above); <code>CheckScope</code> enforces tier minimums and selftests, not geography.</p>
+<ul><li>No fleet-wide revocation broadcast: nothing here tells other hosts their marker</li></ul>
+<p>is stale.</p>
 <h2>Per-spec section skeleton (the shape each spec must fill)</h2>
 <pre><code>1. Purpose and the question it answers
 2. State model (the states and, above all, the EDGES: armed-but-not-landed,
