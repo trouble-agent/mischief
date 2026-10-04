@@ -19,5 +19,7 @@
  ],
  "independence_verified": "WAVE_BUDGET=1 tick: serial fallback, one worker dispatched (MSF-029, pending, depends_on []). MSF-026 (P2, also independent) is foreman-run gitreins lifecycle only (tasks/gitreins bookkeeping, no code) and was completed in this tick's main-tree context before dispatch; its task create/start/complete records are not worker-dispatch work and the manifest intentionally lists only the code-dispatched worker.",
  "dispatched_at": "2026-10-03T22:44:00Z",
- "notes": "Worker committed 8e8fbd1 in wt/MSF-029; gates re-run by foreman in worktree (gen-docs --check green, go build green, go test ./internal/... ok); merged --no-ff b6b4690; gates re-run on merged main; pushed (origin main b6b4690, 0 unpushed); CI run green on b6b4690."
+ "notes": "Worker committed 8e8fbd1 in wt/MSF-029; gates re-run by foreman in worktree (gen-docs --check green, go build green, go test ./internal/... ok); merged --no-ff b6b4690; gates re-run on merged main; pushed (origin main b6b4690, 0 unpushed); CI run green on b6b4690.",
+ "finished_at": "2026-10-03T19:30:00Z",
+ "recovery_note": "recovery tick mischief-foreman-2026-10-03-19-24-49: wave already fully delivered by the 17-16-52 tick and its immediate follow-up (MSF-029 merged b6b4690 + pushed + CI green; MSF-026 content a071075 on main, verdict 999ea0e2 PASS); worktrees reaped, local wt/MSF-029 gone; rows flipped complete here"
 }
