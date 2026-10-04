@@ -59,6 +59,12 @@ proxy), a narrow `sudo` allowlist for host-scoped faults, TTL + detached reverte
 reconcile, one kill switch (`mischief revert --all`), a load gate, and a protected-target
 list that keeps the fleet's control planes out of the automatic path.
 
+Isolation contract (SPEC-13): mischief's own runs — development, selftest, battery —
+require an explicit **sanction marker** (file + env) and execute on an **ephemeral
+sanctioned host** (a bunker instance), never on the fleet's main host. An unsanctioned
+host, including the main fleet host, refuses fail-closed at target resolution (see the
+PRD, "Where mischief ITSELF is allowed to run").
+
 ## License
 
 MIT — see `LICENSE`.
