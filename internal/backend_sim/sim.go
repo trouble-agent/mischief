@@ -44,6 +44,7 @@ package backend_sim
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -580,24 +581,53 @@ func readBody(r *http.Request) []byte {
 	return buf[:n]
 }
 
+// SelfPut is the exported single-key write the cmd layer uses to seed an
+// eventual-lag window (a real acknowledged PUT against the running sim).
+func (s *Simulator) SelfPut(path string) error {
+	_, _, err := s.selfCallMethod(http.MethodPut, path, []byte("seed"))
+	return err
+}
+
 // selfCall issues one real HTTP request against the running simulator's
 // own listener (the client leg of the AC-17 redirect proof: a real client,
 // a real socket — not a handler call). Returns the status and body.
 func (s *Simulator) selfCall(path string) (int, []byte, error) {
+	return s.selfCallMethod(http.MethodGet, path, nil)
+}
+
+// SelfCall is the exported GET used by the cmd layer's proof driver for
+// multi-step shapes (eventual-lag's write-then-read window).
+func (s *Simulator) SelfCall(path string) (int, []byte, error) {
+	return s.selfCallMethod(http.MethodGet, path, nil)
+}
+
+// selfCallMethod issues an arbitrary-method request against the running
+// simulator. The cmd layer's proof driver uses it to exercise multi-step
+// shapes (eventual-lag's PUT-then-GET window) without touching sim
+// internals.
+func (s *Simulator) selfCallMethod(method, path string, body []byte) (int, []byte, error) {
 	if s.url == "" {
 		return 0, nil, fmt.Errorf("backend_sim: selfCall: simulator not started")
 	}
 	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(s.url + path)
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequest(method, s.url+path, rdr)
+	if err != nil {
+		return 0, nil, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, nil, err
 	}
-	return resp.StatusCode, body, nil
+	return resp.StatusCode, b, nil
 }
 
 // ReadRequestLog reads the durable request log back from disk (the proof
