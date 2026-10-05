@@ -74,6 +74,8 @@ func run(args []string) int {
 		return cmdDoctor(args[1:])
 	case "selftest":
 		return cmdSelftest(args[1:])
+	case "battery":
+		return cmdBattery(args[1:])
 	case "serve":
 		return cmdServe(args[1:])
 	case "__owner":
@@ -105,6 +107,7 @@ Usage:
   mischief status  [--dir D]
   mischief revert  (--all | --hold <id>) [--dir D]
   mischief doctor  [--catalog-dir D]
+  mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief serve   --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
   mischief version
 
