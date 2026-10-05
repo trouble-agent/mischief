@@ -159,6 +159,20 @@ hr{border:0;border-top:1px solid var(--bd);margin:1.6rem 0}
 <tr><td>I-013</td><td><strong>Snapshot restore to a stale point</strong> — "recovered" but lost N minutes</td><td>restored state's timestamp &lt; the fault time; data delta measurable</td><td>(that is the finding)</td><td>sim · L4</td></tr>
 <tr><td>I-014</td><td><strong>DNS propagation delay / TTL mismatch</strong> after a change</td><td>two resolvers disagree for the declared window</td><td>propagate</td><td>sim · L4</td></tr>
 </tbody></table>
+<h3>Simulated case per cloud shape (MSF-010)</h3>
+<p>Every sim-covered layer-I id above has a runnable case on the simulator (<code>internal/backend_sim</code>) with its landed-proof written to the per-run request log — the log, not memory, is the proof channel:</p>
+<table><thead><tr><th>ID</th><th>sim shape (<code>ShapeKind</code>)</th><th>sim case (armed shape, proof request)</th><th>request-log proof line</th></tr></thead><tbody>
+<tr><td>I-003</td><td><code>api-rate-limit</code></td><td>429 burst of 3, first WITH <code>Retry-After: 2s</code>, remainder without</td><td><code>faulted</code> 429 entries, detail <code>Retry-After=2s</code> / <code>without Retry-After</code></td></tr>
+<tr><td>I-004</td><td><code>api-5xx</code></td><td>5xx burst with malformed JSON bodies + endless-page marker</td><td><code>faulted</code> 5xx entries, detail <code>malformed body</code> / <code>endless page</code></td></tr>
+<tr><td>I-005</td><td><code>eventual-lag</code></td><td>acknowledged PUT seeds the window; the GET inside it serves the pre-write value</td><td><code>faulted</code> 200 entry, detail <code>serving pre-write value for key … (window 5s)</code></td></tr>
+<tr><td>I-006</td><td><code>object-store</code></td><td>GET with <code>expired_presign</code> → 403 <code>AccessDenied (presigned URL)</code></td><td><code>faulted</code> 403 entry, detail <code>403 expired presigned URL</code></td></tr>
+<tr><td>I-010</td><td><code>auth-expiry</code></td><td>request after expiry → 401 while the prior call succeeded</td><td><code>faulted</code> 401 entry, detail <code>token expired</code></td></tr>
+<tr><td>I-011</td><td><code>metadata-fault</code></td><td>metadata endpoint <code>mode: timeout</code> → the boot credential call hangs</td><td><code>faulted</code> entry, detail <code>metadata timeout</code></td></tr>
+<tr><td>I-012</td><td><code>quota-exhausted</code></td><td>account-level quota → 403 <code>QuotaExceeded</code> naming the resource</td><td><code>faulted</code> 403 entry, detail <code>quota exhausted: instances</code></td></tr>
+<tr><td>I-013</td><td><code>snapshot-stale</code></td><td>restore reports a snapshot taken 120s BEFORE the fault (<code>lost_seconds: 120</code>)</td><td><code>faulted</code> 200 entry, detail <code>restored to a point 120s BEFORE the fault</code></td></tr>
+<tr><td>I-014</td><td><code>dns-propagation</code></td><td><code>resolver-b</code> still serves the OLD A record inside the window</td><td><code>faulted</code> 200 entry, detail <code>still serves the OLD A record (window 30s)</code></td></tr>
+</tbody></table>
+<p>Operator entry point: <code>mischief sim --shape I-00N</code> runs the case and prints the proof line plus the log path. The cmd-level shape table (<code>cmd/mischief/sim.go simShapeFor</code>) is test-pinned to exactly these nine ids (<code>TestSimShapesCoverLayerISimIDs</code>), so a shape gaining or losing sim coverage fails CI until this table and the catalog agree.</p>
 <hr>
 <h2>T — Time &amp; clock (4)</h2>
 <p>Time namespaces are <strong>not available unprivileged on this host</strong> (<code>unshare --time</code> → <code>EPERM</code>), so this layer is shim/helper-based in v0.1 and its primitives ship at the lowest maturity until their selftest is green.</p>

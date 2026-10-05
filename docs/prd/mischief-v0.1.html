@@ -182,13 +182,13 @@ seed: 20260927</code></pre>
 </tbody></table>
 <p><strong>Integration points, ordered by process-change cost (all additive until #4):</strong></p>
 <ol><li><strong><code>observe.trouble</code> — read-only assertion.</strong> An experiment may declare "the target's</li></ol>
-<p>ledger must contain record R within N seconds". Costs <code>trouble</code> nothing; turns its detection claims into a measured matrix (fault × detected × time-to-detect). <strong>This is the hook that decides adoption</strong>, because it is the only one that needs zero changes to any existing project.</p>
+<p>ledger must contain record R within N seconds". Costs <code>trouble</code> nothing; turns its detection claims into a measured matrix (fault × detected × time-to-detect). <strong>This is the hook that decides adoption</strong>, because it is the only one that needs zero changes to any existing project. <em>(Implemented v0.1: <code>internal/observe</code> — a read-only ledger client whose type exposes no mutating method, polling under the declared window, naming the matched ledger line in the journal's <code>observe_result</code> record and filing a detection-gap row on a miss. The ledger wire shape is the v0.1 scratch contract (<code>GET /api/v1/namespaces/&lt;ns&gt;/records?since=…&amp;limit=…</code> → bare JSON array); the live wiring against a real <code>trouble</code> instance's findings-ledger API is v0.2 — the <code>Line</code> decode struct is the only seam that changes when it lands.)</em></p>
 <ol><li><strong><code>mischief battery --file-rows</code></strong> — findings become rows on the <em>owning</em> project's</li></ol>
 <p>board, in that board's own vocabulary. Additive, uses the existing filing path.</p>
 <ol><li><strong><code>mischief battery --quick</code> as a QA cell source</strong> — the five bash cells in §2.1 are</li></ol>
 <p>replaced by catalog primitives that carry landed-proofs. This <em>deletes</em> code, so it is a migration with a parity proof, not a rewrite.</p>
 <ol><li><strong><code>mischief verify-play</code></strong> (later) — after <code>trouble</code> records a play that fired,</li></ol>
-<p>re-inject the original fault to check the fix held. Needs <code>trouble</code>'s ledger schema read-only; the only hook that makes <code>mischief</code> part of a closed remediation loop.</p>
+<p>re-inject the original fault to check the fix held. Needs <code>trouble</code>'s ledger schema read-only; the only hook that makes <code>mischief</code> part of a closed remediation loop. <em>(v0.1 ships the refusal, not an engine: <code>observe.VerifyPlay</code> fails closed under every option combination — including <code>--allow-real</code> — and names what is absent (the live ledger-schema read and the re-injection executor).)</em></p>
 <ol><li><strong>A <code>-chaos</code> satellite lane</strong> (opt-in, per project, its own namespace) that runs the</li></ol>
 <p>project's fault matrix on a cadence and files findings. New convention ⇒ last.</p>
 <h2>9. Platform audit — measured on this host, before the build (2026-09-27)</h2>
