@@ -1,0 +1,12 @@
+{
+  "wave_id": "mischief-foreman-2026-10-05-17-54-00",
+  "project": "mischief",
+  "dispatched_at": "2026-10-05T18:05:00Z",
+  "budget": 10,
+  "tasks": [
+    {"id": "MSF-021", "title": "Bunker test plane", "worktree": "/home/kara/worktrees/mischief-MSF-021", "branch": "wt/MSF-021", "base_sha": "24da8f9"},
+    {"id": "MSF-016", "title": "M4 replace legacy bash chaos cells with battery --quick", "worktree": "/home/kara/worktrees/mischief-MSF-016", "branch": "wt/MSF-016", "base_sha": "24da8f9"},
+    {"id": "MSF-018", "title": "Release engineering GoReleaser + shim .so + CI gates", "worktree": "/home/kara/worktrees/mischief-MSF-018", "branch": "wt/MSF-018", "base_sha": "24da8f9"},
+    {"id": "MSF-013", "title": "SPEC-12 integration observe.trouble/detection-gap/verify-play", "worktree": "/home/kara/worktrees/mischief-MSF-013", "branch": "wt/MSF-013", "base_sha": "24da8f9"}
+  ]
+}
