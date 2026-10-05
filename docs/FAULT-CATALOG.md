@@ -178,6 +178,30 @@ adapter exists (v0.2+), a `mode: real` that is opt-in, allowlisted and spend-cap
 | I-013 | **Snapshot restore to a stale point** — "recovered" but lost N minutes | restored state's timestamp < the fault time; data delta measurable | (that is the finding) | sim · L4 |
 | I-014 | **DNS propagation delay / TTL mismatch** after a change | two resolvers disagree for the declared window | propagate | sim · L4 |
 
+### Simulated case per cloud shape (MSF-010)
+
+Every sim-covered layer-I id above has a runnable case on the simulator
+(`internal/backend_sim`) with its landed-proof written to the per-run
+request log — the log, not memory, is the proof channel:
+
+| ID | sim shape (`ShapeKind`) | sim case (armed shape, proof request) | request-log proof line |
+|---|---|---|---|
+| I-003 | `api-rate-limit` | 429 burst of 3, first WITH `Retry-After: 2s`, remainder without | `faulted` 429 entries, detail `Retry-After=2s` / `without Retry-After` |
+| I-004 | `api-5xx` | 5xx burst with malformed JSON bodies + endless-page marker | `faulted` 5xx entries, detail `malformed body` / `endless page` |
+| I-005 | `eventual-lag` | acknowledged PUT seeds the window; the GET inside it serves the pre-write value | `faulted` 200 entry, detail `serving pre-write value for key … (window 5s)` |
+| I-006 | `object-store` | GET with `expired_presign` → 403 `AccessDenied (presigned URL)` | `faulted` 403 entry, detail `403 expired presigned URL` |
+| I-010 | `auth-expiry` | request after expiry → 401 while the prior call succeeded | `faulted` 401 entry, detail `token expired` |
+| I-011 | `metadata-fault` | metadata endpoint `mode: timeout` → the boot credential call hangs | `faulted` entry, detail `metadata timeout` |
+| I-012 | `quota-exhausted` | account-level quota → 403 `QuotaExceeded` naming the resource | `faulted` 403 entry, detail `quota exhausted: instances` |
+| I-013 | `snapshot-stale` | restore reports a snapshot taken 120s BEFORE the fault (`lost_seconds: 120`) | `faulted` 200 entry, detail `restored to a point 120s BEFORE the fault` |
+| I-014 | `dns-propagation` | `resolver-b` still serves the OLD A record inside the window | `faulted` 200 entry, detail `still serves the OLD A record (window 30s)` |
+
+Operator entry point: `mischief sim --shape I-00N` runs the case and prints
+the proof line plus the log path. The cmd-level shape table
+(`cmd/mischief/sim.go simShapeFor`) is test-pinned to exactly these nine
+ids (`TestSimShapesCoverLayerISimIDs`), so a shape gaining or losing sim
+coverage fails CI until this table and the catalog agree.
+
 ---
 
 ## T — Time & clock (4)
