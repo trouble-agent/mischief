@@ -103,8 +103,8 @@ func (s *stubLandable) cleanup() { s.cleanedUp = true }
 func runnerWith(l *stubLandable) runner {
 	return runner{
 		corpus: func() []string { return []string{"Z-001"} },
-		build: func(id, dir string) landable { return l },
-		now:   time.Now,
+		build:  func(id, dir string) landable { return l },
+		now:    time.Now,
 	}
 }
 

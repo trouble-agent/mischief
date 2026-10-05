@@ -68,12 +68,33 @@ const L0 = 0
 // R-001 (systemd-run user scope) is green CONDITIONALLY — GreenReports()
 // consults the live capability probe, so an absent user manager reports
 // the honest missing-piece skip rather than a stale green.
+//
+// MSF-010 adds the SPEC-09 backends: the sim primitives (I-003/004/006/
+// 010/011/012/013/014) are unconditionally green (loopback + scratch log,
+// no daemon), and the docker primitives (docker:pause/kill/oom) are green
+// where the live L0 selftests proved them on THIS host (docker 29.x,
+// cgroup v2) — the same measured-proofs-only rule, no force-set green:
+// a host without the daemon reports the skip, never a green.
 var greenStates = map[string]bool{
 	"P-001": true, // SIGSTOP / SIGCONT: state T proven, resume proven
 	"S-001": true, // shim EIO: counter proven, detach + next-write proven
 	"N-012": true, // proxy 429: hit-ledger proven, disarm + replay proven
 	"F-009": true, // file-replaced-under-writer: inode identity proven, restore byte-identical
 	"R-001": true, // systemd-run scope: property read-back proven, stop verified (probe-gated)
+	// SPEC-09 (MSF-010): provider simulator — rootless, no daemon
+	"I-003": true, // sim 429 burst: request-log proven, disarm proven
+	"I-004": true, // sim 5xx/503: request-log proven
+	"I-006": true, // sim object-store 404-on-existing: request-log proven
+	"I-010": true, // sim auth expiry 401: request-log proven
+	"I-011": true, // sim metadata 500: request-log proven
+	"I-012": true, // sim quota exhaustion: request-log proven
+	"I-013": true, // sim snapshot stale restore: request-log proven
+	"I-014": true, // sim DNS propagation split: request-log proven
+	// SPEC-09 (MSF-010): docker node faults — live-proven on this host
+	// (docker 29.x + cgroup v2); a host without the daemon skips honestly
+	"docker:pause": true,
+	"docker:kill":  true,
+	"docker:oom":   true,
 }
 
 // GreenState answers the AC-19 question for one primitive id: green, or
@@ -158,6 +179,13 @@ func (r Result) String() string {
 // the L0 scratch harness at M1 (each SKIPs with its named missing piece
 // from buildLandable). They are part of the covered corpus: a run
 // exercises them and records the skip.
+//
+// MSF-010 moves C-009 and I-002 OUT of the pure-skip set: both gain a
+// docker-backed landable when the host has the daemon (their landables
+// still SKIP with the named piece when it does not — I-002's cold-return
+// needs a container the run can kill and restart, which the docker
+// backend provides). C-009 (rolling replace) stays a skip: multi-container
+// orchestration is out of v0.1's docker backend scope.
 var coveredSkips = []string{"C-009", "I-002", "N-001", "S-004", "T-001"}
 
 // CoveredIDs returns every primitive id this build's harness covers
