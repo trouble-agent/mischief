@@ -88,14 +88,27 @@ func buildLandable(id, dir string) landable {
 		return &fileReplaceLandable{dir: dir}
 	case "R-001":
 		return &scopeLandable{}
+	// SPEC-09 (MSF-010): the sim primitives — the catalog's I-layer rows
+	// whose landed-proof channel is the provider-sim request log
+	case "I-003", "I-004", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014":
+		return newSimLandable(id, dir)
+	// SPEC-09 (MSF-010): the docker node faults — L0 scratch containers
+	// minted, owned and removed by the landable itself
+	case "docker:pause", "docker:kill", "docker:oom":
+		return &dockerLandable{id: id}
 	case "S-004":
 		return &skipLandable{id: id, missing: "shim short-write mode: the v0.1 shim backend implements full-failure errno rules on the write syscall only (no partial-write injection yet)"}
 	case "T-001":
 		return &skipLandable{id: id, missing: "shim clock interception: the v0.1 shim backend implements the write syscall only (no clock_gettime/gettimeofday rules yet)"}
 	case "N-001":
 		return &skipLandable{id: id, missing: netHelperMissing()}
-	case "C-009", "I-002":
+	case "C-009":
 		return &skipLandable{id: id, missing: dockerActuatorMissing()}
+	case "I-002":
+		// the cold-return shape gains a docker actuator: kill + start of an
+		// L0 scratch container the landable owns (stop → gone → fresh-empty
+		// return), with the daemon-absent skip preserved
+		return &coldReturnLandable{}
 	default:
 		return &refusalLandable{id: id}
 	}

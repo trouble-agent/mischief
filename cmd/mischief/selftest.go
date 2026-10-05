@@ -55,11 +55,23 @@ func cmdSelftest(args []string) int {
 	var results []selftest.Result
 	switch {
 	case *all:
-		// the catalog's ids, not the harness's green list: every catalog
-		// primitive is exercised (green ones run live; the rest surface
-		// as the named skip/fail their honesty demands)
-		for _, id := range cat.IDs {
+		// the COVERED corpus (green landables + named skips), not just the
+		// catalog's file ids: every primitive this build can exercise is
+		// exercised (MSF-010 added the SPEC-09 ids — the sim I-layer rows
+		// and the docker node faults — which live in the harness corpus and
+		// the docker backend's id namespace rather than as catalog files;
+		// the corpus-coverage test keeps the two sets honest against each
+		// other). Catalog ids outside the corpus still surface: they are
+		// appended and fail with the named "no selftest exists" reason.
+		covered := map[string]bool{}
+		for _, id := range selftest.CoveredIDs() {
+			covered[id] = true
 			results = append(results, selftest.RunOnePublic(id))
+		}
+		for _, id := range cat.IDs {
+			if !covered[id] {
+				results = append(results, selftest.RunOnePublic(id))
+			}
 		}
 	default:
 		id := strings.TrimSpace(*prim)
@@ -103,22 +115,32 @@ func cmdSelftest(args []string) int {
 // the MEASURED state recorded (the task's honesty line: a primitive
 // passing selftest may be RECORDED green — recorded here onto the
 // in-memory descriptor the rails read; the shipped catalog files are
-// never touched). After the recording, CheckScope at L1 (outside L0) must
+// never touched). After the recording, CheckScope one level ABOVE L0 must
 // refuse every non-green primitive with the selftest_not_green reason and
-// admit every green one — the same predicate the run path enforces. A
-// violation is a harness bug and fails the run.
+// admit every green one — the same predicate the run path enforces.
+//
+// The check level is the primitive's OWN declared minimum tier when that
+// is above L0 (I-002 declares L3/L4: its tier refusal is CORRECT at L1 —
+// the AC-19 predicate is about the selftest rail, and a tier-gated
+// primitive would read as a false violation if forced to L1). For the
+// L0-tier primitives (the whole rootless set) the check stays at L1.
+// A violation is a harness bug and fails the run.
 func printAC19Wiring(cat *catalog.Catalog, results []selftest.Result) (bool, error) {
-	fmt.Println("ac19: measured selftest states recorded; outside L0 (L1 check) the rails admit only green:")
+	fmt.Println("ac19: measured selftest states recorded; outside L0 the rails admit only green:")
 	wired := true
 	for _, r := range results {
 		d := cat.Get(r.ID)
 		if d == nil {
 			continue
 		}
+		level := 1
+		if d.Tier != nil && d.Tier.Min > level {
+			level = d.Tier.Min
+		}
 		live := catalog.SelftestState(selftest.StateOf(r))
 		declared := d.Selftest
 		d.Selftest = live // the recording: measured state -> the state the predicate reads
-		err := rails.CheckScope(d, rails.Scope{Level: 1})
+		err := rails.CheckScope(d, rails.Scope{Level: level})
 		refused := err != nil
 		green := live == catalog.SelftestGreen
 		if refused != !green {

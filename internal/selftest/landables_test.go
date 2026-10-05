@@ -32,9 +32,14 @@ func loadCatalogForTest() (*catalog.Catalog, error) {
 
 // TestEverySkipLandableNamesItsPiece: each recorded-skip landable must
 // carry a non-empty missing-piece reason (a skip that cannot say why is
-// a bug this package refuses).
+// a bug this package refuses). MSF-010 moved I-002 onto the docker-backed
+// coldReturnLandable, so it is no longer in the pure-skip set — the pure
+// skips are the ones coveredSkips still names minus I-002.
 func TestEverySkipLandableNamesItsPiece(t *testing.T) {
 	for _, id := range coveredSkips {
+		if id == "I-002" {
+			continue // docker-backed now (coldReturnLandable)
+		}
 		dir := t.TempDir()
 		l := buildLandable(id, dir)
 		sk, ok := l.(*skipLandable)
@@ -45,6 +50,23 @@ func TestEverySkipLandableNamesItsPiece(t *testing.T) {
 		if !missing || msg == "" {
 			t.Fatalf("%s skip landable: missing=%t msg=%q", id, missing, msg)
 		}
+	}
+}
+
+// TestColdReturnLandableGatesOnDocker: I-002's landable skips with a named
+// piece when the daemon is absent, and never claims capability without
+// evidence (fail-closed probe).
+func TestColdReturnLandableGatesOnDocker(t *testing.T) {
+	l := buildLandable("I-002", t.TempDir())
+	if _, ok := l.(*coldReturnLandable); !ok {
+		t.Fatalf("I-002 built %T, want *coldReturnLandable", l)
+	}
+	msg, missing := l.capability()
+	if !missing {
+		return // daemon present: the live loop covers the rest
+	}
+	if msg == "" {
+		t.Fatal("cold-return capability gate skipped without naming the missing piece")
 	}
 }
 
