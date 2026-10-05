@@ -1,0 +1,17 @@
+{
+  "scheduler_tick_id": "mischief-foreman-2026-10-05-04-07-24",
+  "created_at": "2026-10-05T04:15:00Z",
+  "project": "mischief",
+  "tasks": [
+    {
+      "task_id": "MSF-015",
+      "title": "M1 selftest harness: L0 scratch targets where every primitive must prove land + revert",
+      "worktree": "/home/kara/worktrees/mischief-MSF-015",
+      "branch": "wt/MSF-015",
+      "base_sha": "0d32519",
+      "worker": "hermes chat -q (brief /tmp/msf015-brief.md) -m glm-5.3-flash --provider zai-glm-default -s coding-hermes-worker --ignore-rules -Q",
+      "status": "dispatched"
+    }
+  ],
+  "note": "Only 1 eligible independent task (P0 MSF-015); all other pending rows blocked by dependencies. Serial/single-worker dispatch."
+}
