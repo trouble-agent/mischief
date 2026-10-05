@@ -32,4 +32,10 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test -count=1 ./...
+        # The docker selftests (docker:pause/kill/oom) grade pass-or-skip
+        # by daemon/image presence; TestLiveSelftestAllGreenOrSkip demands
+        # the green set pass, so CI needs a local alpine:latest (never
+        # pulled by the selftest itself).
+        run: |
+          docker pull alpine:latest
+          go test -count=1 ./...
