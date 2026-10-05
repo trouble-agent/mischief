@@ -1,0 +1,77 @@
+# mischief — GoReleaser config (MSF-018).
+#
+# SHIM .SO DECISION (MSF-018): the per-arch shim is built BEFORE goreleaser
+# runs, by tools/shim-build.sh (make shim / CI step) — system cc for amd64,
+# gcc-aarch64-linux-gnu for arm64, compiled from the SAME ShimSourceC
+# constant the runtime compiles at arm time. Zig is NOT used (absent here,
+# unnecessary for two linux targets); a release REFUSES when a compiler is
+# missing instead of shipping without the shim. Each tarball carries its
+# arch's .so (libfault-anchored.so, mode 0755) so a released archive is
+# usable directly: MCFAULT_PROOF=x LD_PRELOAD=./libfault-anchored.so ...
+# The archives' files glob is per-arch templated — a mismatch here FAILS
+# the release (goreleaser errors on a missing glob), it never packages an
+# empty shim slot.
+#
+# Version stamping: main.gitSha is stamped with the LITERAL tag ({{ .Tag }},
+# e.g. v0.1.0) so `mischief version` reports the tag verbatim; a --snapshot
+# dry-run (`make dist`) stamps goreleaser's synthetic v0.0.0 — a dry-run
+# build must never wear a tag it was not cut from. The Makefile path keeps
+# stamping the git sha.
+version: 2
+
+project_name: mischief
+
+# dist/release — NOT the default dist/: --clean wipes this dir, and the
+# per-arch shim .so it packages live one level up in dist/shim (built by
+# tools/shim-build.sh first). A wipe of dist/shim mid-release would break
+# every archive's shim glob. (The path is relative to the repo root.)
+dist: dist/release
+
+builds:
+  - id: mischief
+    main: ./cmd/mischief
+    binary: mischief
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      # the literal tag on a real release; goreleaser synthesizes the tag
+      # v0.0.0 in --snapshot dry-runs (measured: the binary stamps v0.0.0)
+      # and the else-arm is the never-empty guard
+      - -s -w -X main.gitSha={{ if .Tag }}{{ .Tag }}{{ else }}dev{{ end }}
+
+archives:
+  - id: mischief
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - src: dist/shim/libfault-anchored_linux_{{ .Arch }}.so
+        dst: libfault-anchored.so
+        info:
+          mode: 0755
+      - src: LICENSE
+      - src: README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^board:"
+      - "^docs:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  # The foreman cuts: land as a DRAFT so a human reviews the archive
+  # contents (shim .so present, mode 0755) before publishing.
+  draft: true

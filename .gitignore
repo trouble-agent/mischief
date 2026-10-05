@@ -1,7 +1,11 @@
 # build artifacts
 bin/
+dist/
 *.so
 *.o
+
+# goreleaser release workflow drops the binary in the repo root (release.yml)
+/goreleaser
 
 # run artifacts (journals are evidence, not source; keep them out of the tree)
 .journals/

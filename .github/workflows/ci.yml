@@ -1,10 +1,14 @@
 # CI for mischief — go version follows go.mod (1.24).
+# MSF-018: this workflow now also fires on v* tag pushes; the full release
+# (cross-compiled stamped binary + per-arch shim .so archives) is cut by
+# .github/workflows/release.yml — see docs/RELEASE.md.
 
 name: CI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -39,3 +43,19 @@ jobs:
         run: |
           docker pull alpine:latest
           go test -count=1 ./...
+
+      - name: "Selftest suite (exit 0 only green-or-skip)"
+        run: go run ./cmd/mischief selftest --all
+
+      - name: "Battery — one live cell (q1 = N-012; fail surfaces, no_op fails)"
+        run: go run ./cmd/mischief battery --primitive N-012
+
+      - name: "Shim .so per arch — build + LIVE landing proof (never skipped)"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user
+          ./tools/shim-build.sh --smoke
+
+      - name: Shim drift gate (tools/shim-extracted.c must match ShimSourceC)
+        run: git diff --exit-code -- tools/shim-extracted.c
