@@ -18,9 +18,11 @@
 // chaos-corruption, chaos-resource, chaos-errorpath). Every quick cell
 // names the legacy cell it replaces and the catalog primitive that replaces
 // it; the parity property is pinned by test (a primitive set that stops
-// covering a named legacy cell fails the suite). The legacy cells are NOT
-// deleted by this build — deletion happens in a later milestone, after
-// parity is proven live (the artefact is the evidence that will justify it).
+// covering a named legacy cell fails the suite). Since MSF-016 (M4) the
+// parity is PROVEN live and the legacy cells are superseded: the
+// fleet-side deletion of the five bash blocks is executed from
+// docs/BATTERY-PARITY.md's checklist (the file itself is outside this
+// repo, so the deletion is a named follow-up edit, never a rewrite here).
 //
 // Detection (AC-14): each cell carries an optional Detector. The real
 // trouble-ledger integration is FUTURE WORK — the seam exists (an

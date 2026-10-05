@@ -1,0 +1,110 @@
+{
+  "schema": "mischief.battery.matrix/v1",
+  "run_id": "c26bd0e3c51a85d1",
+  "quick": true,
+  "generated_at": 1791224953,
+  "catalog_version": "d074ead2417d1b2cb812ed7e1e7c3a293eb9d15b03935062655304df203205ec",
+  "projects": [
+    "scratch"
+  ],
+  "cells": [
+    {
+      "cell_id": "q1",
+      "project": "scratch",
+      "fault": "N-012",
+      "fault_name": "http-error-injection",
+      "legacy_cell": "chaos-disconnect",
+      "verdict": "recovered",
+      "detection": {
+        "state": "not_wired",
+        "reason": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+      },
+      "recovery": "recovered",
+      "reason": "probe set green within budget (0s ≤ 0s), assertions passed, 1 oracle(s) declared and clean"
+    },
+    {
+      "cell_id": "q2",
+      "project": "scratch",
+      "fault": "I-002",
+      "fault_name": "dependency-cold-return",
+      "legacy_cell": "chaos-shutdown",
+      "verdict": "recovered",
+      "detection": {
+        "state": "not_wired",
+        "reason": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+      },
+      "recovery": "recovered",
+      "reason": "probe set green within budget (0s ≤ 0s), assertions passed, 1 oracle(s) declared and clean"
+    },
+    {
+      "cell_id": "q3",
+      "project": "scratch",
+      "fault": "F-009",
+      "fault_name": "file-replaced-under-live-writer",
+      "legacy_cell": "chaos-corruption",
+      "verdict": "recovered",
+      "detection": {
+        "state": "not_wired",
+        "reason": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+      },
+      "recovery": "recovered",
+      "reason": "probe set green within budget (0s ≤ 0s), assertions passed, 1 oracle(s) declared and clean"
+    },
+    {
+      "cell_id": "q4",
+      "project": "scratch",
+      "fault": "R-001",
+      "fault_name": "memory-max-squeeze",
+      "legacy_cell": "chaos-resource",
+      "verdict": "recovered",
+      "detection": {
+        "state": "not_wired",
+        "reason": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+      },
+      "recovery": "recovered",
+      "reason": "probe set green within budget (0s ≤ 0s), assertions passed, 1 oracle(s) declared and clean"
+    },
+    {
+      "cell_id": "q5",
+      "project": "scratch",
+      "fault": "F-009",
+      "fault_name": "file-replaced-under-live-writer",
+      "legacy_cell": "chaos-errorpath",
+      "verdict": "recovered",
+      "detection": {
+        "state": "not_wired",
+        "reason": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+      },
+      "recovery": "recovered",
+      "reason": "probe set green within budget (0s ≤ 0s), assertions passed, 1 oracle(s) declared and clean"
+    }
+  ],
+  "legacy_parity": [
+    {
+      "Cell": "chaos-disconnect",
+      "Primitive": "N-012",
+      "Replaces": "dead-proxy network cut (HTTP(S)_PROXY→127.0.0.1:9) = the rate=1.0 end of N-012's userspace-proxy fault axis; the primitive adds the proxy-counter landed proof the cell never had"
+    },
+    {
+      "Cell": "chaos-shutdown",
+      "Primitive": "I-002",
+      "Replaces": "compose stop + kill + restart = I-002's stop/kill/fresh-empty dependency lifecycle, with the external-probe + state-diff proof; tier L3 (docker API) — on an unprivileged L0 harness this cell records the named skip until the container backend lands"
+    },
+    {
+      "Cell": "chaos-corruption",
+      "Primitive": "F-009",
+      "Replaces": "state-file truncate + restart + restore = F-009's replace-under-live-writer class (the 08-29/30 archive-hole shape), proven by inode identity instead of an unobserved rc"
+    },
+    {
+      "Cell": "chaos-resource",
+      "Primitive": "R-001",
+      "Replaces": "suite under a 3G ulimit -v cap = R-001's memory-max scope squeeze with cgroup-counter proof (the cap cannot be dodged by a child re-exec)"
+    },
+    {
+      "Cell": "chaos-errorpath",
+      "Primitive": "F-009",
+      "Replaces": "missing-config boot errorpath = F-009's unlink-then-create mode (the file a boot path needs is gone); shares the primitive with chaos-corruption because one fault class covers both cell shapes — recorded as the shared mapping, not a fifth primitive"
+    }
+  ],
+  "detection_note": "no detector wired on this cell: the trouble-ledger integration is future work (the Detector seam is the AC-14 assertion point)"
+}
