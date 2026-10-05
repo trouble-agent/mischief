@@ -1,0 +1,71 @@
+# Release CI for mischief (MSF-018) — fires ONLY on v* tags.
+#
+# Order matters: the SAME gates main CI runs (build/vet/test, selftest
+# suite, one live battery cell, per-arch shim .so with live landing proof)
+# run FIRST, so a tag cannot release what main CI did not pass. Only then
+# does goreleaser cross-compile the stamped binary and package each
+# archive with its arch's shim .so. The release lands as a DRAFT (see
+# .goreleaser.yml) — the foreman reviews the archive contents and
+# publishes.
+#
+# Flow + local dry-run: docs/RELEASE.md.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: "Release (tag ${{ github.ref_name }})"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Cross toolchain (arm64 cc + qemu for the live landing proof)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (unit, -count=1)
+        run: go test -count=1 ./internal/...
+
+      - name: "Selftest suite (exit 0 only green-or-skip)"
+        run: go run ./cmd/mischief selftest --all
+
+      - name: "Battery — one live cell (q1 = N-012; fail surfaces, no_op fails)"
+        run: go run ./cmd/mischief battery --primitive N-012
+
+      - name: "Shim .so per arch — build + LIVE landing proof (never skipped)"
+        run: ./tools/shim-build.sh --smoke
+
+      - name: Shim drift gate (tools/shim-extracted.c must match ShimSourceC)
+        run: git diff --exit-code -- tools/shim-extracted.c
+
+      - name: GoReleaser — install, config check, then release from the tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSfL https://github.com/goreleaser/goreleaser/releases/latest/download/goreleaser_Linux_x86_64.tar.gz \
+            | tar xzvf - goreleaser
+          ./goreleaser check
+          ./goreleaser release --clean
