@@ -30,8 +30,10 @@ import (
 // --quick runs the reduced parity matrix: exactly the five legacy bash
 // chaos cells (chaos-disconnect, chaos-shutdown, chaos-corruption,
 // chaos-resource, chaos-errorpath), each named alongside the catalog
-// primitive that replaces it. The legacy cells are NOT deleted by this
-// build — the parity proof lands first; deletion is a later milestone.
+// primitive that replaces it. MSF-016 (M4): parity is proven live
+// (docs/BATTERY-PARITY.md + the committed run artefact) and the five bash
+// cells are SUPERSEDED — their fleet-side deletion is the checklist in
+// docs/BATTERY-PARITY.md (bunker-qa.sh is outside this repo).
 //
 // --file-rows emits findings.jsonl (AC-18's artefact). The rows are
 // EMITTED, not appended onto a live board: landing them on the owning

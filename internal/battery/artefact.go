@@ -14,8 +14,9 @@ import (
 // detection × recovery, written as JSON + a markdown table under the run
 // dir. The artefact is the fleet-facing product: one battery over N
 // projects emits it, the quick run's copy names every legacy bash cell it
-// replaces, and it is the evidence a later milestone will cite when the
-// five bash cells are deleted.
+// replaces, and it is the evidence the fleet-side deletion (the
+// docs/BATTERY-PARITY.md checklist) cites when the five bash cells are
+// removed from bunker-qa.sh.
 //
 // The artefact never grades: it renders what the run measured (verdicts
 // from the SPEC-05 engine, detection from the Detector seam, recovery from
@@ -147,7 +148,7 @@ func renderMarkdown(a *Artefact) string {
 
 	if a.Quick {
 		b.WriteString("## Legacy parity (S-5)\n\n")
-		b.WriteString("The five bunker-qa.sh chaos cells this run replaces (deletion of the cells happens in a later milestone, after parity is proven live):\n\n")
+		b.WriteString("The five bunker-qa.sh chaos cells this run replaces (superseded since MSF-016: the fleet-side deletion executes the docs/BATTERY-PARITY.md checklist):\n\n")
 		b.WriteString("| legacy cell | replacing primitive | mapping |\n|---|---|---|\n")
 		for _, lc := range a.LegacyParity {
 			fmt.Fprintf(&b, "| `%s` | `%s` | %s |\n", lc.Cell, lc.Primitive, lc.Replaces)
