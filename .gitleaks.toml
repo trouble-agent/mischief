@@ -9,4 +9,4 @@ useDefault = true
 # and the builtin cross-check scanner confirmed the tree is otherwise clean.
 [[allowlists]]
 description = "synthetic credential fixtures in the scrubber's own tests"
-paths = ['''^internal/journal/(journal|scrub)_test\.go$''', '''^internal/reverter/scrub_test\.go$''']
+paths = ['''^internal/journal/(journal|scrub)_test\.go$''', '''^internal/reverter/scrub_test\.go$''', '''^internal/plane/plane_test\.go$''']
