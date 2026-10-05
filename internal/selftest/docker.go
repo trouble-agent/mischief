@@ -257,8 +257,21 @@ func simGetBody(url string) (int, []byte, error) {
 // ── docker landables ────────────────────────────────────────────────────────
 
 // dockerImageName is the local image the docker selftests run (never
-// pulled; the capability gate proves it exists first).
-const dockerImageName = "alpine:latest"
+// pulled; the capability gate proves it exists first). dockerImageName
+// resolves at run time to the FIRST present local image: alpine:latest
+// where it exists, else any locally-built/pulled base the host already
+// has (the selftest never pulls — the no-network contract stands; a host
+// with NEITHER reports the honest skip naming both candidates).
+var dockerImageCandidates = []string{"alpine:latest", "busybox:latest", "golang:1.26-alpine", "node:22-alpine", "python:3.11-alpine"}
+
+func resolveDockerImage(cli *backend_docker.CLI) string {
+	for _, img := range dockerImageCandidates {
+		if cli.ImagePresent(img) {
+			return img
+		}
+	}
+	return ""
+}
 
 // dockerSelftestIDs are the docker primitives' selftest ids, sorted.
 var dockerSelftestIDs = []string{"docker:kill", "docker:oom", "docker:pause"}
@@ -269,6 +282,7 @@ var dockerSelftestIDs = []string{"docker:kill", "docker:oom", "docker:pause"}
 type dockerLandable struct {
 	id        string
 	cli       *backend_docker.CLI
+	image     string
 	container string
 	fault     *backend_docker.Fault
 	preMem    int64
@@ -282,9 +296,11 @@ func (d *dockerLandable) capability() (string, bool) {
 	if _, err := cli.Probe(); err != nil {
 		return err.Error(), true
 	}
-	if !cli.ImagePresent(dockerImageName) {
-		return fmt.Sprintf("no local image %s (the selftest never pulls; `docker pull %s` or provide another image)", dockerImageName, dockerImageName), true
+	img := resolveDockerImage(cli)
+	if img == "" {
+		return fmt.Sprintf("no local image any of %v (the selftest never pulls; `docker pull %s` or provide one of them)", dockerImageCandidates, dockerImageCandidates[0]), true
 	}
+	d.image = img
 	d.cli = cli
 	return "", false
 }
@@ -301,7 +317,7 @@ func (d *dockerLandable) prepare() ([]byte, error) {
 		cmd = []string{"sh", "-c", "dd if=/dev/zero of=/dev/null bs=32M"}
 		d.preMem = mem
 	}
-	if err := d.cli.RunScratch(d.container, dockerImageName, mem, cmd); err != nil {
+	if err := d.cli.RunScratch(d.container, d.image, mem, cmd); err != nil {
 		return nil, fmt.Errorf("scratch container: %w", err)
 	}
 	// observable-running wait (the exec race every spawn covers)
@@ -424,6 +440,7 @@ func joinPath(dir, name string) string { return dir + "/" + name }
 // same gate the docker landables use).
 type coldReturnLandable struct {
 	cli        *backend_docker.CLI
+	image      string
 	container  string
 	startedPre string
 	killFault  *backend_docker.Fault
@@ -437,16 +454,18 @@ func (c *coldReturnLandable) capability() (string, bool) {
 	if _, err := cli.Probe(); err != nil {
 		return err.Error(), true
 	}
-	if !cli.ImagePresent(dockerImageName) {
-		return fmt.Sprintf("no local image %s (the selftest never pulls)", dockerImageName), true
+	img := resolveDockerImage(cli)
+	if img == "" {
+		return fmt.Sprintf("no local image any of %v (the selftest never pulls)", dockerImageCandidates), true
 	}
+	c.image = img
 	c.cli = cli
 	return "", false
 }
 
 func (c *coldReturnLandable) prepare() ([]byte, error) {
 	c.container = backend_docker.MintScratchName()
-	if err := c.cli.RunScratch(c.container, dockerImageName, 0, []string{"sleep", "90"}); err != nil {
+	if err := c.cli.RunScratch(c.container, c.image, 0, []string{"sleep", "90"}); err != nil {
 		return nil, fmt.Errorf("scratch container: %w", err)
 	}
 	deadline := time.Now().Add(30 * time.Second)
