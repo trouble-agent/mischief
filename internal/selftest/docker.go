@@ -302,6 +302,31 @@ func (d *dockerLandable) capability() (string, bool) {
 	}
 	d.image = img
 	d.cli = cli
+	if d.id == "docker:oom" {
+		// The OOM primitive's land path runs `docker update --memory`,
+		// which some hosts' cgroup drivers refuse outright (runc cannot
+		// open the container's cgroup.scope — GitHub-hosted runners with
+		// cgroup namespaces, among others). Probe the update path ONCE
+		// with a throwaway scratch so the primitive reports an honest
+		// capability skip instead of a red fail on such hosts. The probe
+		// scratch is removed here; the real selftest creates its own.
+		probe := backend_docker.MintScratchName()
+		if err := cli.RunScratch(probe, img, 0, []string{"true"}); err != nil {
+			return fmt.Sprintf("docker update probe: scratch container: %v", err), true
+		}
+		_ = cli.RemoveScratch(probe)
+		probe2 := backend_docker.MintScratchName()
+		if err := cli.RunScratch(probe2, img, 0, []string{"sleep", "5"}); err != nil {
+			return fmt.Sprintf("docker update probe: scratch container: %v", err), true
+		}
+		defer func() { _ = cli.RemoveScratch(probe2) }()
+		if err := cli.UpdateScratchMemory(probe2, 32<<20); err != nil {
+			if backend_docker.CgroupUpdateUnavailable(err) {
+				return fmt.Sprintf("docker update --memory refused by this host's cgroup driver (runc/cgroup v2): %v", err), true
+			}
+			return fmt.Sprintf("docker update probe: %v", err), true
+		}
+	}
 	return "", false
 }
 

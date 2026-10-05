@@ -347,3 +347,34 @@ func (s *InspectState) SnapshotText() string {
 
 // MintScratchName's name shape (unit-tested).
 var scratchNameRe = regexp.MustCompile(`^mischief-l0-\d+-\d+$`)
+
+// UpdateScratchMemory applies a memory limit to an L0 scratch container
+// via `docker update`. The cgroup-v2 update path is environment-hostile:
+// on some runners/drivers (notably GitHub-hosted ubuntu with cgroup
+// namespaces) runc refuses with an openat2 error on the container scope.
+// The selftests grade that honest refusal as a capability skip, not a
+// failure (the primitive is unavailable on that host, not broken).
+func (c *CLI) UpdateScratchMemory(name string, memoryBytes int64) error {
+	if err := CheckScratch(name); err != nil {
+		return err
+	}
+	_, errOut, err := c.run("update", "--memory", strconv.FormatInt(memoryBytes, 10),
+		"--memory-swap", strconv.FormatInt(memoryBytes, 10), name)
+	if err != nil {
+		return fmt.Errorf("docker update --memory %d %s: %v: %s", memoryBytes, name, err, oneLine(errOut))
+	}
+	return nil
+}
+
+// CgroupUpdateUnavailable reports whether an error from UpdateScratchMemory
+// is the known runc/cgroup-v2 driver refusal (an environment capability
+// boundary, not a code defect). Callers convert true into an
+// AC-11-shaped capability skip naming the missing piece.
+func CgroupUpdateUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "cgroup.controllers") ||
+		strings.Contains(msg, "runc did not terminate successfully")
+}
