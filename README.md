@@ -44,7 +44,7 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `docs/SPEC-PLAN.md` | the spec set and the spec→PRD→AC map |
 | `probe/RESULTS.md` | the measured capability audit the design rests on, with the scripts that produced it |
 | `docs/EXPERIMENTS.md` | the rehearsal contract for `catalog/experiments/`: which experiments are runnable today, why the rest are rehearsal-only, and the scratch-host rule |
-| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`): `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha) |
+| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`): `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha) |
 | `catalog/` | machine-readable fault and experiment examples |
 
 ## The loop

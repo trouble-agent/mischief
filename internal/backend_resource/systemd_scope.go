@@ -33,6 +33,10 @@ type ScopeLimits struct {
 	Cmd []string
 }
 
+// SystemdScope is the exported alias of the scope primitive (the selftest
+// harness consumes the named-unit variant through it).
+type SystemdScope = systemdScope
+
 // systemdScope is the primitive: probe, inject, release, selftest.
 type systemdScope struct{}
 
@@ -102,9 +106,21 @@ func (systemdScope) Inject() (Proof, Release, error) {
 // reading the limits back from systemd. Any read-back gap is an error
 // (and the unit is stopped), never a pass.
 func (systemdScope) InjectLimits(s ScopeLimits) (Proof, Release, error) {
+	return systemdScope{}.InjectLimitsNamed(s, "msf-run-"+scratchToken())
+}
+
+// InjectLimitsNamed is InjectLimits with a caller-chosen unit name: the
+// selftest harness mints the name BEFORE landing so its pre-state capture
+// can query the exact object the fault will create (an object-scoped
+// revert measurement, immune to concurrent units on the shared namespace).
+// The measured shape is identical to InjectLimits.
+func (systemdScope) InjectLimitsNamed(s ScopeLimits, unit string) (Proof, Release, error) {
 	h := Hosts()
 	if len(s.Cmd) == 0 {
 		return Proof{}, nil, fmt.Errorf("scope inject: no command declared")
+	}
+	if strings.TrimSpace(unit) == "" {
+		return Proof{}, nil, fmt.Errorf("scope inject: empty unit name")
 	}
 	cap, err := systemdScope{}.Probe()
 	if err != nil {
@@ -113,7 +129,6 @@ func (systemdScope) InjectLimits(s ScopeLimits) (Proof, Release, error) {
 	if !cap.Available {
 		return Proof{}, nil, NewCapabilityError(cap)
 	}
-	unit := "msf-run-" + scratchToken()
 	argv := []string{"systemd-run", "--user", "--unit=" + unit}
 	argv = appendScopeProps(argv, s)
 	argv = append(argv, s.Cmd...)
