@@ -22,10 +22,16 @@ type Row struct {
 	Capability string
 	Status     catalog.Status
 	// UnavailableNames names the absent capability when Status is
-	// capability_unavailable (AC-11: naming what is absent).
+	// capability_unavailable (AC-11: naming what is absent). MSF-012
+	// upgrade: when the absence is the privileged surface's, this names
+	// the missing ARTEFACT ("sudoers drop-in not installed (expected
+	// /etc/sudoers.d/mischief) — run `mischief install`").
 	UnavailableNames string
-	Selftest         catalog.SelftestState
-	Maturity         string
+	// MissingPiece is the SPEC-11 posture's missing piece when different
+	// from the capability kind itself ("" = no privileged-surface cause).
+	MissingPiece string
+	Selftest     catalog.SelftestState
+	Maturity     string
 }
 
 // Report is the doctor verb's output.
@@ -50,7 +56,21 @@ type Report struct {
 	// failure). RunRailsSelfChecks consumes it; tests may also hand-build
 	// a synthetic catalog and pass it directly.
 	Catalog *catalog.Catalog
+	// Ops is the SPEC-11 privileged-surface section (MSF-012), appended
+	// by RunOps when the caller asks for it. Additive: the zero value
+	// (nil) renders as no ops section — existing consumers unaffected.
+	Ops *OpsSection
+	// JSON emits the report as JSON instead of the text table (cmd-level
+	// --json; the shape is this struct with the audit embedded).
+	JSON bool
 }
+
+// Row gains MissingPiece (MSF-012): the SPEC-11 posture's named missing
+// artefact ("sudoers drop-in not installed", "helper manifest missing",
+// "drop-in drifted", "grant missing: netns_add") when the primitive's
+// capability is absent because of the privileged surface. Empty on rows
+// whose absence has no privileged-surface cause.
+// (Field on the existing Row struct — see doctor.go's Row.)
 
 // RailsRow is one rails self-check's doctor line.
 type RailsRow struct {
