@@ -82,6 +82,8 @@ func run(args []string) int {
 		return cmdRetention(args[1:])
 	case "selftest":
 		return cmdSelftest(args[1:])
+	case "plane":
+		return cmdPlane(args[1:])
 	case "battery":
 		return cmdBattery(args[1:])
 	case "sim":
@@ -124,6 +126,7 @@ Usage:
   mischief uninstall  [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
   mischief audit      [--prefix P] [--json]
   mischief retention  [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
+  mischief plane     parse-agent-id | record | selftest-verdict | fold   (bunker test-plane evidence CLI)
   mischief version
 
 Safety floor: no default target; protected targets refuse at resolution;
