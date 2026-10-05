@@ -292,7 +292,14 @@ proven on a sanctioned host does not ship.**
    ledger must contain record R within N seconds". Costs `trouble` nothing; turns its
    detection claims into a measured matrix (fault × detected × time-to-detect).
    **This is the hook that decides adoption**, because it is the only one that needs
-   zero changes to any existing project.
+   zero changes to any existing project. *(Implemented v0.1: `internal/observe` — a
+   read-only ledger client whose type exposes no mutating method, polling under the
+   declared window, naming the matched ledger line in the journal's `observe_result`
+   record and filing a detection-gap row on a miss. The ledger wire shape is the
+   v0.1 scratch contract (`GET /api/v1/namespaces/<ns>/records?since=…&limit=…` →
+   bare JSON array); the live wiring against a real `trouble` instance's
+   findings-ledger API is v0.2 — the `Line` decode struct is the only seam that
+   changes when it lands.)*
 2. **`mischief battery --file-rows`** — findings become rows on the *owning* project's
    board, in that board's own vocabulary. Additive, uses the existing filing path.
 3. **`mischief battery --quick` as a QA cell source** — the five bash cells in §2.1 are
@@ -301,6 +308,9 @@ proven on a sanctioned host does not ship.**
 4. **`mischief verify-play`** (later) — after `trouble` records a play that fired,
    re-inject the original fault to check the fix held. Needs `trouble`'s ledger schema
    read-only; the only hook that makes `mischief` part of a closed remediation loop.
+   *(v0.1 ships the refusal, not an engine: `observe.VerifyPlay` fails closed under
+   every option combination — including `--allow-real` — and names what is absent
+   (the live ledger-schema read and the re-injection executor).)*
 5. **A `-chaos` satellite lane** (opt-in, per project, its own namespace) that runs the
    project's fault matrix on a cadence and files findings. New convention ⇒ last.
 
