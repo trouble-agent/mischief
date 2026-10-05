@@ -72,6 +72,14 @@ func run(args []string) int {
 		return cmdRevert(args[1:])
 	case "doctor":
 		return cmdDoctor(args[1:])
+	case "install":
+		return cmdInstall(args[1:])
+	case "uninstall":
+		return cmdUninstall(args[1:])
+	case "audit":
+		return cmdAudit(args[1:])
+	case "retention":
+		return cmdRetention(args[1:])
 	case "selftest":
 		return cmdSelftest(args[1:])
 	case "battery":
@@ -106,9 +114,13 @@ Usage:
   mischief plan    -f <exp.yaml> [--json] [--scratch-dir D]
   mischief status  [--dir D]
   mischief revert  (--all | --hold <id>) [--dir D]
-  mischief doctor  [--catalog-dir D]
+  mischief doctor  [--catalog-dir D] [--json] [--self-check]
   mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief serve   --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
+  mischief install    [--user U] [--prefix P] [--dry-run] [--no-drop-in]
+  mischief uninstall  [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
+  mischief audit      [--prefix P] [--json]
+  mischief retention  [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
   mischief version
 
 Safety floor: no default target; protected targets refuse at resolution;
@@ -305,6 +317,9 @@ func cmdDoctor(args []string) int {
 	fs.SetOutput(os.Stderr)
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
 	selfCheck := fs.Bool("self-check", false, "run the rails self-checks (sanction marker, load gate, scope ladder) and exit non-zero naming what fails")
+	asJSON := fs.Bool("json", false, "emit the report as JSON (rows with per-primitive missing pieces + the SPEC-11 privileged-surface audit)")
+	opsPosture := fs.Bool("ops", true, "include the SPEC-11 privileged-surface posture (drop-in/manifest/grants per capability)")
+	opsPrefix := fs.String("prefix", "", "mischief state prefix for the ops posture (default: the ops package default)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -316,7 +331,13 @@ func cmdDoctor(args []string) int {
 	if *selfCheck {
 		doctor.RunRailsSelfChecks(rep, rep.Catalog)
 	}
-	os.Stdout.Write(doctor.Render(rep))
+	// SPEC-11 posture (MSF-012): per-primitive available/absent PLUS the
+	// missing piece (AC-11 upgrade), derived from the privilege audit.
+	if *opsPosture {
+		doctor.RunOps(rep, doctor.OpsOptions{Prefix: *opsPrefix})
+		doctor.AppendOpsRows(rep)
+	}
+	doctor.WriteOut(rep, *asJSON || rep.JSON)
 	// doctor refuses nothing extra: a load failure is REPORTED (exit 1 —
 	// the doctor could not do its one job), a loaded catalog is exit 0
 	// regardless of how many primitives are capability_unavailable. With
