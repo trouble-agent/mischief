@@ -142,6 +142,18 @@ func Resolve(name string) primitive {
 	return noOpStub{name: name}
 }
 
+// ResolveScope returns the systemd-scope primitive typed (the selftest
+// harness consumes the named-unit variant); the second return is false
+// when the name does not resolve to the scope primitive.
+func ResolveScope(name string) (systemdScope, bool) {
+	if p, ok := Table()[name]; ok {
+		if s, ok := p.(systemdScope); ok {
+			return s, true
+		}
+	}
+	return systemdScope{}, false
+}
+
 // IsStub reports whether p is the no-op stub.
 func IsStub(p primitive) bool { return IsNoOpStub(p) }
 

@@ -59,10 +59,12 @@ type proofLine struct {
 
 var proofLineRe = regexp.MustCompile(`hits=(\d+) rule=(.+)`)
 
-// readProofFile parses a counter file; (zero, nil) when absent. A present
+// ReadProofFile parses a counter file; (zero, nil) when absent. A present
 // but unparsable counter is an error, not a zero: a counter we cannot read
-// proves nothing.
-func readProofFile(path string) (proofLine, error) {
+// proves nothing. Exported for the selftest harness's control arm (the
+// control run must be counter-less — the discrimination the landed-proof
+// leans on).
+func ReadProofFile(path string) (proofLine, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -163,7 +165,7 @@ func (a *ShimArm) ProofPath() string { return a.proofPath }
 // Prove grades the landing AFTER the child has run: the shim's own counter
 // file must exist with hits >= 1 carrying this rule's canonical text.
 func (a *ShimArm) Prove() Outcome {
-	pl, err := readProofFile(a.proofPath)
+	pl, err := ReadProofFile(a.proofPath)
 	if err != nil {
 		return NewFailed(a.Primitive, "shim", err, nil)
 	}
@@ -364,7 +366,7 @@ func SelftestShim() error {
 	if err != nil || len(cb) == 0 {
 		return fmt.Errorf("selftest shim: control wrote no bytes (got %v, err %v)", cb, err)
 	}
-	if pl, err := readProofFile(arm.ProofPath()); err != nil || pl.Hits != 0 {
+	if pl, err := ReadProofFile(arm.ProofPath()); err != nil || pl.Hits != 0 {
 		return fmt.Errorf("selftest shim: control produced a proof counter (hits=%d, err %v) — the control must be counter-less", pl.Hits, err)
 	}
 
@@ -384,6 +386,27 @@ func SelftestShim() error {
 		return fmt.Errorf("selftest shim: unaffected path did not survive the fault (got %v, err %v)", ob, err)
 	}
 	return nil
+}
+
+// DetachShim is the recorded inverse of a shim fault (S-001): remove the
+// fault env so a child started WITHOUT it runs the un-faulted write path,
+// then PROVE the undo measured — a fresh control child writes through and
+// the file holds the written bytes (the descriptor's verify: "the next
+// write to the path succeeds"; measured by the write's own success, not
+// asserted). Disarm is environmental by construction: the armed rule lived
+// in the previous child's env, so a child without the env cannot carry it.
+func DetachShim(primitive string, victimBin, target string) Outcome {
+	after := exec.Command(victimBin, target)
+	b, err := after.CombinedOutput()
+	if err != nil {
+		return NewFailed(primitive, "shim", fmt.Errorf("inverse: post-detach write run failed: %w: %s", err, strings.TrimSpace(string(b))), nil)
+	}
+	cb, err := os.ReadFile(target)
+	if err != nil || len(cb) == 0 {
+		return NewFailed(primitive, "shim", fmt.Errorf("inverse: issued but not proven: target %q after detach holds %v (err %v) — the next write did not succeed", target, cb, err), nil)
+	}
+	return NewLanded(primitive, "shim",
+		fmt.Sprintf("shim-detach: next write to %s succeeded (%d bytes on disk, no fault env)", target, len(cb)), nil)
 }
 
 func victimC(dir string) string {

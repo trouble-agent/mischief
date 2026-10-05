@@ -847,7 +847,7 @@ func TestParseHitsRejectsGarbage(t *testing.T) {
 func TestReadProofFileAbsentVsUnparsable(t *testing.T) {
 	dir := t.TempDir()
 	// absent -> zero, nil (the no_op arm reads this as "no hits")
-	pl, err := readProofFile(filepath.Join(dir, "nope"))
+	pl, err := ReadProofFile(filepath.Join(dir, "nope"))
 	if err != nil || pl.Hits != 0 {
 		t.Errorf("absent proof = (%+v, %v), want (zero, nil)", pl, err)
 	}
@@ -856,7 +856,7 @@ func TestReadProofFileAbsentVsUnparsable(t *testing.T) {
 	if err := os.WriteFile(p, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pl, err = readProofFile(p)
+	pl, err = ReadProofFile(p)
 	if err != nil || pl.Hits != 0 {
 		t.Errorf("empty proof = (%+v, %v)", pl, err)
 	}
@@ -865,7 +865,7 @@ func TestReadProofFileAbsentVsUnparsable(t *testing.T) {
 	if err := os.WriteFile(p2, []byte("nonsense"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readProofFile(p2); err == nil {
+	if _, err := ReadProofFile(p2); err == nil {
 		t.Error("unparsable proof file accepted")
 	}
 	// the real shape parses
@@ -873,7 +873,7 @@ func TestReadProofFileAbsentVsUnparsable(t *testing.T) {
 	if err := os.WriteFile(p3, []byte("hits=3 rule=write:*:x.tmp:EIO"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pl, err = readProofFile(p3)
+	pl, err = ReadProofFile(p3)
 	if err != nil || pl.Hits != 3 || pl.Rule != "write:*:x.tmp:EIO" {
 		t.Errorf("real proof = (%+v, %v)", pl, err)
 	}

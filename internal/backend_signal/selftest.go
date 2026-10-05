@@ -34,6 +34,14 @@ const L0 = 0
 // this host leaves the primitive un-selftested (refusing outside L0).
 type SelftestFn func() error
 
+// Inverter is the exported face of an armed fault's recorded inverse: the
+// package's fault handles expose Resume() (the SIGCONT inverse of a
+// SIGSTOP landing, with its own measured proof). External callers hold
+// the interface, never the unexported fault type.
+type Inverter interface {
+	Resume() Outcome
+}
+
 // selftests is the registry of this package's selftests, keyed by
 // primitive id (the catalog's fault ids).
 var selftests = map[string]SelftestFn{

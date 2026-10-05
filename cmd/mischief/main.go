@@ -72,6 +72,8 @@ func run(args []string) int {
 		return cmdRevert(args[1:])
 	case "doctor":
 		return cmdDoctor(args[1:])
+	case "selftest":
+		return cmdSelftest(args[1:])
 	case "serve":
 		return cmdServe(args[1:])
 	case "__owner":
