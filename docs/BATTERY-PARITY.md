@@ -59,7 +59,9 @@ named skip, 0 fail.
 - `--quick` is the fixed parity matrix (exactly the five cells above, in
   bunker-qa.sh cell order); it ignores `--project`/`--primitive`.
 - `--file-rows` emits `findings.jsonl` (AC-18 board-vocabulary rows for
-  every adverse verdict, the journal path in `reasoning`).
+  every adverse verdict; each row carries the run id in `run_id` — the
+  AC-9 correlation key shared with the journal records and the CLI's
+  `verdict:` line — plus the journal path in `reasoning`).
 - Artefacts: `matrix.json` / `matrix.md` (fault × detection × recovery,
   S-5), `battery.jsonl` (SPEC-02 journal).
 - Exit code 0 on green-or-skip; every adverse verdict files a finding.

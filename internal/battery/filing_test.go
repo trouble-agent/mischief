@@ -33,7 +33,7 @@ func failingRun(t *testing.T) *RunResult {
 // (the boardctl-style self-check).
 func TestFileFindingsBoardVocabulary(t *testing.T) {
 	res := failingRun(t)
-	b, err := FileFindings(res, "/run/dir/battery.jsonl")
+	b, err := FileFindings(res, res.RunID, "/run/dir/battery.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,10 +50,21 @@ func TestFileFindingsBoardVocabulary(t *testing.T) {
 		t.Errorf("first row is not the P0: %s", lines[0])
 	}
 	for _, ln := range lines {
-		for _, field := range []string{`"id":"MSF-BAT-`, `"status":"pending"`, `"title":"`, `"depends_on":[]`, `"reasoning":"battery journal: /run/dir/battery.jsonl`} {
+		for _, field := range []string{`"id":"MSF-BAT-`, `"status":"pending"`, `"title":"`, `"depends_on":[]`, `"reasoning":"battery run `} {
 			if !strings.Contains(ln, field) {
 				t.Errorf("row missing %s: %s", field, ln)
 			}
+		}
+	}
+	// AC-9 (MSF-031): every row carries the run id as its own field and
+	// names it in the reasoning line — the correlation key the journal
+	// records and the CLI output carry too.
+	for _, ln := range lines {
+		if !strings.Contains(ln, `"run_id":"`) {
+			t.Errorf("row missing the AC-9 run_id field: %s", ln)
+		}
+		if !strings.Contains(ln, `journal: /run/dir/battery.jsonl`) {
+			t.Errorf("row reasoning lost the AC-18 journal path: %s", ln)
 		}
 	}
 }
@@ -99,7 +110,7 @@ func TestWriteFindingsEmptyIsAFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	p, n, err := WriteFindings(dir, res, "/j/battery.jsonl")
+	p, n, err := WriteFindings(dir, res, res.RunID, "/j/battery.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +135,7 @@ func TestWriteFindingsEmptyIsAFile(t *testing.T) {
 func TestWriteFindingsNonEmpty(t *testing.T) {
 	res := failingRun(t)
 	dir := t.TempDir()
-	p, n, err := WriteFindings(dir, res, "/j/battery.jsonl")
+	p, n, err := WriteFindings(dir, res, res.RunID, "/j/battery.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}

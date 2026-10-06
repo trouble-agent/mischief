@@ -210,8 +210,11 @@ type Finding struct {
 	Reasoning string `json:"reasoning"`
 	// Project is the owning project (the board the row belongs on).
 	Project string `json:"project"`
-	// Primitive / LegacyCell / Verdict / Reason carry the battery
-	// evidence into the row (grep-able, review-grade).
+	// RunID is the run id the finding's journal records carry — the
+	// AC-9 correlation key: the journal, the CLI output and this row all
+	// name the same run (MSF-031). Set by deriveFindings from the run
+	// result; empty only on a hand-built Finding (tests, external tools).
+	RunID      string `json:"run_id,omitempty"`
 	Primitive  string `json:"primitive"`
 	LegacyCell string `json:"legacy_cell,omitempty"`
 	Verdict    string `json:"verdict"`
@@ -231,7 +234,9 @@ var (
 // form: one JSON object per line, in the board's field vocabulary. The
 // bytes are what `boardctl validate` (or this package's ValidateRows)
 // consumes — emitting and validating are the same wire format.
-func FileFindings(r *RunResult, journalPath string) ([]byte, error) {
+// runID is the AC-9 correlation key stamped on every row (MSF-031: the
+// journal, the CLI output and the rows all name the same run).
+func FileFindings(r *RunResult, runID, journalPath string) ([]byte, error) {
 	if len(r.Findings) == 0 {
 		return nil, nil
 	}
@@ -247,8 +252,9 @@ func FileFindings(r *RunResult, journalPath string) ([]byte, error) {
 		return rows[i].ID < rows[j].ID
 	})
 	for i := range rows {
-		rows[i].Reasoning = fmt.Sprintf("battery journal: %s | verdict %s | %s",
-			journalPath, rows[i].Verdict, rows[i].Reason)
+		rows[i].RunID = runID
+		rows[i].Reasoning = fmt.Sprintf("battery run %s journal: %s | verdict %s | %s",
+			runID, journalPath, rows[i].Verdict, rows[i].Reason)
 		row, err := json.Marshal(rows[i])
 		if err != nil {
 			return nil, fmt.Errorf("findings: %w", err)
@@ -262,9 +268,9 @@ func FileFindings(r *RunResult, journalPath string) ([]byte, error) {
 // WriteFindings writes the findings JSONL to <dir>/findings.jsonl (the
 // AC-18 artefact; empty file when nothing was found — a clean battery
 // writes the empty file rather than no file, so "no findings" is
-// distinguishable from "not run").
-func WriteFindings(dir string, r *RunResult, journalPath string) (string, int, error) {
-	b, err := FileFindings(r, journalPath)
+// distinguishable from "not run"). runID rides every emitted row (AC-9).
+func WriteFindings(dir string, r *RunResult, runID, journalPath string) (string, int, error) {
+	b, err := FileFindings(r, runID, journalPath)
 	if err != nil {
 		return "", 0, err
 	}

@@ -300,7 +300,7 @@ func TestJournalRecordsRoundTrip(t *testing.T) {
 		}
 	}
 	// AC-18 evidence half: the journal path rides in the findings
-	fb, err := FileFindings(res, path)
+	fb, err := FileFindings(res, runID, path)
 	if err != nil || len(fb) == 0 {
 		t.Fatalf("findings bytes: %v (%d bytes)", err, len(fb))
 	}

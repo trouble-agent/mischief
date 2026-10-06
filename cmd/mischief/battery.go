@@ -121,8 +121,15 @@ func cmdBattery(args []string) int {
 	}
 
 	// Journal first: the findings' reasoning carries the journal path
-	// (AC-18), so the path must exist before rows are rendered.
+	// (AC-18), so the path must exist before rows are rendered. The run
+	// id is already stamped on the result by the runner (Run derives it
+	// from the finished result); re-derive here and assert the same
+	// value — a mismatch would break the AC-9 correlation.
 	runID := battery.RunResultRunID(res)
+	if res.RunID != runID {
+		fmt.Fprintln(os.Stderr, "battery: run id drifted between the runner and the CLI derivation:", res.RunID, runID)
+		return 1
+	}
 	journalPath, jerr := battery.WriteJournal(*dir, res.JournalRecords(runID))
 	if jerr != nil {
 		fmt.Fprintln(os.Stderr, "battery: journal write failed:", jerr)
@@ -159,11 +166,16 @@ func cmdBattery(args []string) int {
 		}
 	}
 	fmt.Println(res.Counts())
+	// AC-9's CLI hop (MSF-031): the run's AGGREGATE verdict value and the
+	// run id print together — the same aggregate the journal's verdict
+	// record carries and the same id every journal record and findings
+	// row names, so the three hops correlate by grep on one line.
+	fmt.Printf("verdict: %s (run %s)\n", res.AggregateVerdict(), runID)
 
 	exit := 0
 	// Findings (AC-18): emitted + validated when --file-rows.
 	if *fileRows {
-		p, n, err := battery.WriteFindings(outDir, res, journalPath)
+		p, n, err := battery.WriteFindings(outDir, res, runID, journalPath)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "battery:", err)
 			return 1
