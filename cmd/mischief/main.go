@@ -18,7 +18,9 @@
 //   - no default target (a verb without a resolved target refuses, exit 2);
 //   - protected targets refuse at resolution (rails.Resolve, AC-7);
 //   - the sanction marker gate runs before any verb that could arm or land
-//     (SPEC-13/MSF-020 stub: fail closed, naming host + missing marker);
+//     (SPEC-13/MSF-020; since MSF-032 the gate covers plan + selftest +
+//     battery — the fault-landing verbs — fail closed, naming host and
+//     missing marker);
 //   - the load gate refuses to land on a saturated host (AC-8; M1 reads
 //     the live numbers and surfaces the measurement).
 //

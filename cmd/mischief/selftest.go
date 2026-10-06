@@ -8,6 +8,7 @@ import (
 
 	"github.com/trouble-agent/mischief/internal/catalog"
 	"github.com/trouble-agent/mischief/internal/rails"
+	"github.com/trouble-agent/mischief/internal/sanction"
 	"github.com/trouble-agent/mischief/internal/selftest"
 )
 
@@ -40,6 +41,17 @@ func cmdSelftest(args []string) int {
 	}
 	if *all && *prim != "" {
 		fmt.Fprintln(os.Stderr, "selftest: --all and --primitive are mutually exclusive")
+		return 2
+	}
+
+	// SPEC-13 sanction gate (MSF-032, found by MSF-022): selftest LANDS
+	// faults — every covered primitive is armed, landed and reverted on
+	// this host — so it is gated exactly like plan: fail-closed BEFORE any
+	// catalog work or journal write on an unsanctioned host. The plane
+	// provisions the marker on the agent; the scheduler host must stay
+	// marker-absent (MSF-020), which makes that host refuse here.
+	if err := sanction.Check(sanction.Options{}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
 

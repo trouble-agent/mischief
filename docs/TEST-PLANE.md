@@ -68,8 +68,10 @@ still-live agent (and records that destroy, pass or fail).
 - the SPEC-13 sanction marker: a reason-bearing file at
   `$HOME/mischief-sanction` (`/etc/` is not writable at L1), surfaced via
   `MISCHIEF_SANCTION_FILE` — the plane provisions the marker, it does not
-  bypass the check; on an unsanctioned host `selftest` would refuse (exit 2)
-  and the plane would grade that a FAIL;
+  bypass the check; on an unsanctioned host `selftest` refuses (exit 2)
+  and the plane grades that a FAIL. (True since MSF-032: the gate
+  previously covered `plan` only, so the verb ran unsanctioned — measured
+  2026-10-06 on the scheduler host, filed as MSF-032.)
 - `mischief selftest --all`: L0 scratch land+prove+revert per primitive
   (AC-3 landed-proof measured, AC-4 revert byte-compared), exit 0 only when
   every primitive is green-or-skip, plus the AC-19 L1 admission report on

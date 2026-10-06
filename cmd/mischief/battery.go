@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/trouble-agent/mischief/internal/battery"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // battery.go — the `mischief battery` verb (SPEC-10, MSF-011).
@@ -62,6 +63,17 @@ func cmdBattery(args []string) int {
 	}
 	if !*quick && *projects == "" && *prims == "" {
 		fmt.Fprintln(os.Stderr, "battery: nothing to run — pass --quick (the parity matrix), or --project/--primitive for the full matrix")
+		return 2
+	}
+
+	// SPEC-13 sanction gate (MSF-032, found by MSF-022): battery executes
+	// the matrix cell by cell — each cell lands its primitive — so it is
+	// gated exactly like plan, and the gate runs before EVERYTHING,
+	// --dry-run included (plan's posture: a host-posture check is not a
+	// landing act). The plane provisions the marker on the agent; the
+	// scheduler host must stay marker-absent (MSF-020).
+	if err := sanction.Check(sanction.Options{}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
 

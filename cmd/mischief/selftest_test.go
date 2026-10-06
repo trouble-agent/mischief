@@ -7,6 +7,20 @@ import (
 	"testing"
 )
 
+// writeSanctionMarker provisions a reason-bearing marker file and points
+// MISCHIEF_SANCTION_FILE at it (the SPEC-13 env half — the plane's agent
+// shape) for tests that must reach code BEHIND the MSF-032 sanction gate.
+// The gate is fail-closed on the real host posture, which the test process
+// shares; the marker is the sanctioned posture, nothing more.
+func writeSanctionMarker(t *testing.T) {
+	t.Helper()
+	marker := filepath.Join(t.TempDir(), "mischief-sanction")
+	if err := os.WriteFile(marker, []byte("reason: cmd-verb test — sanctioned posture for this test only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MISCHIEF_SANCTION_FILE", marker)
+}
+
 // selftest-verb tests (MSF-015): usage refusals, catalog validation, the
 // journal write, and the AC-19 wiring line. The live land+revert loop is
 // covered by internal/selftest's own suite (TestLiveSelftestAllGreenOrSkip).
@@ -35,6 +49,7 @@ func TestSelftestVerbRequiresSelector(t *testing.T) {
 // catalog refuses with exit 2 naming the catalog (the unknown-primitive
 // shape — never a silent pass, never a skip).
 func TestSelftestVerbUnknownPrimitiveRefuses(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before catalog validation
 	dir := t.TempDir()
 	code, stderr := captureStderr(t, func() int {
 		return run([]string{"selftest", "--primitive", "ZZZ-999", "--dir", dir})
@@ -52,6 +67,7 @@ func TestSelftestVerbUnknownPrimitiveRefuses(t *testing.T) {
 // writes the journal file (JSONL, in the journal package's record
 // format), and demonstrates the AC-19 wiring for the primitive.
 func TestSelftestVerbWritesJournalAndWiring(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before the land+revert loop
 	dir := t.TempDir()
 	code, out := captureStdout(t, func() int {
 		return run([]string{"selftest", "--primitive", "P-001", "--dir", dir})
