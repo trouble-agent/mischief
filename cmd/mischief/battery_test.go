@@ -31,6 +31,7 @@ func TestBatteryVerbRequiresMode(t *testing.T) {
 // matrix (all five legacy cells, named) and executes nothing (no run dir
 // is created).
 func TestBatteryDryRunPrintsMatrix(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before --dry-run (plan's posture: a host-posture check is not a landing act)
 	dir := t.TempDir()
 	code, out := captureStdout(t, func() int {
 		return run([]string{"battery", "--quick", "--dry-run", "--dir", dir})
@@ -54,6 +55,7 @@ func TestBatteryDryRunPrintsMatrix(t *testing.T) {
 // artefact (JSON naming every legacy cell + the detection note), and —
 // under --file-rows — findings.jsonl that passes the in-package validator.
 func TestBatteryQuickLiveRunsAndEmitsArtefacts(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before the live matrix
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "art")
 	code, out := captureStdout(t, func() int {
@@ -116,6 +118,7 @@ func TestBatteryQuickLiveRunsAndEmitsArtefacts(t *testing.T) {
 // TestBatteryFullMatrixUnknownPrimitiveRefuses: a --primitive id outside
 // the catalog refuses with exit 2 BEFORE anything executes.
 func TestBatteryFullMatrixUnknownPrimitiveRefuses(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before catalog validation
 	dir := t.TempDir()
 	code, stderr := captureStderr(t, func() int {
 		return run([]string{"battery", "--primitive", "ZZZ-999", "--dir", dir})
