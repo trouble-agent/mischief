@@ -131,6 +131,11 @@ type RunResult struct {
 	// Findings is the finding set derived from the cell outcomes (the
 	// board-row feed; empty when nothing found).
 	Findings []Finding `json:"findings,omitempty"`
+	// RunID is the content-derived run id, stamped by the runner's
+	// caller (cmd: battery.RunResultRunID) BEFORE findings are rendered
+	// or the artefact is built — the AC-9 correlation key every hop
+	// (journal record, CLI output, findings row) must carry (MSF-031).
+	RunID string `json:"run_id,omitempty"`
 	// StartedAt / FinishedAt are unix seconds.
 	StartedAt  int64 `json:"started_at"`
 	FinishedAt int64 `json:"finished_at"`
@@ -150,6 +155,24 @@ func (r *RunResult) Counts() string {
 		}
 	}
 	return fmt.Sprintf("battery: %d pass, %d skip, %d fail (of %d cells)", pass, skip, fail, len(r.Cells))
+}
+
+// AggregateVerdict returns the run's aggregate verdict (verdict.Aggregate
+// over the per-cell results: unanimous → the common verdict,
+// disagreement → flaky, zero cells → void) — the SAME value the journal's
+// verdict/run_closed records carry, exposed so the CLI hop can print the
+// aggregate verdict with the run id (AC-9: the aggregate value survives
+// to the output, MSF-031).
+func (r *RunResult) AggregateVerdict() journal.Verdict {
+	graded := make([]verdict.Result, 0, len(r.Cells))
+	for i := range r.Cells {
+		graded = append(graded, verdict.Result{
+			Verdict:  r.Cells[i].Verdict,
+			Reason:   r.Cells[i].Reason,
+			Timeline: r.Cells[i].Timeline,
+		})
+	}
+	return verdict.Aggregate(graded).Verdict
 }
 
 // findingVerdicts is the set of verdicts that file a finding (a finding is
@@ -180,7 +203,11 @@ func (r *RunResult) deriveFindings() {
 			continue
 		}
 		r.Findings = append(r.Findings, Finding{
-			ID:       fmt.Sprintf("MSF-BAT-%s", c.Cell.ID),
+			ID: fmt.Sprintf("MSF-BAT-%s", c.Cell.ID),
+			// RunID is the run id stamped later by FileFindings (the
+			// id is derived after the run; the filer renders at emit
+			// time when it is known) — AC-9's correlation key.
+			RunID:    r.RunID,
 			Priority: priorityFor(c.Verdict),
 			Title: fmt.Sprintf("battery finding: %s on %s (%s) — %s",
 				c.Cell.Primitive, c.Cell.Target.Project, c.Verdict, firstLine(c.Reason)),
@@ -362,6 +389,12 @@ func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 		res.Cells = append(res.Cells, cr)
 	}
 	res.FinishedAt = rn.now().Unix()
+	// The run id is a pure function of the finished result — the runner
+	// derives it once here so EVERY consumer (journal records, the CLI's
+	// verdict line, findings rows) reads the same value off the result
+	// instead of re-deriving or forgetting (AC-9's correlation key,
+	// MSF-031).
+	res.RunID = RunResultRunID(res)
 	res.deriveFindings()
 	return res, nil
 }
