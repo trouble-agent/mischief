@@ -1,46 +1,81 @@
-# Capability audit — measured on this host, 2026-09-27
+# Capability audit — measured on this host, 2026-10-06
 
-Raw output of `probe/capability-probe.sh` plus two mechanism proofs compiled and run the
-same session. Every line below is re-runnable from this directory; nothing here is
-inferred.
+**Transcript provenance (MSF-024).** The first block below is the verbatim stdout of
+`bash capability-probe.sh` run from this `probe/` directory on 2026-10-06 —
+transcript generated from capability-probe.sh @ `09eaff0b8738` (full:
+`git rev-parse HEAD:probe/capability-probe.sh` = `09eaff0b873830586621575caa5e74a9d60f622d`).
+If the script is ever edited, the hash above changes and this block stops being
+authoritative until regenerated: re-run `cd probe && bash capability-probe.sh` and
+diff your output against the block — every difference is then either host drift or
+script drift, never stale-doc noise.
+
+The remaining blocks are **manual-run**: mechanism proofs that were compiled and run
+by hand the same session. They are NOT produced by the script alone and are labelled
+as such. Volatile fields in every block (PSI counters, systemd unit/invocation ids,
+netem qdisc handle and seed, pids, timestamps) differ on every run by design.
+
+## Script transcript (verbatim output of capability-probe.sh @ 09eaff0b8738)
 
 ```
-$ bash capability-probe.sh
-== host ==            7.0.0-31-generic / cores=16 / uid=1000
-== cgroup ==          fstype=cgroup2fs
-                      controllers=cpuset cpu io memory hugetlb pids rdma misc dmem
-                      subtree=cpuset cpu io memory hugetlb pids rdma misc dmem
-== user delegation == /sys/fs/cgroup/user.slice/user-1000.slice (root-owned)
-                      user_cgroup_controllers=cpu memory pids
-== cgroup create ==   cgroup_mkdir=DENIED(unprivileged)
-== psi ==             cpu io memory   (io some avg10=19.35 avg60=18.94 total=44178336648)
-== sudo ==            passwordless_sudo=OK
-== tools ==           cc gcc tc ip unshare nsenter dmsetup losetup mkfs.ext4 fsfreeze
-                      strace jq socat present;  zig=MISSING
-== namespaces ==      max_user_ns=243115; unshare --time --boottime 1000 true -> EPERM
-== seccomp ==         Seccomp: 0 (probe process unfiltered)
-== docker ==          docker=29.1.3 cgroup=2
-== loop/devmapper ==  /dev/loop-control /dev/mapper/control present; loop_free=/dev/loop27
+== host ==
+7.0.0-31-generic
+cores=16
+uid=1000
+== cgroup ==
+fstype=cgroup2fs
+controllers=cpuset cpu io memory hugetlb pids rdma misc dmem
+subtree=cpuset cpu io memory hugetlb pids rdma misc dmem
+== user delegation ==
+drwxr-xr-x+ 6 root root 0 Oct  5 23:48 /sys/fs/cgroup/user.slice/user-1000.slice
+user_cgroup_controllers=cpu memory pids
+== cgroup create ==
+cgroup_mkdir=DENIED(unprivileged)
+== psi ==
+cpu io memory 
+some avg10=1.18 avg60=2.03 avg300=1.47 total=309848436301
+== sudo ==
+passwordless_sudo=OK
+== tools ==
+cc=/usr/bin/cc gcc=/usr/bin/gcc zig=MISSING tc=/usr/sbin/tc ip=/usr/sbin/ip unshare=/usr/bin/unshare nsenter=/usr/bin/nsenter dmsetup=/usr/sbin/dmsetup losetup=/usr/sbin/losetup mkfs.ext4=/usr/sbin/mkfs.ext4 fsfreeze=/usr/sbin/fsfreeze strace=/usr/bin/strace jq=/usr/bin/jq socat=/usr/bin/socat 
+== freezer ==
+freezer=absent-at-root
+== namespaces ==
+max_user_ns=243115
+unshare: unshare failed: Operation not permitted
+timens_noroot=needs-privilege
+== seccomp ==
+Seccomp:	0
+== docker ==
+docker=29.1.3 cgroup=2
+== loop/devmapper ==
+/dev/loop-control /dev/mapper/control 
+loop_free=/dev/loop27
 ```
+
+## Mechanism proofs (manual-run: compiled and run by hand, not by the script)
 
 ```
 $ cc -shared -fPIC -O2 -o libfault-probe.so libfault-probe.c -ldl && cc -O2 -o victim victim.c
+(no output; compile OK)
+
 $ cc -O2 -o seccomp-probe seccomp-probe.c && ./seccomp-probe
 seccomp_user_notify=SUPPORTED notif=80 resp=24 notif_sizes_probe=OK
 
 $ ./victim /tmp/mc-victim.txt                       # A: control run, no fault
 write(/tmp/mc-victim.txt) -> 6 errno=-
 write(/dev/null) -> 6 errno=-
--rw------- 1 kara kara 6 /tmp/mc-victim.txt          # 6 bytes written
+-rw------- 1 kara kara 6 Oct  6 05:45 /tmp/mc-victim.txt    # 6 bytes written
 
 $ MCFAULT="write:mc-victim.txt:EIO" LD_PRELOAD=./libfault-probe.so ./victim /tmp/mc-victim.txt
 write(/tmp/mc-victim.txt) -> -1 errno=Input/output error   # <-- fault LANDED
 write(/dev/null) -> 6 errno=-                              # unaffected fd keeps working
 /tmp/mc-victim.txt -> 0 bytes                              # target state proves the fault
-/tmp/mc-fault-hits.<pid> -> "hits=1 rule=write:mc-victim.txt:EIO"   # <-- LANDED-PROOF
+/tmp/mc-fault-hits.<pid> -> "hits=1 rule=write:mc-victim.txt:EIO"   # <-- LANDED-PROOF (pid-keyed; this run's file verified to contain exactly that line)
 $ MCFAULT="write:mc-victim.txt:EIO:1" LD_PRELOAD=./libfault-probe.so ./victim /tmp/mc-victim.txt
 write(/tmp/mc-victim.txt) -> -1 errno=Input/output error   # bounded fault: exactly one hit
 ```
+
+## Network fault substrate (manual-run: sudo netns + netem, run by hand)
 
 ```
 $ sudo ip netns add mc-probe-ns                  # network fault substrate
@@ -48,7 +83,7 @@ netns_add=OK
 $ sudo ip netns exec mc-probe-ns tc qdisc add dev lo root netem loss 100%
 netem_loss100=OK
 $ sudo ip netns exec mc-probe-ns tc qdisc show dev lo
-qdisc netem 8001: root refcnt 2 limit 1000 loss 100% seed 844288704255200251
+qdisc netem 8003: root refcnt 2 limit 1000 loss 100% seed 969907942566631981
 $ sudo ip netns exec mc-probe-ns timeout 5 ping -c1 127.0.0.1 ; echo rc=$?
 rc=2                                             # the fault LANDED (loopback blackholed)
 $ sudo ip netns del mc-probe-ns && echo netns_del=OK
@@ -58,13 +93,18 @@ $ unshare -Un sh -c 'ip link add veth0 type veth peer name veth1'
 RTNETLINK answers: Operation not permitted        # Ubuntu AppArmor userns restriction
 ```
 
+## Rootless resource limits + freezer (manual-run: run by hand)
+
 ```
 $ systemd-run --user --scope -p MemoryMax=64M -p CPUQuota=10% -p TasksMax=32 true
-Running as unit: run-p483350-i201489806.scope      # rootless resource limits WORK
+Running as unit: run-p3609447-i451630401.scope; invocation ID: 9f5aec068df14d2985e7c5a82e96d067    # rootless resource limits WORK
 $ systemctl --user freeze --help >/dev/null && echo user_freeze_verb=present
 user_freeze_verb=present                           # systemd 259
 $ sudo mkdir /sys/fs/cgroup/mc-probe && ls /sys/fs/cgroup/mc-probe | grep -cE 'cgroup.freeze|memory.max|cpu.max'
 4                                                  # a child cgroup (as root) HAS cgroup.freeze
+                                                   # (note: the probe script's own == freezer == section
+                                                   #  reports freezer=absent-at-root — the ROOT cgroup has no
+                                                   #  cgroup.freeze; a root-created CHILD does. Both are true.)
 ```
 
 ## Summary
