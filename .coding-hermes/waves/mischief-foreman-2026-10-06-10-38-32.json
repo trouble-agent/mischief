@@ -1,0 +1,62 @@
+{
+  "wave_id": "mischief-foreman-2026-10-06-10-38-32",
+  "tick_id": "mischief-foreman-2026-10-06-10-38-32",
+  "project": "mischief",
+  "created_at": "2026-10-06T10:38:32-05:00",
+  "recovered_from": "mischief-foreman-2026-10-06-10-14-51",
+  "recovery_note": "Prior wave dispatched 0 workers (no worktrees, no branches, rows still pending). Manifest closed as re-dispatched; same 5 tasks re-composed.",
+  "tasks": [
+    {
+      "id": "MSF-031",
+      "title": "AC-9 completion: journal->CLI output->findings row hops",
+      "priority": "P1",
+      "complexity": 3,
+      "worktree": "/home/kara/worktrees/mischief-MSF-031",
+      "branch": "wt/MSF-031",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default"
+    },
+    {
+      "id": "MSF-022",
+      "title": "Scheduler readiness: register the mischief project (DB + fleet config)",
+      "priority": "P2",
+      "complexity": 3,
+      "worktree": "/home/kara/worktrees/mischief-MSF-022",
+      "branch": "wt/MSF-022",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default"
+    },
+    {
+      "id": "MSF-017",
+      "title": "M6 fleet adoption: -chaos satellite lane, per-project fault matrices",
+      "priority": "P3",
+      "complexity": 3,
+      "worktree": "/home/kara/worktrees/mischief-MSF-017",
+      "branch": "wt/MSF-017",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default"
+    },
+    {
+      "id": "MSF-019",
+      "title": "Public-readiness retrospective audit (paths, identity, incident text)",
+      "priority": "P3",
+      "complexity": 2,
+      "worktree": "/home/kara/worktrees/mischief-MSF-019",
+      "branch": "wt/MSF-019",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default"
+    },
+    {
+      "id": "MSF-024",
+      "title": "Stale probe transcript: RESULTS.md vs capability-probe.sh",
+      "priority": "P4",
+      "complexity": 3,
+      "worktree": "/home/kara/worktrees/mischief-MSF-024",
+      "branch": "wt/MSF-024",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default"
+    }
+  ],
+  "status": "finished",
+  "finished_at": "2026-10-06T12:20:00-05:00"
+}
