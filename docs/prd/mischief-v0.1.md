@@ -24,7 +24,7 @@ a verdict with a journal behind it.
 
 ### 2.1 The fleet's entire fault-injection surface is 5 bash cells, and 4 of them have lied
 
-`~/.hermes/scripts/bunker-qa.sh` is the only fleet-owned thing that injects faults.
+`~/…/bunker-qa.sh` is the only harness-owned thing that injects faults.
 It carries five cells — `chaos-disconnect`, `chaos-shutdown`, `chaos-corruption`,
 `chaos-resource`, `chaos-errorpath` — and its own comments record that each has
 graded something that was not the product (counted live from the file today):
@@ -35,7 +35,7 @@ graded something that was not the product (counted live from the file today):
 | QA-TROUBLE-2 | `chaos-disconnect` verdict | a harness artifact: the 120 s window was shorter than the ~2.5 min suite, later resized to 2×+30 s |
 | QA-TROUBLE-6 | `chaos-resource` INFO | the full suite OOM'd inside the harness's own 3 GB cap — a statement about the cap, not the product |
 | QA-TROUBLE-8 | `chaos-shutdown` FAIL rc=125 | the JIT agent's static docker CLI was missing; the cell measured the harness |
-| 9router family (QA-9ROUTER-19/20) | `chaos-corruption`/`chaos-errorpath` | vacuous `rc=1` verdicts on a build that never completed |
+| QA family (QA-19/20) | `chaos-corruption`/`chaos-errorpath` | vacuous `rc=1` verdicts on a build that never completed |
 
 **5 cells, at least 4 of which have produced a verdict about the harness rather than
 the product.** None of them can distinguish *"the fault landed and the product

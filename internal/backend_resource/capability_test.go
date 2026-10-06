@@ -197,7 +197,7 @@ func TestMountPointOctalDecoding(t *testing.T) {
 		pathPrefixMatch("/sys/fs/cgroup", "/sys/fs/cgroupfoo") {
 		t.Fatal("pathPrefixMatch component boundary broken")
 	}
-	if !pathPrefixMatch("/", "/home/kara/anything") {
+	if !pathPrefixMatch("/", "/home/demo/anything") {
 		t.Fatal("pathPrefixMatch: the root mount must cover every absolute path")
 	}
 }

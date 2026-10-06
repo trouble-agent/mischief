@@ -6,7 +6,7 @@
     {
       "task_id": "MSF-015",
       "title": "M1 selftest harness: L0 scratch targets where every primitive must prove land + revert",
-      "worktree": "/home/kara/worktrees/mischief-MSF-015",
+      "worktree": "~/worktrees/mischief-MSF-015",
       "branch": "wt/MSF-015",
       "base_sha": "0d32519",
       "worker": "hermes chat -q (brief /tmp/msf015-brief.md) -m glm-5.3-flash --provider zai-glm-default -s coding-hermes-worker --ignore-rules -Q",

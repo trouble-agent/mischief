@@ -34,7 +34,7 @@ const (
 	ProtectedScheduler ProtectedKind = "scheduler"
 	// ProtectedGateway is the hermes gateway.
 	ProtectedGateway ProtectedKind = "gateway"
-	// ProtectedMemoryDaemon is the memory daemon (duckbrain).
+	// ProtectedMemoryDaemon is the host's memory daemon (internal service).
 	ProtectedMemoryDaemon ProtectedKind = "memory-daemon"
 )
 

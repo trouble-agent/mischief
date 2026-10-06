@@ -18,7 +18,7 @@ func TestParseAgentIDFromSpawnOutput(t *testing.T) {
 	}{
 		{
 			name: "real spawn output shape (current daemon: Agent created line)",
-			out:  "Creating agent...\nAgent created: 7bb5dcc2\n\n══════════ Connection Bundle ══════════\n\n  SSH Key:      /home/kara/.config/bunker/keys/7bb5dcc2\n═ Use `bunker exec` to run commands in this agent ═",
+			out:  "Creating agent...\nAgent created: 7bb5dcc2\n\n══════════ Connection Bundle ══════════\n\n  SSH Key:      /home/demo/.config/bunker/keys/7bb5dcc2\n═ Use `bunker exec` to run commands in this agent ═",
 			want:  "7bb5dcc2",
 		},
 		{

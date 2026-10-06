@@ -42,7 +42,7 @@ type DetectionEntry struct {
 	// on this cell), "error" (the check itself failed).
 	State string `json:"state"`
 	// Reason carries the gap detail / not-wired reason / error text. A
-	// null axis always carries a reason (Bane's null-with-reason law).
+	// null axis always carries a reason (the null-with-reason rule).
 	Reason string `json:"reason"`
 	// Within is the measured time from land to the observed record, when
 	// detected.

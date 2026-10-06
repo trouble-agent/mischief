@@ -9,7 +9,7 @@
       "cluster": [
         "MSF-004"
       ],
-      "worktree": "/home/kara/worktrees/mischief-MSF-004",
+      "worktree": "~/worktrees/mischief-MSF-004",
       "branch": "wt/MSF-004",
       "brief": "/tmp/msf-wave2/MSF-004.brief.md",
       "model": "glm-5.3-flash",
@@ -21,7 +21,7 @@
       "cluster": [
         "MSF-030"
       ],
-      "worktree": "/home/kara/worktrees/mischief-MSF-030",
+      "worktree": "~/worktrees/mischief-MSF-030",
       "branch": "wt/MSF-030",
       "brief": "/tmp/msf-wave2/MSF-030.brief.md",
       "model": "glm-5.3-flash",
@@ -33,7 +33,7 @@
       "cluster": [
         "MSF-003"
       ],
-      "worktree": "/home/kara/worktrees/mischief-MSF-003",
+      "worktree": "~/worktrees/mischief-MSF-003",
       "branch": "wt/MSF-003",
       "brief": "/tmp/msf-wave2/MSF-003.brief.md",
       "model": "glm-5.3-flash",

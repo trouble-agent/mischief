@@ -7,7 +7,7 @@
     {
       "task_id": "MSF-011",
       "title": "SPEC-10 battery + filing: fault matrix, detection matrix artefact, findings as board rows, --quick parity",
-      "worktree": "/home/kara/worktrees/mischief-MSF-011",
+      "worktree": "~/worktrees/mischief-MSF-011",
       "branch": "wt/MSF-011",
       "base_sha": "c0658b2",
       "worker": "hermes chat -q (brief /tmp/msf011-brief.md) -m glm-5.3-flash --provider zai-glm-default -s coding-hermes-worker --ignore-rules --yolo -Q",
@@ -16,7 +16,7 @@
     {
       "task_id": "MSF-010",
       "title": "SPEC-09 backends: docker node faults + provider simulator (API/DNS/object/metadata) + v0.2 real adapter",
-      "worktree": "/home/kara/worktrees/mischief-MSF-010",
+      "worktree": "~/worktrees/mischief-MSF-010",
       "branch": "wt/MSF-010",
       "base_sha": "c0658b2",
       "worker": "hermes chat -q (brief /tmp/msf010-brief.md) -m glm-5.3-flash --provider zai-glm-default -s coding-hermes-worker --ignore-rules --yolo -Q",
@@ -25,7 +25,7 @@
     {
       "task_id": "MSF-012",
       "title": "SPEC-11 operations: install, privileged helper + sudoers drop-in, doctor, privilege audit, retention, uninstall",
-      "worktree": "/home/kara/worktrees/mischief-MSF-012",
+      "worktree": "~/worktrees/mischief-MSF-012",
       "branch": "wt/MSF-012",
       "base_sha": "c0658b2",
       "worker": "hermes chat -q (brief /tmp/msf012-brief.md) -m glm-5.3-flash --provider zai-glm-default -s coding-hermes-worker --ignore-rules --yolo -Q",
