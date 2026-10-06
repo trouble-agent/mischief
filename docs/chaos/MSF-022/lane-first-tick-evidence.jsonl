@@ -1,0 +1,8 @@
+{"step":"preflight","status":"pass","detail_b64":"c2VydmVyIGJ1bmtlci1tdnAgcmVhY2hhYmxlOiBBZ2VudHM6ICAgNy81MA==","ts":"1791286086"}
+{"step":"build","status":"pass","detail_b64":"Q0dPX0VOQUJMRUQ9MCBsaW51eC9hbWQ2NCBtaXNjaGllZiBlYTkxNDdhNzFjODk6IDExNzk5OTUwIGJ5dGVzIChubyBhZ2VudCB0b29sY2hhaW4gbmVlZGVkKQ==","ts":"1791286086"}
+{"step":"spawn","status":"pass","detail_b64":"YWdlbnQgMTExNWRjMTEgb24gYnVua2VyLW12cCAodHRsIDJoKSwgZXhlYyBnYXRlIHBhc3NlZA==","ts":"1791286103"}
+{"step":"ship","status":"pass","detail_b64":"cmVwbyBzaGlwcGVkIChmcm96ZW4gSEVBRD1lYTkxNDdhNzFjODk6IDQ5MjUyM0IgdGFyLmd6LCBnby5tb2QgdmVyaWZpZWQsIDIxNSB0cmFja2VkIGZpbGVzKQ==","ts":"1791286113"}
+{"step":"ship","status":"pass","detail_b64":"YmluYXJ5IHNoaXBwZWQgc2hhMjU2LXZlcmlmaWVkOiA5OTE0ZGU4Nzc2Yzk0ZWNl4oCm","ts":"1791286123"}
+{"step":"collect","status":"pass","detail_b64":"am91cm5hbCAzNyBsaW5lcyBzaGEyNTYtdmVyaWZpZWQ7IGxhbmRlZC1wcm9vZiBjb3VudGVycyB2ZXJpZmllZDogbGFuZGVkPTEzIHJldmVydGVkPTEzIHNraXBwZWQ9ODsgc2VsZnRlc3Quc3Rkb3V0IDcyNTkgYnl0ZXMgcHVsbGVk","ts":"1791286133"}
+{"step":"selftest","status":"pass","detail_b64":"cmVtb3RlIHNlbGZ0ZXN0IC0tYWxsIGV4aXQgMCDihpIgcGFzczsgc3VtbWFyeTogc2VsZnRlc3Q6IDEzIHBhc3MsIDggc2tpcCwgMCBmYWlsIChvZiAyMSk=","ts":"1791286133"}
+{"step":"destroy","status":"pass","detail_b64":"VEVBUkRPV04tR09ORTogYWdlbnQgMTExNWRjMTEgZGVzdHJveWVkIGFuZCBhYnNlbnQgZnJvbSB0aGUgYnVua2VyLW12cCBsaXN0ICh6ZXJvIHJlc2lkdWUp","ts":"1791286168"}
