@@ -1,0 +1,1 @@
+rails: host_not_sanctioned: host "karaHermes-mde-7840hs" is not sanctioned for mischief (SPEC-13): no readable marker file at /etc/mischief-sanction (override with MISCHIEF_SANCTION_FILE) carrying a reason line, and MISCHIEF_SANCTION is not set to "1" — mischief runs only on an ephemeral sanctioned host; nothing was written
