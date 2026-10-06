@@ -1,0 +1,75 @@
+# mischief -chaos satellite lane template (M6, MSF-017)
+#
+# ONE lane per project, scoped to THAT project. This file is the TEMPLATE:
+# substitute every <PLACEHOLDER> before use — an unsubstituted token is
+# refused by `mischief chaos check` (placeholder in
+# lane/project/namespace/primary_board), never run as-is.
+#
+# The machine-checked contract lives in internal/chaos (ValidateLane);
+# this file carries the same rules as comments so the template documents
+# what the code enforces. docs/CHAOS-LANE.md is the full page.
+#
+# ── ISOLATION CONTRACT (encoded in ValidateLane, not just prose) ─────────────
+# The chaos lane may not run a fault on the scheduler's own host
+# ("fleet-main-host", matched case-insensitively; extend the list below for
+# other protected hosts). The host must carry the mischief sanction marker
+# (SPEC-13: /etc/mischief-sanction with a reason line, or
+# MISCHIEF_SANCTION=1) — the lane declares sanctioned: true and the runtime
+# enforces the real marker before any landing act (internal/sanction).
+
+schema: mischief.chaos.lane/v1
+
+# The lane name: <project>-chaos, exactly (validated — one lane per
+# project, named for it).
+lane: <PROJECT>-chaos
+
+# The owning project: every matrix cell, finding row and journal record
+# belongs to THIS project. A fleet-wide matrix is refused by design.
+project: <PROJECT>
+
+# The lane's OWN namespace id — never the primary's, never shared with
+# another satellite.
+namespace: <PROJECT>-chaos-ns
+
+# Tick cadence (informational here; the scheduler owns enforcement).
+cadence: every 6h
+
+# The PRIMARY lane's board dir (absolute). The lane workdir carries
+# .coding-hermes/board as a SYMLINK to this dir, so the lane's own board
+# scan sees the primary's pending rows. A real directory there is a
+# severed lane and refuses (SymlinkEvidence).
+primary_board: <ABSOLUTE_PATH_TO_PRIMARY_BOARD>
+
+host:
+  # The sanctioned chaos host (a rootless bunker agent is the v0.1
+  # workhorse). The scheduler's own host refuses.
+  name: <CHAOS_HOST_NAME>
+  # SPEC-13: the marker contract is not optional.
+  sanctioned: true
+  marker_path: /etc/mischief-sanction
+
+matrix:
+  # "project" is the ONLY sanctioned scope (never a fleet-wide artifact
+  # generated N times).
+  scope: project
+  # Tier ceiling L0..L5: cells at a higher tier are excluded, with a named
+  # reason, from the generated matrix. 1 = the rootless-bunker workhorse
+  # ceiling (signals, prlimit, shim, proxy, scratch fs, cgroup2-by-scope).
+  tier_max: 1
+
+findings:
+  # "rows" is the ONLY sanctioned mode: findings land as board-vocabulary
+  # rows on the OWNING project's board (tasks.jsonl), validated before the
+  # append and duplicate-guarded. No operator in the loop.
+  mode: rows
+  # Findings land on the PRIMARY's board — the same dir as primary_board
+  # above (validated: a findings board elsewhere refuses).
+  board: <ABSOLUTE_PATH_TO_PRIMARY_BOARD>
+
+isolation:
+  # Hosts this lane must never run on, beyond the canonical scheduler host
+  # (case-insensitive). The fleet main host is listed explicitly even
+  # though it is forbidden by default — the list is the lane's own record
+  # of what it protects.
+  forbidden_hosts:
+    - fleet-main-host

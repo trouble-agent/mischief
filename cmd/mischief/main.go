@@ -86,6 +86,8 @@ func run(args []string) int {
 		return cmdPlane(args[1:])
 	case "battery":
 		return cmdBattery(args[1:])
+	case "chaos":
+		return cmdChaos(args[1:])
 	case "sim":
 		return cmdSim(args[1:])
 	case "serve":
@@ -120,6 +122,7 @@ Usage:
   mischief revert  (--all | --hold <id>) [--dir D]
   mischief doctor  [--catalog-dir D] [--json] [--self-check]
   mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
+  mischief chaos   matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim     --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
   mischief serve   --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
   mischief install    [--user U] [--prefix P] [--dry-run] [--no-drop-in]
