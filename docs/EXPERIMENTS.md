@@ -34,7 +34,7 @@ literals. Nothing fills them in: not the loader, not the planner, not the docs.
 They mark values that must be substituted BY HAND, for a specific scratch
 target, by the operator who runs the experiment — and in the rehearsal-only
 files the surrounding selectors do not resolve at all until SPEC-03 landed
-(see SPEC-03 gitreins task 6054b4d).
+(see SPEC-03 tracking task 6054b4d).
 
 ## Target-selector grammar (SPEC-03)
 

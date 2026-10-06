@@ -14,7 +14,7 @@
 //
 // --quick parity (S-5 / M4): the quick matrix is the reduced matrix whose
 // cells correspond ONE TO ONE to the five legacy bash chaos cells in
-// ~/.hermes/scripts/bunker-qa.sh (chaos-disconnect, chaos-shutdown,
+// ~/…/bunker-qa.sh (chaos-disconnect, chaos-shutdown,
 // chaos-corruption, chaos-resource, chaos-errorpath). Every quick cell
 // names the legacy cell it replaces and the catalog primitive that replaces
 // it; the parity property is pinned by test (a primitive set that stops
@@ -53,7 +53,7 @@ import (
 	"strings"
 )
 
-// LegacyCell is one legacy bash chaos cell from ~/.hermes/scripts/bunker-qa.sh
+// LegacyCell is one legacy bash chaos cell from ~/…/bunker-qa.sh
 // and the catalog primitive that replaces it. The pairing is the parity
 // contract of --quick (S-5): one cell, one primitive, one named replacement
 // reason.
@@ -70,7 +70,7 @@ type LegacyCell struct {
 }
 
 // legacyCells is THE parity table. The five cells are read from
-// ~/.hermes/scripts/bunker-qa.sh (cells 6-10 in that file: network cut,
+// ~/…/bunker-qa.sh (cells 6-10 in that file: network cut,
 // compose stop/kill, state-file truncate+restart, 3G memory-capped suite,
 // missing-config errorpath). Each maps to the catalog primitive whose fault
 // class the cell approximated:

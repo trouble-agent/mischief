@@ -7,7 +7,7 @@ harness with landed-proofs. Two committed runs are the evidence:
 `docs/battery/quick-c26bd0e3c51a85d1/` (MSF-016, docker-present host:
 5 pass, 0 skip, 0 fail — every cell's real actuator executed). The five
 legacy bash cells in
-`~/.hermes/scripts/bunker-qa.sh` are now SUPERSEDED: their replacements are
+`~/…/bunker-qa.sh` are now SUPERSEDED: their replacements are
 named, engine-graded, and covered by the S-1/S-5 tests
 (`internal/battery/parity_test.go`, `internal/battery/matrix_test.go`).
 Deletion of the bash cells is a FLEET-SIDE edit (the file is outside this
@@ -19,7 +19,7 @@ QA-TROUBLE-3 was the defining failure: a `cmd/`-layout repo whose "start"
 command never started the app, yet `chaos-corruption` graded **OK** — the
 verdict rested on the start command's EXIT CODE, not on any measured
 landing. That shape produced verdicts about the HARNESS, not the product
-(QA-TROUBLE-2/3/6/8, 9router QA-19/20). The replacement contract is S-1:
+(QA-TROUBLE-2/3/6/8, QA-19/20). The replacement contract is S-1:
 
 - start command not real (the landing path never proves) ⇒ **`no_op`**,
   the run FAILS, and the journal carries **no `fault_landed` record**;
@@ -66,7 +66,7 @@ named skip, 0 fail.
 
 ## Deletion checklist (fleet-side follow-up — NOT this repo)
 
-The five cells live in `~/.hermes/scripts/bunker-qa.sh`, a fleet-owned file
+The five cells live in `~/…/bunker-qa.sh`, a harness-owned script
 OUTSIDE this repo. The foreman follow-up executes exactly this:
 
 1. Delete the five cell blocks from `bunker-qa.sh` (the `run()` battery,

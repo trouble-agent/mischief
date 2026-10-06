@@ -37,6 +37,6 @@ container exit-137 + same-address return, inode identity, cgroup counter)
 — never on an exit code (AC-13 / S-1's contract; the no-landed-proof arm
 grading no_op is pinned by `TestS1ReplayNoLandedProofGradesNoOp`).
 
-Deletion of the five bash cells in `~/.hermes/scripts/bunker-qa.sh` is a
+Deletion of the five bash cells in `~/…/bunker-qa.sh` is a
 FLEET-SIDE follow-up (the file is outside this repo); it executes the
 checklist in `docs/BATTERY-PARITY.md`.

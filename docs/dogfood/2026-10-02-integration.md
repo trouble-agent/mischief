@@ -1,6 +1,6 @@
 # mischief dogfood integration report — 2026-10-02
 
-Run: mischief-dogfood lane (skill `coding-hermes-dogfood`), ~45 min hands-on.
+Run: mischief-dogfood review lane (independent hands-on audit), ~45 min.
 Verdict: **PROMISING-BUT-ROUGH** — per-surface: design+docs SHIPPABLE-as-design /
 experimental artifacts ROUGH (see findings MSF-024..027).
 
@@ -44,7 +44,7 @@ A real user of a design-stage project is (a) a future spec implementer and
   exists even if the victim lies. This is the differentiator vs the legacy
   bunker-qa chaos cells, and it held under real use.
 - The PRD's live-file claims check out: 5 chaos- cells (incl. chaos-probes) still
-  present in ~/.hermes/scripts/bunker-qa.sh (69 line-hits).
+  present in the harness's bunker-qa.sh script (69 line-hits).
 
 ## What did not (→ board rows)
 

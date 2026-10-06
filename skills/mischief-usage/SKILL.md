@@ -12,7 +12,7 @@ CLI to run; the usable surfaces are the catalog, the probe, and the YAMLs.
 ## What exists
 
 - `docs/prd/mischief-v0.1.md` — front door. Live-file claims about the fleet
-  (~/.hermes/scripts/bunker-qa.sh chaos cells) were verified 2026-10-02.
+  (the harness's bunker-qa.sh chaos cells) were verified 2026-10-02.
 - `docs/FAULT-CATALOG.md` — 104 primitives, 8 layers (P14 S14 R12 F16 N18 C12
   I14 T4). Counts verified exactly 2026-10-02 (recompute, never eyeball).
 - `docs/SPEC-PLAN.md` — SPEC-01..12, each must falsify the PRD + carry NOT-LIST.

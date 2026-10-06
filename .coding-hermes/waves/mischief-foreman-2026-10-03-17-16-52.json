@@ -9,7 +9,7 @@
    "cluster": [
     "MSF-029"
    ],
-   "worktree": "/home/kara/worktrees/mischief-MSF-029",
+   "worktree": "~/worktrees/mischief-MSF-029",
    "branch": "wt/MSF-029",
    "brief": "/tmp/2026-10-03-171652/msf-029/worker-brief.txt",
    "model": "glm-5.3-flash",

@@ -9,7 +9,7 @@
       "cluster": [
         "MSF-027"
       ],
-      "worktree": "/home/kara/worktrees/mischief-MSF-027",
+      "worktree": "~/worktrees/mischief-MSF-027",
       "branch": "wt/MSF-027",
       "brief": "/tmp/msf-wave/MSF-027.brief.md",
       "model": "glm-5.3-flash",
@@ -22,7 +22,7 @@
         "README-1",
         "DOC-4"
       ],
-      "worktree": "/home/kara/worktrees/mischief-README-1",
+      "worktree": "~/worktrees/mischief-README-1",
       "branch": "wt/README-1",
       "brief": "/tmp/msf-wave/README-1.brief.md",
       "model": "glm-5.3-flash",
@@ -35,7 +35,7 @@
         "DOC-1",
         "DOC-2"
       ],
-      "worktree": "/home/kara/worktrees/mischief-DOC-1",
+      "worktree": "~/worktrees/mischief-DOC-1",
       "branch": "wt/DOC-1",
       "brief": "/tmp/msf-wave/DOC-1.brief.md",
       "model": "glm-5.3-flash",
@@ -47,7 +47,7 @@
       "cluster": [
         "DOC-3"
       ],
-      "worktree": "/home/kara/worktrees/mischief-DOC-3",
+      "worktree": "~/worktrees/mischief-DOC-3",
       "branch": "wt/DOC-3",
       "brief": "/tmp/msf-wave/DOC-3.brief.md",
       "model": "glm-5.3-flash",
@@ -59,7 +59,7 @@
       "cluster": [
         "DOC-5"
       ],
-      "worktree": "/home/kara/worktrees/mischief-DOC-5",
+      "worktree": "~/worktrees/mischief-DOC-5",
       "branch": "wt/DOC-5",
       "brief": "/tmp/msf-wave/DOC-5.brief.md",
       "model": "glm-5.3-flash",

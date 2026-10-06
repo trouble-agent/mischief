@@ -90,7 +90,7 @@ func TestRailsSelfChecksSanctionFailNamesHost(t *testing.T) {
 	if san.OK {
 		t.Fatal("sanction row reports OK on an unsanctioned host")
 	}
-	if !strings.Contains(san.Detail, "not sanctioned") || !strings.Contains(san.Detail, "karaHermes") {
+	if !strings.Contains(san.Detail, "not sanctioned") || !strings.Contains(san.Detail, "devHostA") {
 		t.Fatalf("sanction fail does not name host + reason: %s", san.Detail)
 	}
 	if !rep.Rails[1].OK || !rep.Rails[2].OK {

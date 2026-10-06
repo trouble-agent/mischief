@@ -25,7 +25,7 @@ type railsReading struct {
 // errSanctionRefusal stands in for the sanction gate's refusal (the real
 // Error renders host + missing halves verbatim; the seam carries the
 // message so the naming assertion tests the report, not the gate).
-var errSanctionRefusal = errors.New(`host "karaHermes" is not sanctioned for fault injection: sanction marker file "/etc/mischief/sanctioned" absent or unreadable; env MISCHIEF_SANCTION_HOST does not name this host (set it to the hostname to sanction) — refusing fail-closed (SPEC-13/MSF-020: mischief runs only on an ephemeral sanctioned host, never the fleet's main host)`)
+var errSanctionRefusal = errors.New(`host "devHostA" is not sanctioned for fault injection: sanction marker file "/etc/mischief/sanctioned" absent or unreadable; env MISCHIEF_SANCTION_HOST does not name this host (set it to the hostname to sanction) — refusing fail-closed (SPEC-13/MSF-020: mischief runs only on an ephemeral sanctioned host, never the fleet's main host)`)
 
 // pinSanction pins the SanctionCheck seam to return err (nil = admit) and
 // returns the restore func.
