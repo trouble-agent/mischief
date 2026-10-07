@@ -47,7 +47,15 @@ jobs:
         run: go vet ./...
 
       - name: Test (unit, -count=1)
-        run: go test -count=1 ./internal/...
+        # Mirror ci.yml's Test step: the docker selftests (docker:pause/
+        # kill/oom) grade pass-or-skip by daemon/image presence and
+        # TestLiveSelftestAllGreenOrSkip demands the green set pass, so the
+        # runner needs a local alpine:latest (the selftest never pulls).
+        # Measured 2026-10-07: release run 37651470706 failed exactly here
+        # (3x "in the green set but graded skip") while main CI was green.
+        run: |
+          docker pull alpine:latest
+          go test -count=1 ./internal/...
 
       - name: "Selftest suite (exit 0 only green-or-skip)"
         run: go run ./cmd/mischief selftest --all
