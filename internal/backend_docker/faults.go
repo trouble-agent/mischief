@@ -121,9 +121,33 @@ func (c *CLI) OOM(name string, capBytes int64) (Outcome, *Fault) {
 	if st.MemoryBytes > 0 && st.MemoryBytes <= capBytes {
 		return noOp(primitive, fmt.Sprintf("container %s memory limit is already %d <= cap %d — the squeeze would land nothing", name, st.MemoryBytes, capBytes)), nil
 	}
-	if _, errOut, err := c.run("update", "--memory", strconv.FormatInt(capBytes, 10),
-		"--memory-swap", strconv.FormatInt(capBytes, 10), name); err != nil {
-		return failed(primitive, fmt.Errorf("docker update --memory %d %s: %v: %s", capBytes, name, err, oneLine(errOut))), nil
+	// The squeeze itself is the one land-path call that hits the runner-side
+	// cgroup-v2 race (INT-CI-5): GitHub-hosted daemons occasionally refuse
+	// the update with runc's openat2 cgroup.controllers error even though
+	// the capability probe just passed, and the same tree lands on the
+	// adjacent run. Retry the SAME squeeze ONCE after a short beat when the
+	// refusal is that class (CgroupUpdateUnavailable — its substring checks
+	// match the oneLine(errOut) embedded below); anything else ("Cannot
+	// update container", "is not running") is a real refusal and must NOT
+	// retry. A second failure still fails honestly, naming both attempts.
+	squeeze := func() error {
+		_, errOut, err := c.run("update", "--memory", strconv.FormatInt(capBytes, 10),
+			"--memory-swap", strconv.FormatInt(capBytes, 10), name)
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("docker update --memory %d %s: %v: %s", capBytes, name, err, oneLine(errOut))
+	}
+	updateErr := squeeze()
+	if updateErr != nil && CgroupUpdateUnavailable(updateErr) {
+		time.Sleep(500 * time.Millisecond)
+		updateErr = squeeze()
+		if updateErr != nil {
+			updateErr = fmt.Errorf("%w (first attempt: the same cgroup refusal)", updateErr)
+		}
+	}
+	if updateErr != nil {
+		return failed(primitive, updateErr), nil
 	}
 	// Landing half 1: the limit really moved (read back, not receipt).
 	if !waitFor(proofWindow, proofInterval, func() bool {

@@ -561,3 +561,117 @@ func TestDeclOfParamsValidated(t *testing.T) {
 }
 
 var _ = regexp.MustCompile // keep the import list stable for the shape test
+
+// ── INT-CI-5: the land-path squeeze retries the runner-side cgroup race ─────
+
+// TestOOMRetriesTransientCgroupRefusal: GitHub-hosted daemons occasionally
+// refuse the FIRST `docker update --memory` with runc's openat2
+// cgroup.controllers error even though the capability probe just passed, and
+// the identical tree lands on the adjacent run (transient runner-side race,
+// not a code defect). The land path must retry the SAME squeeze once after
+// the short beat; the retry lands and the outcome is a full OOM landing.
+func TestOOMRetriesTransientCgroupRefusal(t *testing.T) {
+	h := newFakeHost()
+	h.add("mischief-l0-ci5", 64<<20)
+	const cap = 16 << 20
+	// the EXACT runner failure shape: openat2 on the container-scoped
+	// cgroup.controllers, runc did not terminate successfully, exit 1
+	const ciErr = `OCI runtime create failed: runc did not terminate successfully: exit status 1: openat2 /sys/fs/cgroup/mischief-l0-ci5/cgroup.controllers: no such file or directory: unknown`
+	updates := 0
+	orig := h.runner()
+	c2 := NewCLIWithRunner(func(args ...string) (string, string, error) {
+		if len(args) > 0 && args[0] == "update" {
+			updates++
+			if updates == 1 {
+				return "", ciErr, errors.New("exit status 1")
+			}
+		}
+		return orig(args...)
+	})
+	out, f := c2.OOM("mischief-l0-ci5", cap)
+	if !out.OK() || f == nil || f.Kind != KindOOM {
+		t.Fatalf("retry after the transient cgroup refusal must land: %+v", out)
+	}
+	if !strings.Contains(out.LandedProof, fmt.Sprintf("Memory=%d", cap)) {
+		t.Fatalf("landed proof must name the read-back squeeze: %q", out.LandedProof)
+	}
+	if updates != 2 {
+		t.Fatalf("exactly one retry: got %d update commands, want 2", updates)
+	}
+	// the wrapper must not have swallowed the real fake update behavior:
+	// the restored hold knows the pre-fault limit (the inverse's restore arg)
+	if f.RestoreMemoryBytes != 64<<20 {
+		t.Fatalf("restorer must carry the pre-fault limit, got %d", f.RestoreMemoryBytes)
+	}
+}
+
+// TestOOMFailsAfterSecondCgroupRefusal: when the refusal is NOT transient,
+// the retry also fails and the outcome must grade honestly as a failure
+// naming the runc/openat2 refusal — never a silent pass, and never a retry
+// of a genuinely different refusal class (narrow match, per CgroupUpdateUnavailable).
+func TestOOMFailsAfterSecondCgroupRefusal(t *testing.T) {
+	h := newFakeHost()
+	h.add("mischief-l0-ci5b", 64<<20)
+	const ciErr = `runc did not terminate successfully: exit status 1: openat2 /sys/fs/cgroup/mischief-l0-ci5b/cgroup.controllers: no such file or directory`
+	updates := 0
+	orig := h.runner()
+	c2 := NewCLIWithRunner(func(args ...string) (string, string, error) {
+		if len(args) > 0 && args[0] == "update" {
+			updates++
+			return "", ciErr, errors.New("exit status 1")
+		}
+		return orig(args...)
+	})
+	out, f := c2.OOM("mischief-l0-ci5b", 16<<20)
+	if out.OK() || f != nil {
+		t.Fatalf("a persistent cgroup refusal must not land: %+v", out)
+	}
+	if !strings.Contains(out.NoOpReason, "refused before landing") {
+		t.Fatalf("the refusal must be graded refused-before-landing, got: %q", out.NoOpReason)
+	}
+	if !strings.Contains(out.NoOpReason, "runc did not terminate successfully") ||
+		!strings.Contains(out.NoOpReason, "openat2") {
+		t.Fatalf("the failure must name the actual runner refusal, got: %q", out.NoOpReason)
+	}
+	if updates != 2 {
+		t.Fatalf("the retry fired but must stop at exactly 2 attempts, got %d", updates)
+	}
+}
+
+// TestOOMDoesNotRetryRealRefusals: "Cannot update container ... memory" and
+// "is not running" are genuine daemon refusals OUTSIDE the transient cgroup
+// class — the land path must fail fast (exactly ONE update command), not
+// burn the retry on a refusal the capability probe already should have caught.
+func TestOOMDoesNotRetryRealRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		errOut string
+	}{
+		{"memory-guard", "Cannot update container mischief-l0-ci5c: memory cgroup is not enabled"},
+		{"not-running", "Error response from daemon: Container mischief-l0-ci5c is not running"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newFakeHost()
+			h.add("mischief-l0-ci5c", 64<<20)
+			updates := 0
+			orig := h.runner()
+			c2 := NewCLIWithRunner(func(args ...string) (string, string, error) {
+				if len(args) > 0 && args[0] == "update" {
+					updates++
+					return "", tc.errOut, errors.New("exit status 1")
+				}
+				return orig(args...)
+			})
+			out, f := c2.OOM("mischief-l0-ci5c", 16<<20)
+			if out.OK() || f != nil {
+				t.Fatalf("%s: a real refusal must not land: %+v", tc.name, out)
+			}
+			if !strings.Contains(out.NoOpReason, tc.errOut) {
+				t.Fatalf("%s: failure must carry the daemon's own text, got: %q", tc.name, out.NoOpReason)
+			}
+			if updates != 1 {
+				t.Fatalf("%s: real refusals must fail fast with ONE attempt, got %d", tc.name, updates)
+			}
+		})
+	}
+}
