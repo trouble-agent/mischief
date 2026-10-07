@@ -58,9 +58,13 @@ jobs:
           go test -count=1 ./internal/...
 
       - name: "Selftest suite (exit 0 only green-or-skip)"
+        env:
+          MISCHIEF_SANCTION: "1"
         run: go run ./cmd/mischief selftest --all
 
       - name: "Battery — one live cell (q1 = N-012; fail surfaces, no_op fails)"
+        env:
+          MISCHIEF_SANCTION: "1"
         run: go run ./cmd/mischief battery --primitive N-012
 
       - name: "Shim .so per arch — build + LIVE landing proof (never skipped)"
