@@ -210,10 +210,23 @@ func TestLiveNoScratchLeak(t *testing.T) {
 		active[n] = true
 	}
 	leaked := []string{}
+	// INT-CI-3: go test ./... runs package binaries concurrently, so a
+	// freshly minted scratch can be EXITED-but-mid-restart (I-002's
+	// kill→start window in internal/selftest) when this audit runs. Excuse
+	// only names minted within the grace window; anything older — including
+	// names whose stamp does not parse — still counts as a leak.
+	const mintGrace = 5 * time.Minute
 	for _, n := range strings.Fields(out) {
-		if strings.HasPrefix(n, ScratchNamePrefix) && !active[n] {
-			leaked = append(leaked, n)
+		if !strings.HasPrefix(n, ScratchNamePrefix) {
+			continue
 		}
+		if active[n] {
+			continue
+		}
+		if mint := scratchNameMintTime(n); !mint.IsZero() && time.Since(mint) < mintGrace {
+			continue
+		}
+		leaked = append(leaked, n)
 	}
 	if len(leaked) > 0 {
 		t.Errorf("scratch containers leaked past cleanup: %v", leaked)
