@@ -47,6 +47,81 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`): `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha) |
 | `catalog/` | machine-readable fault and experiment examples |
 
+## Install
+
+### Option A — release tarball (no Go toolchain needed)
+
+Releases live at <https://github.com/trouble-agent/mischief/releases>. Download the
+tarball for your architecture (`linux_amd64` / `linux_arm64`) plus `checksums.txt`,
+verify, and unpack (example for tag `v0.1.0`, amd64):
+
+```sh
+gh release download v0.1.0 -R trouble-agent/mischief
+# or, without gh:
+curl -LO https://github.com/trouble-agent/mischief/releases/download/v0.1.0/mischief_v0.1.0_linux_amd64.tar.gz
+
+sha256sum -c checksums.txt        # each downloaded archive must print OK
+tar -xzf mischief_v0.1.0_linux_amd64.tar.gz
+```
+
+The archive contains four files:
+
+| file | what |
+|---|---|
+| `mischief` | the CLI — static, CGO-free binary |
+| `libfault-anchored.so` | the LD_PRELOAD fault shim (mode 0755) |
+| `LICENSE`, `README.md` | the usual |
+
+Put the binary on your PATH:
+
+```sh
+install -m 0755 mischief ~/.local/bin/
+```
+
+Then check the install:
+
+```sh
+mischief version   # mischief v0.1.0 (a release stamps the tag; `make bin` stamps the git sha)
+mischief status    # folds the run dir's journal: armed/held holds, stuck, proofs
+mischief doctor    # capability/tier ladder report (see the catalog note below)
+```
+
+**About the shim `.so` — where mischief actually looks.** The tarball ships a prebuilt
+`libfault-anchored.so`, but mischief does NOT load it from beside the binary. When it
+arms a shim fault it checks exactly one prebuilt location:
+
+```
+/tmp/mischief-shim/libfault-anchored.so
+```
+
+If that file is absent it compiles the shim itself, from source embedded in the binary,
+with `cc -shared -fPIC -O2 … -ldl` — so a C compiler on PATH is what the shim backend
+really needs. Neither prebuilt `.so` nor compiler → the run refuses with
+`capability_unavailable` instead of executing the target unfaulted. If you want the
+release `.so` used as-is, drop it into the one place that is checked:
+
+```sh
+mkdir -p /tmp/mischief-shim && install -m 0755 libfault-anchored.so /tmp/mischief-shim/
+```
+
+Two caveats for a tarball-only install: `mischief doctor` needs the in-repo
+`catalog/faults` directory (resolved from the cwd upward) and exits 1 when it cannot
+load it — run it from a checkout, or point `--catalog-dir` at one. And verbs that
+actually land faults (`selftest`, `battery`) additionally require the SPEC-13 sanction
+marker and a sanctioned host, so they are checkout+sanction operations, not quickstart
+steps.
+
+### Option B — build from source
+
+```sh
+git clone https://github.com/trouble-agent/mischief
+cd mischief
+make bin           # → bin/mischief, CGO_ENABLED=0, version stamped with the git sha
+```
+
+Prove the primitives on your host before using it: `bin/mischief selftest --all`
+(exit 0 = green-or-skip).
+
 ## The loop
 
 ```
