@@ -57,6 +57,43 @@ func TestPlanRefusesUnsanctionedHost(t *testing.T) {
 	}
 }
 
+// TestDoctorFailsOnMissingCatalog (MSF-035): doctor is a health check —
+// a catalog it cannot load is a FAILED check, so the verb must exit
+// NONZERO and its report must name the failure (regresses the dogfood
+// 2026-10-08 false-green: 'catalog load FAILED' graded exit 0). A loaded
+// catalog is exit 0 regardless of how many primitives are merely
+// capability_unavailable (see cmdDoctor's exit contract).
+func TestDoctorFailsOnMissingCatalog(t *testing.T) {
+	code, out := captureStdout(t, func() int {
+		return run([]string{"doctor", "--catalog-dir", filepath.Join(t.TempDir(), "no-such-catalog")})
+	})
+	if code == 0 {
+		t.Fatal("doctor with a missing catalog exited 0 — failed check graded success")
+	}
+	if !strings.Contains(out, "catalog load FAILED") {
+		t.Fatalf("doctor output does not name the failed check: %s", out)
+	}
+}
+
+// TestDoctorGreenOnLoadedCatalog (MSF-035 positive control): with a real
+// catalog the doctor reports it loaded and exits 0 — the nonzero exit is
+// reserved for genuine failures, not for capability_unavailable rows.
+func TestDoctorGreenOnLoadedCatalog(t *testing.T) {
+	repoCatalog := "../../../catalog/faults"
+	if st, err := os.Stat(repoCatalog); err != nil || !st.IsDir() {
+		t.Skipf("catalog fixtures not present (%s) — run from a full checkout", repoCatalog)
+	}
+	code, out := captureStdout(t, func() int {
+		return run([]string{"doctor", "--catalog-dir", repoCatalog})
+	})
+	if code != 0 {
+		t.Fatalf("doctor on the repo catalog: exit %d, want 0\n%s", code, out)
+	}
+	if !strings.Contains(out, "catalog ok loaded") {
+		t.Fatalf("doctor output does not report a loaded catalog: %s", out)
+	}
+}
+
 // captureStdout swaps os.Stdout for a pipe around fn.
 func captureStdout(t *testing.T, fn func() int) (int, string) {
 	t.Helper()
