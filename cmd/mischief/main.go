@@ -122,7 +122,7 @@ Usage:
   mischief plan    -f <exp.yaml> [--json] [--scratch-dir D]
   mischief status  [--dir D]
   mischief revert  (--all | --hold <id>) [--dir D]
-  mischief doctor  [--catalog-dir D] [--json] [--self-check]
+  mischief doctor  [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
   mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief chaos   matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim     --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
@@ -354,7 +354,8 @@ func cmdDoctor(args []string) int {
 	// regardless of how many primitives are capability_unavailable. With
 	// --self-check, a FAILING rail check is also a non-zero exit (the
 	// brief: "exits non-zero naming what fails" — the report above names
-	// every failing row before the exit).
+	// every failing row before the exit). MSF-035: this exit contract is
+	// pinned by TestDoctorFailsOnMissingCatalog / TestDoctorGreenOnLoadedCatalog.
 	if rep.LoadErr != "" {
 		return 1
 	}
