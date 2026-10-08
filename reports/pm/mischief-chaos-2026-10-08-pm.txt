@@ -1,0 +1,34 @@
+PM evidence artifact: mischief-chaos, 2026-10-08
+HEAD verified: 3c48c62890eb5d477cf0913790a204af07539c64; origin/main parity 0 ahead / 0 behind.
+
+Board probes
+- python3 ~/.hermes/skills/coding-hermes-project-manager/scripts/g8-board-audit.py /home/kara/mischief/.coding-hermes/board/tasks.jsonl
+  RESULT: lines=53 parsed=53 bad_lines=0 unique_ids=53 duplicate_ids={}; statuses complete=46 pending=7.
+- cd /home/kara/mischief && ~/.local/bin/boardctl validate
+  RESULT: OK; 51 legacy warnings, no errors.
+
+Release probes
+- git ls-remote --tags origin 'refs/tags/v*'
+  RESULT: v0.1.0 exists; tag object resolves to b123b4e.
+- gh release view v0.1.0 --repo trouble-agent/mischief --json assets,tagName,isDraft,isPrerelease,url
+  RESULT: published release, amd64 and arm64 tarballs plus checksums.txt.
+- jq rows MSF-014/MSF-018/RELEASE-003
+  RESULT: all complete; MSF-014 commit b4343fa, MSF-018 commit 82817ff, RELEASE-003 commit b123b4e.
+
+MSF-035 stale-premise verification
+- make bin
+  RESULT: successful build, bin/mischief.
+- (cd /tmp && /home/kara/mischief/bin/mischief doctor --catalog-dir /nonexistent-dir-xyz)
+  RESULT: prints catalog load FAILED and exits 1. The former exit-0 premise is false at HEAD.
+
+New CLI-help gap verification
+- /home/kara/mischief/bin/mischief --help
+  RESULT: usage lists plan, status, revert, doctor, battery, chaos, sim, serve, install, uninstall, audit, retention, plane, version; it does not list selftest.
+- grep -n 'case "selftest"' cmd/mischief/main.go
+  RESULT: selftest is a first-class dispatched verb at main.go:85.
+- grep -n -i 'install' README.md
+  RESULT: zero matches; release README has no consumer install instructions.
+
+Fresh-install boundary
+- ssh -o BatchMode=yes -o ConnectTimeout=6 bunker3 true
+  RESULT: connection timed out to 100.69.3.13:22; fresh-bunker install remains unproven, so MSF-034 stays open.
