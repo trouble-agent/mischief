@@ -1,0 +1,12 @@
+{
+  "scheduler_tick_id": "mischief-foreman-2026-10-08-03-33-37",
+  "wave_budget": 10,
+  "workers": 2,
+  "created_at": "2026-10-08T03:40Z",
+  "tasks": [
+    {"id": "MSF-033", "worktree": "/home/kara/worktrees/mischief-MSF-033", "branch": "wt/MSF-033", "brief": "/tmp/msf033-brief.md", "log": "/tmp/msf033-worker.log", "kind": "doc"},
+    {"id": "MSF-035", "worktree": "/home/kara/worktrees/mischief-MSF-035", "branch": "wt/MSF-035", "brief": "/tmp/msf035-brief.md", "log": "/tmp/msf035-worker.log", "kind": "code+test"}
+  ],
+  "independence": "MSF-033 edits README.md only; MSF-035 edits cmd/mischief + tests; no shared files, no depends_on edges between them",
+  "status": "dispatched"
+}
