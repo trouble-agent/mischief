@@ -222,7 +222,7 @@ func TestBatteryAC9HopsCarryRunIDAndVerdict(t *testing.T) {
 // execution vehicle; the CLI already inherited the poisoned TMPDIR from
 // the test process, and it is restored by t.Setenv's cleanup.
 func TestBatteryAC9AdverseChainLive(t *testing.T) {
-	writeSanctionMarker(t) // the MSF-032 gate runs before the live cell
+	writeSanctionMarker(t)              // the MSF-032 gate runs before the live cell
 	t.Setenv("TMPDIR", "/etc/hostname") // a file: MkdirTemp under it fails
 	dir := t.TempDir()                  // unaffected (created before the swap)
 	code, out := captureStdout(t, func() int {

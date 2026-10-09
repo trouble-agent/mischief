@@ -19,17 +19,17 @@ func TestParseAgentIDFromSpawnOutput(t *testing.T) {
 		{
 			name: "real spawn output shape (current daemon: Agent created line)",
 			out:  "Creating agent...\nAgent created: 7bb5dcc2\n\n══════════ Connection Bundle ══════════\n\n  SSH Key:      /home/demo/.config/bunker/keys/7bb5dcc2\n═ Use `bunker exec` to run commands in this agent ═",
-			want:  "7bb5dcc2",
+			want: "7bb5dcc2",
 		},
 		{
 			name: "older daemon shape (keys/ token)",
 			out:  "agent created\n  id:      keys/cefd6920\n  ttl:     4h\nssh key written: keys/cefd6920\ntarget: bunker-cefd6920@bunker-mvp",
-			want:  "cefd6920",
+			want: "cefd6920",
 		},
 		{
 			name: "id-only line",
 			out:  "keys/00112233ff",
-			want:  "00112233ff",
+			want: "00112233ff",
 		},
 		{
 			name: "capacity refusal has no id",
