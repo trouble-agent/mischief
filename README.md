@@ -40,11 +40,11 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | file | what |
 |---|---|
 | `docs/prd/mischief-v0.1.md` | the PRD (front door): problem, user stories, design, safety, ACs, replays, open decisions |
-| `docs/FAULT-CATALOG.md` | 104 primitives across 8 layers (P 14 · S 14 · R 12 · F 16 · N 18 · C 12 · I 14 · T 4), each with its landed-proof and inverse |
+| `docs/FAULT-CATALOG.md` | 104 primitives across 8 layers (P 14 · S 14 · R 12 · F 16 · N 18 · C 12 · I 14 · T 4), each with its landed-proof and inverse, plus 9 simulated cases covering the layer-I cloud shapes — 113 rows total |
 | `docs/SPEC-PLAN.md` | the spec set and the spec→PRD→AC map |
 | `probe/RESULTS.md` | the measured capability audit the design rests on, with the scripts that produced it |
 | `docs/EXPERIMENTS.md` | the rehearsal contract for `catalog/experiments/`: which experiments are runnable today, why the rest are rehearsal-only, and the scratch-host rule |
-| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`): `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha) |
+| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`) — core verbs: `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha); v0.1 also ships `install` (privileged helper manifest + a visudo-validated sudoers drop-in — never elevates itself) · `uninstall` · `audit` (survey the live privileged surface against the canonical verb table) · `retention` (rotate old run dirs; report-only without `--apply`), plus the evidence verbs `battery` · `chaos` · `sim` · `plane` |
 | `catalog/` | machine-readable fault and experiment examples |
 
 ## Install
@@ -60,7 +60,7 @@ gh release download v0.1.0 -R trouble-agent/mischief
 # or, without gh:
 curl -LO https://github.com/trouble-agent/mischief/releases/download/v0.1.0/mischief_v0.1.0_linux_amd64.tar.gz
 
-sha256sum -c checksums.txt        # each downloaded archive must print OK
+grep "mischief_v0.1.0_linux_amd64.tar.gz" checksums.txt | sha256sum -c -   # verify the archive you downloaded — checksums.txt also lists the arm64 tarball, which a bare `sha256sum -c` would report as FAILED (you never downloaded it)
 tar -xzf mischief_v0.1.0_linux_amd64.tar.gz
 ```
 
@@ -119,8 +119,10 @@ cd mischief
 make bin           # → bin/mischief, CGO_ENABLED=0, version stamped with the git sha
 ```
 
-Prove the primitives on your host before using it: `bin/mischief selftest --all`
-(exit 0 = green-or-skip).
+Prove the primitives on your host before using it: `bin/mischief selftest --all`.
+On a sanctioned host (SPEC-13 marker present) the contract is exit 0 =
+green-or-skip; on an unsanctioned host selftest refuses fail-closed with
+`host_not_sanctioned` and exit 2 — nothing lands (see the Safety section / SPEC-13).
 
 ## The loop
 
