@@ -154,18 +154,33 @@ experiment-declared scope → refusal. There is no default target, ever.
 
 ### 6.1 Verbs (parameters, not verb names)
 
-| verb | arguments | returns / side effects |
-|---|---|---|
-| `mischief plan -f <exp.yaml> [--json] [--scratch D]` | experiment file | resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. **No side effects.** exit 0 clean / 2 refused |
-| `mischief run -f <exp.yaml> [--seed N] [--ttl 60s] [--dry-run] [--out <journal.jsonl>] [--observe trouble=<ns>]` | experiment + overrides | run id, verdict, journal path, timings |
-| `mischief status [--json] [--active]` | — | armed/held faults, TTL remaining, reverter pid, `stuck` leftovers from previous boots |
-| `mischief revert (--all \| --run <id> \| --fault <id>)` | selector | forced revert + the measurement proving reverted |
-| `mischief catalog [--layer P\|S\|R\|F\|N\|C\|I\|T] [--json]` | filter | per primitive: id, layer, params schema, landed-proof, inverse, capability requirement, safety class, default blast |
-| `mischief selftest (--all \| --primitive <id>) [--scratch-dir D]` | scope | per primitive: land, prove landed, revert, prove reverted on a scratch target. exit 0 only if all proofs pass |
-| `mischief monkey --target <selector> --profile <name> --seed N [--max-concurrent 1] [--window 30m] [--max-faults K] [--abort-file <path>]` | target **required** | seeded selection log, verdicts, findings |
-| `mischief battery -f <matrix.yaml> [--project <p>] [--quick] [--file-rows]` | matrix | coverage matrix artifact + findings filed as board rows on the owning project |
-| `mischief doctor [--json]` | — | capability table; unsupported primitives return `capability_unavailable` **naming what is absent** |
-| `mischiefd` | config | the reverter/watchdog daemon; owns TTLs, reconciles leftovers at boot, serves `/health.json` |
+Status reconciled against v0.1.0 (`cmd/mischief/main.go` dispatch +
+`make bin && ./bin/mischief --help`): **shipped** rows are in the current binary;
+**planned** rows keep their PRD intent and are not implemented in v0.1. A hidden
+`__owner` verb (the detached TTL owner spawn target) exists in the dispatch but is
+deliberately not an operator verb and is not listed in `--help`.
+
+| verb | v0.1 | arguments | returns / side effects |
+|---|---|---|---|
+| `mischief plan -f <exp.yaml> [--json] [--scratch-dir D]` | shipped | experiment file | resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. **No side effects.** exit 0 clean / 2 refused |
+| `mischief run -f <exp.yaml> [--seed N] [--ttl 60s] [--dry-run] [--out <journal.jsonl>] [--observe trouble=<ns>]` | **planned — not implemented in v0.1** | experiment + overrides | run id, verdict, journal path, timings. (The reverter hold/TTL/kill-switch machinery ships — see `status`/`revert`/`serve` below; the experiment-driven arming loop does not.) |
+| `mischief status [--dir D] [--json]` | shipped | — | boot id, live holds (fault, target, TTL remaining, `stuck_at` leftovers from previous boots), proof history |
+| `mischief revert (--all \| --hold <id>) [--dir D]` | shipped | selector | forced revert + the measurement proving reverted. `--all` is the kill switch over every live or stuck hold (AC-6) |
+| `mischief catalog [--layer P\|S\|R\|F\|N\|C\|I\|T] [--json]` | **planned — not implemented in v0.1** | filter | per primitive: id, layer, params schema, landed-proof, inverse, capability requirement, safety class, default blast. (The catalog ships as data today; `doctor` prints capability verdicts.) |
+| `mischief selftest (--all \| --primitive <id>) [--dir D] [--catalog-dir D]` | shipped | scope | per primitive: land, prove landed, revert, prove reverted on a scratch target. exit 0 only if all proofs pass (green-or-skip — the M1 exit criterion) |
+| `mischief monkey --target <selector> --profile <name> --seed N [--max-concurrent 1] [--window 30m] [--max-faults K] [--abort-file <path>]` | **planned — not implemented in v0.1** | target **required** | seeded selection log, verdicts, findings |
+| `mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--dir D] [--file-rows] [--catalog-dir D] [--dry-run]` | shipped | the fault × target matrix, derived from the catalog × projects/primitives (there is no matrix-yaml input) | coverage matrix artefact (`matrix.json`/`matrix.md`) + `battery.jsonl` journal; `--file-rows` emits `findings.jsonl` board-vocabulary rows for adverse verdicts — emitted for the operator/foreman merge step, not appended onto a live board; `--dry-run` resolves and prints the matrix without executing |
+| `mischief doctor [--catalog-dir D] [--json] [--self-check]` | shipped | — | capability table; unsupported primitives return `capability_unavailable` **naming what is absent**; `--self-check` runs the rail self-checks. exit 1 = a check FAILED (catalog load, or a `--self-check` rail) |
+| `mischiefd` | **planned — v0.1 ships `mischief serve --dir D` in its place** | config | the reverter/watchdog daemon; owns TTLs, reconciles leftovers at boot, serves `/health.json` |
+| `mischief chaos (matrix --project P [--tier-max N] [--out D] \| check --lane F \| finding --project P --board D --title T --reason R)` | shipped | one subcommand per lane duty | `matrix`: derive the project-scoped fault matrix from the project's own capability data — never executes a fault, never touches a board; `check`: verify one instantiated lane (template contract isolation-first, then board symlink evidence) — refuses a severed lane; `finding`: file ONE finding as a board-vocabulary row on the owning board, validated + duplicate-guarded before the append. Deliberately dumb: derives, verifies, files — never arms a fault or edits the lane |
+| `mischief sim --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]` | shipped | layer-I catalog id | arm one cloud shape on the local provider simulator, issue ONE real request against it, print the AC-17 landed proof backed by the sim's request log; `--allow-real` + `--resource` + `--spend-cap` apply the AC-17 real-provider gate explicitly (v0.1: the real adapter is a stub — the gate decision is printed and the redirect-to-sim path proves itself; `destroy_class` =permanent refuses outright) |
+| `mischief serve --dir D` | shipped | run dir | the reverter daemon for that dir: TTL expiry, leftover reconcile at boot, serves `/health.json` (the v0.1 form of the planned `mischiefd`) |
+| `mischief install [--user U] [--prefix P] [--dry-run] [--no-drop-in]` | shipped | target prefix (+ grantee user) | install the chassis artefacts and the ONE sudoers drop-in generated from the canonical verb table. Never elevates: writes only what the caller already has rights for and refuses over a foreign file; a real drop-in write is refused without visudo validation; `--dry-run` prints the exact plan and touches nothing |
+| `mischief uninstall [--prefix P] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]` | shipped | target prefix | remove the installed artefacts, optionally expiring run dirs per the retention policy first; dry-runnable |
+| `mischief audit [--prefix P] [--json]` | shipped | state prefix to survey | operator diff: drop-in installed + matches the verb table, helper manifest matches, setuid binaries in the prefix (the design ships none — any hit is a finding), per-verb grant table. exit 1 on drift or a setuid finding; `--json` is the same verdict as a surface |
+| `mischief retention [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]` | shipped | run-dir rotation policy | report the rotation plan (default: report-only) or apply it (`--apply`): keep at most N newest run dirs (default 20), expire run dirs older than D days (default 30); `--dry-run` prints the exact plan and touches nothing |
+| `mischief plane (parse-agent-id [--in FILE\|-] \| record --file E --step S --status pass\|fail\|skip [--detail TEXT] \| selftest-verdict --exit-code N \| fold --file E)` | shipped | bunker test-plane evidence | bookkeeping-only evidence CLI: extract the agent id from `bunker spawn` output; append one JSONL evidence row; print pass\|fail from the remote selftest's exit code; grade (fold) a JSONL evidence file — exit 0 pass / 1 fail / 3 skip. Never spawns, ssh-es or destroys anything (the driver owns the acts; this owns the bookkeeping) |
+| `mischief version` | shipped | — | print the stamped git sha (`unknown` = an unstamped build — never a fabricated sha) |
 
 ### 6.2 Experiment (a fault case is data)
 
