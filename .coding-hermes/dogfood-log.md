@@ -108,3 +108,43 @@
   run adds no new install surface; re-proving it would duplicate DF-03.
 - Foreman not woken (board-driven admission picks the rows up).
 - Cleanup: all scratch dirs + scripts removed; no repo code touched.
+
+## 2026-10-10 — mischief-dogfood-serve (second same-morning tick: prove, don't re-file)
+
+- Sibling tick 7b50f11 landed DF-05/06/07 mid-run; this run RE-PROVED the DF-05
+  premise independently from the daemon side (health.json holds:null through
+  selftest --primitive F-009 + battery --quick on the same run dir, boot-id
+  unchanged across kill+restart — hold-less by construction) instead of filing
+  a duplicate. That re-proof is cited in DF-08's reasoning.
+- NEW finding DF-08 (P2): battery --quick run-level verdict grades a clean
+  named SKIP as 'flaky' (verdict/engine.go Aggregate disagrees across five
+  DIFFERENT cells; a capability skip is not instability).
+- Real-use evidence: bunker-las-02 agent b0089295, tar-over-ssh tree, go build
+  18s cold, selftest F-009 PASS 1s (inode-identity proof), battery --quick 4
+  pass/1 skip 1s, serve + health.json + status + revert --all all green.
+- Perf (Step 2b): nothing a user would feel — build is the only multi-second
+  operation (18s cold); no PERF rows, deliberately.
+- Install leg: covered by DF-03 (proven 02:30 same morning, same premise, no
+  new install surface) — cited skip, not silent.
+- Cleanup: bunker agent destroyed via ttl; no repo code touched; board row
+  DF-08 committed by sibling commit 7b50f11 (pathspec).
+
+## 2026-10-10 — mischief-dogfood-serve (second same-morning tick: prove, don't re-file)
+
+- Sibling tick 7b50f11 landed DF-05/06/07 mid-run; this run RE-PROVED the DF-05
+  premise independently from the daemon side (health.json holds:null through
+  selftest --primitive F-009 + battery --quick on the same run dir, boot-id
+  unchanged across kill+restart — hold-less by construction) instead of filing
+  a duplicate. That re-proof is cited in DF-08's reasoning.
+- NEW finding DF-08 (P2): battery --quick run-level verdict grades a clean
+  named SKIP as 'flaky' (verdict/engine.go Aggregate disagrees across five
+  DIFFERENT cells; a capability skip is not instability).
+- Real-use evidence: bunker-las-02 agent b0089295, tar-over-ssh tree, go build
+  18s cold, selftest F-009 PASS 1s (inode-identity proof), battery --quick 4
+  pass/1 skip 1s, serve + health.json + status + revert --all all green.
+- Perf (Step 2b): nothing a user would feel — build is the only multi-second
+  operation (18s cold); no PERF rows, deliberately.
+- Install leg: covered by DF-03 (proven 02:30 same morning, same premise, no
+  new install surface) — cited skip, not silent.
+- Cleanup: bunker agent destroyed via ttl; no repo code touched; board row
+  DF-08 committed by sibling commit 7b50f11 (pathspec).
