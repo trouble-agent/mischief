@@ -37,5 +37,6 @@ Include, as far as you can:
 
 ## Supported versions
 
-The project has not cut its first release yet; `main` is the only supported
-line. Fixes land on `main` and ship with the next tagged build.
+`v0.1.0` is the current supported release. Fixes land on `main` and ship
+with the next tagged build; security fixes may be backported to the latest
+release.
