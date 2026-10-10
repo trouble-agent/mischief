@@ -1,0 +1,19 @@
+{
+  "tick_id": "mischief-foreman-2026-10-09-23-15-54",
+  "created_at": "2026-10-09T23:30:00Z",
+  "base_sha": "83757ef",
+  "budget": 10,
+  "tasks": [
+    {"id":"SEC-001","worktree":"/home/kara/worktrees/mischief-SEC-001","branch":"wt/SEC-001","scope":"tools/go.mod+code build"},
+    {"id":"DOC-6","worktree":"/home/kara/worktrees/mischief-DOC-6","branch":"wt/DOC-6","scope":"docs/traceability-doctrine.md (new)"},
+    {"id":"DOC-7","worktree":"/home/kara/worktrees/mischief-DOC-7","branch":"wt/DOC-7","scope":"skills/mischief-usage/SKILL.md"},
+    {"id":"DOC-8","worktree":"/home/kara/worktrees/mischief-DOC-8","branch":"wt/DOC-8","scope":"SECURITY.md"},
+    {"id":"DOC-9","worktree":"/home/kara/worktrees/mischief-DOC-9","branch":"wt/DOC-9","scope":"docs/prd/mischief-v0.1.md §6.1"},
+    {"id":"DOC-10","worktree":"/home/kara/worktrees/mischief-DOC-10","branch":"wt/DOC-10","scope":"docs/reference/operator.md (new)"},
+    {"id":"README-3","worktree":"/home/kara/worktrees/mischief-README-3","branch":"wt/README-3","scope":"README.md:63"},
+    {"id":"README-4","worktree":"/home/kara/worktrees/mischief-README-4","branch":"wt/README-4","scope":"README.md:43,122"},
+    {"id":"README-5","worktree":"/home/kara/worktrees/mischief-README-5","branch":"wt/README-5","scope":"README.md:47"},
+    {"id":"README-6","worktree":"/home/kara/worktrees/mischief-README-6","branch":"wt/README-6","scope":"README.md:122-123"}
+  ],
+  "independence_verified": "no depends_on edges among picked rows; README-3..6 consolidated → single README worker file-scope README.md, merged as one branch"
+}
