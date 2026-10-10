@@ -59,3 +59,33 @@ Same discipline the project itself preaches: prove it landed, don't assert it.
 - The four replay experiments are rehearsal artifacts: their selectors
   (`container:trouble-hub`, `process:troubled`, ...) have no resolution semantics
   yet (MSF-026). They document intent; they do not run.
+
+## 2026-10-10 — serve/watchdog run: what the reverter really is
+
+The reverter is not a service you talk to; it is a **fold over an append-only
+JSONL journal** whose records ARE the state machine (arm → land → hold_expired
+→ revert_proof, plus hold_stuck from boot reconcile). Three consequences a
+reader of this file should internalize:
+
+1. The detached TTL owner (systemd-run user service, or a setsid child when the
+   user manager is degraded) re-reads inverse + check from the JOURNAL BYTES,
+   never from anything the CLI passed in memory. That is why a hold survives
+   `kill -9` of the arming process: the owner's orders are already fsynced on
+   disk before Land is permitted. The dogfood run verified the daemon-side
+   half live: `serve` reverted at expiry with role=owner reason=ttl_expiry and
+   a measured `check: same`.
+2. Hold ids are content hashes, not counters — the same declaration armed
+   twice yields the same id and a second arm line; readers fold duplicates
+   into one state. Do not "dedupe" the journal; the evidence IS the lines.
+3. Every verdict is measured or it is revert_failed. The run's most valuable
+   single observation: an inverse pointing at a missing backup produced
+   `outcome=revert_failed detail=inverse failed: read backup: … no such file`,
+   exit 1, and the journal kept the fault marked live. A tool that graded that
+   "reverted" would be manufacturing exactly the false green this project
+   exists to kill.
+
+Gap found this run (DF-05): the state machine has no CLI door — `Lifecycle.Arm`
+is reachable only from Go tests. Everything above was driven by hand-writing
+one arm record per the fold contract (see 2026-10-10-serve-integration.md for
+the exact format). Until an `arm` verb ships, that report is the only working
+"how to start a hold" documentation.

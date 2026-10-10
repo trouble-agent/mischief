@@ -66,3 +66,45 @@
   can't plan any shipped experiment; sanction var undisclosed), DF-03 (P3 closes
   MSF-034's open leg), DF-04 (P3 MSF-035 premise false on released binary — correction row).
 - Foreman not woken (board-driven admission picks the rows up).
+
+## 2026-10-10 — mischief-dogfood (serve/watchdog surface: first real use)
+
+- Verdict: SHIPPABLE on the watchdog machinery itself; PROMISING-BUT-ROUGH on
+  reachability — the flagship serve/TTL/kill-switch/reconcile surface WORKS
+  (proven end-to-end) but no shipped verb can arm a hold, so a real user must
+  hand-write reverter.jsonl to start the loop (DF-05).
+- Angle: the surface no prior run touched (2026-10-08 covered CLI/install/plan;
+  2026-10-10 02:30 sibling covered install leg + exit contracts). This run:
+  `serve`, TTL expiry revert, kill switch under load, boot reconcile, revert
+  honesty, journal corruption posture, perf.
+- Promise tested: "the reverter is a watchdog that outlives the CLI: arm →
+  land → hold under TTL → measured revert at expiry; serve owns TTLs, boot
+  reconcile and health.json" (PRD §5/§6.1, SPEC-04).
+- Real use (scratch dirs /tmp/dogfood-mischief*, all cleaned): authored the
+  write-ahead arm record per the journal fold contract (hold_id = sha256
+  content id; boot id MUST be the reverter id from boot.json, not the host
+  boot id — the host-id variant grades false-stuck, DF-06). Armed hold:
+  status shows armed + ttl_remaining; health.json shows armed with
+  ttl_remaining_sec 6.97; daemon reverted at expiry with role=owner
+  reason=ttl_expiry detail=check: same and the faulted file came back
+  byte-identical ("original-state-v1"). Kill switch: 2 holds reverted wall=7ms
+  (budget 2s) under active junk-writer load, rc=0. revert_failed honesty: an
+  inverse whose backup is missing grades outcome=revert_failed detail=inverse
+  failed: read backup: ... no such file; CLI exit 1; the fault stays live and
+  the journal says so — exactly the honesty ladder working. Corrupt journal
+  line: status, serve AND revert --all all fail loudly exit 1 (no silent skip).
+  Foreign-boot arm grades stuck (safe direction; kill switch reverts it).
+- Perf (Step 2b, measured, nothing worth a PERF row): status warm 5.2ms±1.9ms
+  (hyperfine 20 runs, 1 armed + 4 reverted holds); serve cold boot to first
+  health.json 29-31ms (3 runs); kill switch 7ms for 2 holds; TTL revert well
+  inside its beat. Nothing a user would notice as slow.
+- Findings filed: DF-05 (P2 no verb can arm a hold — Lifecycle.Arm is
+  test-only; loop unreachable from the CLI), DF-06 (P2 boot-id adoption
+  contract undocumented; host-boot-id arm record grades false-stuck on same
+  boot), DF-07 (P3 run-dir default mismatch: CLI ~/.mischief/runs/default vs
+  reverter doc.go/DefaultDir ~/.mischief/reverter).
+- Install leg: SKIPPED-install-bunker NOT needed — the 02:30 sibling run
+  PROVED the fresh-install premise on las-bunker-02 (agent 0c101d00) and this
+  run adds no new install surface; re-proving it would duplicate DF-03.
+- Foreman not woken (board-driven admission picks the rows up).
+- Cleanup: all scratch dirs + scripts removed; no repo code touched.
