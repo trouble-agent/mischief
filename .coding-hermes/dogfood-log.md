@@ -148,3 +148,25 @@
   new install surface) — cited skip, not silent.
 - Cleanup: bunker agent destroyed via ttl; no repo code touched; board row
   DF-08 committed by sibling commit 7b50f11 (pathspec).
+
+## 2026-10-10 — mischief-chaos-dogfood (release-artifact real-use pass)
+
+- Used the PUBLISHED v0.1.0 the way a user would: downloaded mischief_v0.1.0_linux_amd64.tar.gz
+  + checksums.txt from GitHub releases into a clean /tmp dir; sha256 OK for amd64 (arm64
+  FAILED-open warning = README-3, known/filed). Tarball ships mischief, libfault-anchored.so,
+  README, LICENSE — NO catalog/.
+- RE-PROOF of DF-02 (no re-file): from the extracted release dir, `selftest --primitive F-009`
+  and `selftest --all` both fail `catalog/faults not found from cwd upward` — the released
+  quickstart genuinely cannot run any catalog experiment; the artifact has no catalog to find.
+- RE-PROOF of DF-01 (no re-file): `mischief plan` with no args prints usage and exits 0;
+  `plan -f <malformed yaml>` prints a parse error and STILL exits 0. Silent-success on error
+  confirmed on the release binary (repo HEAD already fixed doctor to exit 1 — DF-04 direction).
+- Doctor on the release exits 1 on catalog load failure (consistent with DF-04's finding that
+  the release behaves correctly there).
+- Install leg: NOT skipped — clean-machine install from the published release PROVEN locally
+  (extract + verify + run). Ephemeral-bunker leg covered by this morning's chaos tick
+  20261010-0627 (PLANE pass, TEARDOWN-GONE agent 2004381c) — cited, not re-run.
+- Perf (Step 2b): headline ops are fail-fast milliseconds — selftest 10-14ms, doctor instant,
+  install --help instant, release download ~1s. Nothing a user would notice as slow; no PERF
+  rows, deliberately.
+- No new findings; no code or board rows touched. Log-only commit.
