@@ -170,3 +170,55 @@
   install --help instant, release download ~1s. Nothing a user would notice as slow; no PERF
   rows, deliberately.
 - No new findings; no code or board rows touched. Log-only commit.
+
+## 2026-10-10 — mischief-chaos-dogfood (chaos verb family: first real use)
+
+- Angle: the surface no prior run touched. The 10-02/10-08/10-10 runs covered
+  plan/selftest/doctor/install/serve/battery/plane — but the `chaos` verb
+  family (check/matrix/finding, the M6 machinery docs/CHAOS-LANE.md teaches,
+  and the reason this lane is named mischief-chaos) appears in no prior
+  dogfood log, and the live lane's 10-06/10-10 runs drove `plane`, never the
+  documented chaos loop. Binary: bin/mischief 14a3494 (ancestor of HEAD;
+  HEAD delta is board/log/docs only).
+- `chaos check` happy path: template instantiated per docs (scratch lane dir,
+  board symlink to the primary's board) → contract OK + the exact symlink
+  evidence line the doc promises, exit 0.
+- Failure ladder (all refuse exit 2 with the doc's verbatim semantics):
+  unsubstituted template, host=fleet-main-host, wrong lane name, board
+  symlink as REAL directory (severed lane), missing symlink, dangling
+  symlink. The isolation contract is real, not prose.
+- `chaos matrix --project mischief --tier-max 1`: 5ms cold, derives 7/10
+  cells included at L1; excluded cells carry named reasons (tier_above_ceiling
+  with the numbers) — NULLs carry reasons, as promised. Artifact stamped
+  mischief.chaos.matrix/v1 with catalog sha. Refusals: no catalog from cwd →
+  exit 1; tier_max 9 → exit 2. Foreign project (crier) renders fine — correct,
+  scope is still project (the guard lives on the LANE, validated by check).
+- `chaos finding` on a board COPY (read-only lane; never touched the real
+  board): files a valid board-vocabulary row, id content-addressed
+  (MSF-CHAOS-aa9e2b7249ea); duplicate re-file refused (exit 1, "refuse, never
+  duplicate", board byte-identical); priority P9 refused pre-write. The
+  append-before-validate safety the doc claims held.
+- FINDING (for the foreman; not filed — read-only lane): `chaos finding
+  --verdict banana` is ACCEPTED and lands verdict:"banana" on the board, while
+  --priority is vocabulary-validated. README promises "Verdicts are closed and
+  honest" (recovered/degraded/.../void); the finding verb's verdict field is
+  an open string and can put an off-vocabulary verdict on a live board.
+  Suggested row: validate --verdict against the closed set (or the board's
+  vocabulary) the way priority is, file direction P3.
+- ADOPTION GAP (observation, not a code defect): no chaos-lane.yaml exists
+  anywhere in the fleet stand-in dirs and no MSF-CHAOS-* row was ever filed —
+  mischief's own -chaos lane has never run the documented chaos loop (it runs
+  `plane` instead). MSF-017's promise is "each adopting project gets exactly
+  ONE chaos satellite lane that runs the project's fault matrix"; mischief,
+  the adopting project, does not yet do that. The machinery works (proven
+  above); it is simply not wired into the lane's tick.
+- Perf (Step 2b): chaos matrix 5ms cold (0.005s real), check/refusals
+  instant, finding append instant. Nothing a user would wait on; no PERF rows,
+  deliberately.
+- Verdict: ✅ SHIPPABLE on this surface — the M6 contract does exactly what
+  CHAOS-LANE.md says, refusals are honest, the matrix derivation is real, and
+  the filing path is safe. One P3 finding (verdict vocabulary) + the wiring
+  gap above.
+- Artifacts: this log entry only (pathspec commit). Scratch evidence in
+  /tmp/dogfood-mischief-chaos/ (board copy untouched at 78 lines incl. 2 probe
+  rows; real board never written).
