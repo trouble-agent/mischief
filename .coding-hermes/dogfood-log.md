@@ -222,3 +222,4 @@
 - Artifacts: this log entry only (pathspec commit). Scratch evidence in
   /tmp/dogfood-mischief-chaos/ (board copy untouched at 78 lines incl. 2 probe
   rows; real board never written).
+2026-10-12 (2nd tick) | sim surface driven on HEAD bfdffbd: 9/9 catalog I-shapes land rc=0 (15ms-2s; I-011 2s = intended stall), per-shape request logs written | findings: MISCHIEF-DF-14 (I-004 malformed-body fault unreachable, PaginationBug short-circuit) + MISCHIEF-DF-15 (AC-17 admitted path contradicted by unconditional 'refused' proof line + empty 'real: ' detail) | install leg: inherited from same-HEAD proof 0019233 (bunker-mvp agent df-mischief-1012, make bin 48s, smoke green) — no code change since | promise: catalog sim shapes are a working operator entry point — HELD for landing, BROKEN for I-004's promised detail and AC-17's admitted-path wording | commit d305575
