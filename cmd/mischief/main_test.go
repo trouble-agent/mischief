@@ -94,6 +94,105 @@ func TestDoctorGreenOnLoadedCatalog(t *testing.T) {
 	}
 }
 
+// planScratchDirExperiment is the clean-plan experiment for the
+// --scratch-dir regression (MISCHIEF-CLI-002): one L0 primitive
+// (capability: none) that plans clean on this host — no refusals, exit 0.
+const planScratchDirExperiment = `id: scratch-dir-plan
+target: {selector: "host:.", scratch: true}
+faults:
+  - primitive: N-012
+    params: {code: "429", rate: "0.5"}
+    ttl: 20s
+    landed_proof: {kind: http, check: "responses carry 429"}
+    inverse: {action: restore-proxy}
+probe:
+  - {name: probe-ok, cmd: "true", expect: "0"}
+budget: {recover_within: 30s}
+seed: 7
+`
+
+// planScratchDirDescriptor is the minimal N-012 descriptor the experiment
+// resolves against (self-contained: the test builds its own catalog dir in
+// a TempDir, so the primary acceptance arm never depends on repo fixture
+// paths that break under worktree nesting).
+const planScratchDirDescriptor = `id: N-012
+name: http-error-injection
+what: inject HTTP error codes at a proxy
+breaks: clients that do not back off
+params: {code: "429", rate: "0..1"}
+landed_proof: {kind: http, check: "responses carry the code"}
+inverse: {action: restore-proxy, verify: "responses are 200 again"}
+capability: none
+tier: L0
+backend: proxy
+maturity: planned
+`
+
+// planScratchDirSanctioned pins the SPEC-13 env-sanction seam for the
+// clean-plan controls (the process env is otherwise unsanctioned; the
+// sanctioned() helper's own writes stay untouched).
+func planScratchDirSanctioned(t *testing.T) {
+	t.Helper()
+	t.Setenv("MISCHIEF_SANCTION", "1")
+}
+
+// TestPlanScratchDirPathValuedAccepted (MISCHIEF-CLI-002, primary arm): the
+// exact path-valued form the shipped usage/docs advertise — plan
+// --scratch-dir D — is ACCEPTED and the declared dir reaches the plan
+// output verbatim. Plan stays side-effect free (AC-1): the dir must NOT
+// exist afterwards (nothing was created, nothing was read — the render is
+// the declaration's preview; run owns the actual dir).
+func TestPlanScratchDirPathValuedAccepted(t *testing.T) {
+	planScratchDirSanctioned(t)
+	catalogDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(catalogDir, "n-012.yaml"), []byte(planScratchDirDescriptor), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	exp := filepath.Join(t.TempDir(), "exp.yaml")
+	if err := os.WriteFile(exp, []byte(planScratchDirExperiment), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The declared dir does not exist and plan must not create it.
+	scratch := filepath.Join(t.TempDir(), "declared-scratch")
+	code, out := captureStdout(t, func() int {
+		return run([]string{"plan", "-f", exp, "--catalog-dir", catalogDir, "--scratch-dir", scratch})
+	})
+	if code != 0 {
+		t.Fatalf("plan --scratch-dir D: exit %d, want 0", code)
+	}
+	if !strings.Contains(out, "scratch_dir: "+scratch) {
+		t.Fatalf("plan output does not record the declared scratch dir verbatim:\n%s", out)
+	}
+	if _, err := os.Stat(scratch); !os.IsNotExist(err) {
+		t.Fatalf("plan created or touched the declared scratch dir %s (AC-1 violated)", scratch)
+	}
+}
+
+// TestPlanScratchDirBooleanControl (MISCHIEF-CLI-002, boolean control arm):
+// the old boolean spelling — plan --scratch-dir with no value — exits 2
+// with a usage error NAMING the flag. It must never again die with the
+// type confusion "invalid boolean value ... for -scratch-dir" that the
+// shipped docs' own command produced.
+func TestPlanScratchDirBooleanControl(t *testing.T) {
+	exp := filepath.Join(t.TempDir(), "exp.yaml")
+	if err := os.WriteFile(exp, []byte(planScratchDirExperiment), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
+	code, stderr := captureStderr(t, func() int {
+		return run([]string{"plan", "-f", exp, "--scratch-dir"})
+	})
+	if code != 2 {
+		t.Fatalf("valueless --scratch-dir: exit %d, want 2", code)
+	}
+	if strings.Contains(stderr, "invalid boolean value") {
+		t.Fatalf("valueless --scratch-dir still fails as a boolean (MISCHIEF-CLI-002 unfixed): %s", stderr)
+	}
+	if !strings.Contains(stderr, "scratch-dir") || !strings.Contains(stderr, "flag needs an argument") {
+		t.Fatalf("usage error does not name the flag needing a value: %s", stderr)
+	}
+}
+
 // captureStdout swaps os.Stdout for a pipe around fn.
 func captureStdout(t *testing.T, fn func() int) (int, string) {
 	t.Helper()

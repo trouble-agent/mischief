@@ -21,6 +21,12 @@ func Render(p *Plan) []byte {
 	fmt.Fprintf(&b, "run_id: %s\n", p.RunID)
 	fmt.Fprintf(&b, "seed: %d\n", p.Seed)
 	fmt.Fprintf(&b, "catalog_version: %s\n", p.CatalogVersion)
+	if p.ScratchDir != "" {
+		// Declared verbatim (MISCHIEF-CLI-002); plan never touched the
+		// path — the line is the run contract's preview, and its absence
+		// means the invocation declared no scratch dir.
+		fmt.Fprintf(&b, "scratch_dir: %s\n", p.ScratchDir)
+	}
 	fmt.Fprintf(&b, "target:\n")
 	fmt.Fprintf(&b, "  kind: %s\n", p.Target.Kind)
 	fmt.Fprintf(&b, "  selector: %s\n", p.Target.Selector)

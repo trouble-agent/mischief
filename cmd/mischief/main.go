@@ -156,10 +156,15 @@ func cmdPlan(args []string) int {
 	fs.SetOutput(os.Stderr)
 	expPath := fs.String("f", "", "experiment YAML (required)")
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
-	scratch := fs.Bool("scratch-dir", false, "report the L0 scratch posture (planning only; run owns the flag)")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
+	// MISCHIEF-CLI-002: the shipped usage/docs advertise the path-valued
+	// form (--scratch-dir D), so the flag IS path-valued. Plan only
+	// DECLARES the dir — it never creates, reads or writes it (AC-1); the
+	// run contract owns the actual scratch dir ("plan reports, run
+	// enforces"). A valueless --scratch-dir is a usage error naming the
+	// flag (never the old "invalid boolean value" type confusion).
+	scratchDir := fs.String("scratch-dir", "", "scratch dir the plan declares for the L0 preview (verbatim, never created by plan; run owns the flag)")
 	skipSanction := fs.Bool("plan-only-sanction-skip", false, "(unimplemented stub flag: reserved for MSF-020; plan never lands faults)")
-	_ = scratch
 	_ = skipSanction
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -193,7 +198,7 @@ func cmdPlan(args []string) int {
 		return 1
 	}
 	reg := hostCapabilityRegistry()
-	scope := rails.Scope{Level: 0, Scratch: true} // plan previews the L0 scratch posture; run applies its own scope
+	scope := rails.Scope{Level: 0, Scratch: true, ScratchDir: *scratchDir} // plan previews the L0 scratch posture; run applies its own scope
 	p, err := plan.Build(exp, raw, cat, reg, scope)
 	if err != nil {
 		// The plan still renders (the operator sees what resolved), but

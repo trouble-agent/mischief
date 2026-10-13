@@ -81,6 +81,12 @@ type Plan struct {
 	// CatalogVersion is the content-derived catalog version the plan
 	// resolved against.
 	CatalogVersion string
+	// ScratchDir is the --scratch-dir D the invocation declared (MISCHIEF-
+	// CLI-002): recorded VERBATIM for the run contract to own. Plan never
+	// creates, reads or writes it (AC-1 — Build's only host reads are the
+	// capability registry's); an empty value means the invocation declared
+	// no scratch dir.
+	ScratchDir string
 }
 
 // Build resolves one loaded experiment against the catalog, the rails and
@@ -95,6 +101,7 @@ func Build(exp *journal.Experiment, specBytes []byte, cat *catalog.Catalog, reg 
 		Seed:           exp.Seed,
 		Target:         rails.Target{Kind: rails.TargetHost, Selector: exp.Target.Selector},
 		CatalogVersion: cat.Version,
+		ScratchDir:     scope.ScratchDir,
 	}
 
 	// Target resolution (AC-2/AC-7 shape): the experiment declares the
