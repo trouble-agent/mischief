@@ -11,9 +11,11 @@
 //   - SelftestVerdict  the remote `mischief selftest --all` exit-code
 //     contract (0 = every primitive green-or-skip; anything else fail).
 //   - Step / Fold      the evidence JSONL row shape and the verdict fold:
-//     the LAST step's status is the run verdict; a skip without a named
-//     reason is a plane defect rendered as a named skip, never a pass; an
-//     empty evidence file is a named FAIL (the zero-byte evidence class).
+//     every row's status must be in the closed vocabulary (the first
+//     unknown status anywhere fails the fold closed); otherwise the LAST
+//     step's status is the run verdict; a skip without a named reason is
+//     a plane defect rendered as a named skip, never a pass; an empty
+//     evidence file is a named FAIL (the zero-byte evidence class).
 //   - SSHArgs          the exact ssh argv shape the plane uses, asserted by
 //     test so the script and the tests cannot drift apart.
 //   - FinalVerdict     the honesty rule AC 3/4 demand: an unobtainable agent
@@ -148,9 +150,13 @@ func NewStep(step, status, detail, ts string) Step {
 //  1. Zero recorded steps is a named FAIL — an empty evidence file means
 //     the plane died before recording anything (the zero-byte evidence
 //     class this pipeline exists to avoid), never a silent pass.
-//  2. The LAST step's status is the run verdict (steps append in pipeline
-//     order; destroy/teardown records last).
-//  3. A skip whose detail is empty is still a skip, but its reason is
+//  2. Every row's status must be in the closed vocabulary (pass | fail |
+//     skip): the FIRST unknown status anywhere in the file fails the fold
+//     closed, naming that row — an invalid row on an early stage must
+//     never be overwritten by a later valid pass.
+//  3. Otherwise the LAST step's status is the run verdict (steps append
+//     in pipeline order; destroy/teardown records last).
+//  4. A skip whose detail is empty is still a skip, but its reason is
 //     rendered as a plane defect — a skip without a named reason is never
 //     allowed to masquerade as a clean, understood skip.
 //
@@ -159,13 +165,15 @@ func Fold(steps []Step) (string, string, string) {
 	if len(steps) == 0 {
 		return StatusFail, "empty evidence: no steps recorded (the plane died before its first record)", ""
 	}
+	for i, s := range steps {
+		if s.Status != StatusPass && s.Status != StatusFail && s.Status != StatusSkip {
+			return StatusFail, fmt.Sprintf("plane defect: unknown status %q on step %q (row %d of %d)", s.Status, s.Step, i+1, len(steps)), s.Step
+		}
+	}
 	last := steps[len(steps)-1]
 	reason := last.Detail()
 	if last.Status == StatusSkip && strings.TrimSpace(reason) == "" {
 		reason = "plane defect: skip recorded without a named reason"
-	}
-	if last.Status != StatusPass && last.Status != StatusFail && last.Status != StatusSkip {
-		return StatusFail, fmt.Sprintf("plane defect: unknown status %q on final step %q", last.Status, last.Step), last.Step
 	}
 	return last.Status, reason, last.Step
 }
