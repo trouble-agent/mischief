@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
+	"github.com/trouble-agent/mischief/internal/rails"
 )
 
 // testExperiment is the minimal corpus-shape experiment (journal.Load's
@@ -268,5 +269,90 @@ func TestPlanCapabilityUnavailableNamed(t *testing.T) {
 	}
 	if !strings.Contains(string(Render(p)), "capability_unavailable") {
 		t.Fatal("render does not carry the capability_unavailable status")
+	}
+}
+
+// TestPlanRecordsDeclaredScratchDir (MISCHIEF-CLI-002): Build records the
+// scope's declared ScratchDir VERBATIM (the run contract owns the dir;
+// plan only previews), and an undeclared scope records the empty value.
+// Build's only host reads stay the capability registry's — the declared
+// path is never created, read or written (AC-1).
+func TestPlanRecordsDeclaredScratchDir(t *testing.T) {
+	cat, raw := testSetup(t)
+	exp, err := parseExp(testSetupSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	declared := "/tmp/mischief-declared-scratch"
+	p, err := Build(exp, raw, cat, nothingAvailable, rails.Scope{Level: 0, Scratch: true, ScratchDir: declared})
+	if err != nil {
+		t.Fatalf("Build with a declared scratch dir: %v", err)
+	}
+	if p.ScratchDir != declared {
+		t.Fatalf("plan scratch dir: %q, want %q (verbatim)", p.ScratchDir, declared)
+	}
+	undeclared, err := Build(exp, raw, cat, nothingAvailable, rails.Scope{Level: 0, Scratch: true})
+	if err != nil {
+		t.Fatalf("Build without a declared scratch dir: %v", err)
+	}
+	if undeclared.ScratchDir != "" {
+		t.Fatalf("undeclared scope recorded a scratch dir: %q", undeclared.ScratchDir)
+	}
+}
+
+// TestRenderScratchDirDeterministic (MISCHIEF-CLI-002): the declared dir
+// renders verbatim; an undeclared one renders NO line (so plans that never
+// declared stay byte-identical with the pre-flag shape); and the dir value
+// cannot perturb the rest of the render (byte-identity is per declared
+// value, not per host).
+func TestRenderScratchDirDeterministic(t *testing.T) {
+	cat, raw := testSetup(t)
+	exp, err := parseExp(testSetupSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	withDir, err := Build(exp, raw, cat, nothingAvailable, rails.Scope{Level: 0, Scratch: true, ScratchDir: "/tmp/d1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r1 := Render(withDir)
+	if !strings.Contains(string(r1), "scratch_dir: /tmp/d1\n") {
+		t.Fatalf("render does not carry the declared dir verbatim:\n%s", r1)
+	}
+	if r2 := Render(withDir); !bytes.Equal(r1, r2) {
+		t.Fatal("re-render of the same plan is not byte-identical")
+	}
+	withoutDir, err := Build(exp, raw, cat, nothingAvailable, rails.Scope{Level: 0, Scratch: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r0 := Render(withoutDir)
+	if strings.Contains(string(r0), "scratch_dir") {
+		t.Fatalf("undeclared plan renders a scratch_dir line:\n%s", r0)
+	}
+	other, err := Build(exp, raw, cat, nothingAvailable, rails.Scope{Level: 0, Scratch: true, ScratchDir: "/tmp/d2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r2 := Render(other)
+	if !strings.Contains(string(r2), "scratch_dir: /tmp/d2\n") {
+		t.Fatalf("second dir not rendered verbatim:\n%s", r2)
+	}
+	// Same plan modulo the dir: the ONLY diff is the scratch_dir line.
+	strip := func(b []byte) string {
+		lines := strings.Split(string(b), "\n")
+		keep := make([]string, 0, len(lines))
+		for _, l := range lines {
+			if !strings.HasPrefix(l, "scratch_dir:") {
+				keep = append(keep, l)
+			}
+		}
+		return strings.Join(keep, "\n")
+	}
+	if strip(r1) != strip(r2) {
+		t.Fatal("the declared dir perturbed more than its own line")
+	}
+	if !bytes.Equal(r0, Render(withoutDir)) {
+		t.Fatal("re-render of the undeclared plan is not byte-identical")
 	}
 }

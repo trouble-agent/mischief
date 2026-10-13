@@ -26,6 +26,11 @@ type Scope struct {
 	Allowlisted string
 	// SpendCapUSD is the real-provider spend cap; 0 unless AllowReal.
 	SpendCapUSD float64
+	// ScratchDir is the declared scratch dir (--scratch-dir D); empty when
+	// the invocation declared none. It rides the scope so plan can RECORD
+	// the declaration verbatim without owning it (MISCHIEF-CLI-002: plan
+	// previews the L0 posture, run owns the dir).
+	ScratchDir string
 }
 
 // tierMin returns the primitive's minimum ladder level (catalog Tier.Min;
