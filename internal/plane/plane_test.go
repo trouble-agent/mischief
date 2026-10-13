@@ -129,6 +129,63 @@ func TestFoldUnknownStatusFailsClosed(t *testing.T) {
 	}
 }
 
+// TestFoldUnknownStatusOnAnyRowFailsClosed: an invalid status on an
+// EARLIER evidence row must fail the fold even when a later valid row
+// grades pass — the pipeline's last row (destroy) records last, but a
+// bogus preflight status is a plane defect the verdict may never
+// overwrite. This is the MISCHIEF-PLANE-003 reproduction.
+func TestFoldUnknownStatusOnAnyRowFailsClosed(t *testing.T) {
+	bogusFirst := []Step{
+		NewStep("preflight", "bogus", "", "0"),
+		NewStep("destroy", StatusPass, "agent destroyed", "0"),
+	}
+	status, reason, stage := Fold(bogusFirst)
+	if status != StatusFail {
+		t.Fatalf("earlier bogus status graded %q, want fail", status)
+	}
+	if !strings.Contains(reason, "unknown status") || !strings.Contains(reason, "bogus") || !strings.Contains(reason, "preflight") {
+		t.Fatalf("reason %q must name the unknown status and its row", reason)
+	}
+	if stage != "preflight" {
+		t.Fatalf("stage = %q, want the offending preflight row", stage)
+	}
+
+	// Same rows, invalid status on the final row — already failed closed
+	// before this fix; must keep failing.
+	bogusLast := []Step{
+		{Step: "preflight", Status: StatusPass, DetailB64: "", TS: "0"},
+		{Step: "destroy", Status: "bogus", DetailB64: "", TS: "0"},
+	}
+	if status, reason, _ = Fold(bogusLast); status != StatusFail || !strings.Contains(reason, "unknown status") {
+		t.Fatalf("final-row bogus status graded (%q,%q), want fail naming it", status, reason)
+	}
+}
+
+// TestFoldFullyValidMultiRowFileStaysPass: the position-independent
+// unknown-status gate must not touch a legitimate evidence file — rows
+// graded fail or skip on EARLIER stages with a green final row still fold
+// to that last verdict (steps append in pipeline order).
+func TestFoldFullyValidMultiRowFileStaysPass(t *testing.T) {
+	valid := []Step{
+		NewStep("build", StatusPass, "binaries built", "0"),
+		NewStep("preflight", StatusFail, "first preflight attempt failed, retried", "1"),
+		NewStep("spawn", StatusPass, "Agent created: abc123", "2"),
+		NewStep("destroy", StatusPass, "agent destroyed", "3"),
+	}
+	status, _, stage := Fold(valid)
+	if status != StatusPass || stage != "destroy" {
+		t.Fatalf("fully valid multi-row file graded (%q,%q), want pass/destroy", status, stage)
+	}
+
+	skippedEarly := []Step{
+		NewStep("preflight", StatusSkip, "no fault target in scope", "0"),
+		NewStep("destroy", StatusPass, "nothing to destroy", "1"),
+	}
+	if status, _, _ = Fold(skippedEarly); status != StatusPass {
+		t.Fatalf("valid skip-then-pass file graded %q, want pass", status)
+	}
+}
+
 // TestParseEvidenceDropsAndCountsCorruptLines: a truncated/corrupt JSONL
 // evidence file must not silently shrink — dropped lines are counted and
 // named.
