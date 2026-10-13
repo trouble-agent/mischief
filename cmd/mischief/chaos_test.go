@@ -247,3 +247,80 @@ func TestChaosFindingRefusesDuplicate(t *testing.T) {
 		t.Errorf("board has %d rows after the refused duplicate, want 1", got)
 	}
 }
+
+// The verdict flag is a CLOSED vocabulary (PRD §6.4): banana refuses
+// nonzero and writes NOTHING (the bad-priority discipline), recovered
+// files, and every declared value files.
+func TestChaosFindingRefusesOutOfVocabularyVerdict(t *testing.T) {
+	board := t.TempDir()
+	args := []string{"chaos", "finding",
+		"--project", "mischief", "--board", board,
+		"--title", "arbitrary verdict probe", "--reason", "the graded verdict must come from the closed set",
+		"--verdict", "banana",
+	}
+	code, stderr := captureStderr(t, func() int { return run(args) })
+	if code == 0 {
+		t.Fatal("banana verdict accepted")
+	}
+	if !strings.Contains(stderr, "not in the closed verdict vocabulary") {
+		t.Errorf("refusal does not name the closed verdict vocabulary: %s", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(board, "tasks.jsonl")); !os.IsNotExist(err) {
+		t.Errorf("board file exists after the refused verdict (want no row written): %v", err)
+	}
+}
+
+func TestChaosFindingAcceptsRecoveredVerdict(t *testing.T) {
+	board := t.TempDir()
+	code, out := captureStdout(t, func() int {
+		return run([]string{"chaos", "finding",
+			"--project", "mischief", "--board", board,
+			"--title", "valid verdict probe", "--reason", "the documented control verdict",
+			"--verdict", "recovered",
+		})
+	})
+	if code != 0 {
+		t.Fatalf("recovered verdict exit %d\nstdout:\n%s", code, out)
+	}
+	b, err := os.ReadFile(filepath.Join(board, "tasks.jsonl"))
+	if err != nil {
+		t.Fatalf("board file: %v", err)
+	}
+	if !strings.Contains(string(b), `"verdict":"recovered"`) {
+		t.Errorf("filed row does not carry the verdict: %s", b)
+	}
+}
+
+func TestChaosFindingAcceptsEveryDeclaredVerdict(t *testing.T) {
+	for _, v := range []string{"recovered", "degraded", "not_recovered", "hung", "corrupted", "no_op", "aborted", "flaky", "void"} {
+		board := t.TempDir()
+		code, out := captureStdout(t, func() int {
+			return run([]string{"chaos", "finding",
+				"--project", "mischief", "--board", board,
+				"--title", "vocabulary sweep " + v, "--reason", "every declared value must file",
+				"--verdict", v,
+			})
+		})
+		if code != 0 {
+			t.Errorf("verdict %q exit %d\nstdout:\n%s", v, code, out)
+		}
+	}
+}
+
+// The bad-priority discipline the dogfood tick proved is unchanged.
+func TestChaosFindingStillRefusesBadPriority(t *testing.T) {
+	board := t.TempDir()
+	code, _ := captureStderr(t, func() int {
+		return run([]string{"chaos", "finding",
+			"--project", "mischief", "--board", board,
+			"--title", "bad priority probe", "--reason", "P9 is outside P0..P3",
+			"--priority", "P9",
+		})
+	})
+	if code == 0 {
+		t.Fatal("P9 priority accepted")
+	}
+	if _, err := os.Stat(filepath.Join(board, "tasks.jsonl")); !os.IsNotExist(err) {
+		t.Errorf("board file exists after the refused priority (want no row written): %v", err)
+	}
+}

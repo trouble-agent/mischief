@@ -123,6 +123,14 @@ func (v Verdict) valid() bool {
 // String renders the verdict value exactly as it is journaled.
 func (v Verdict) String() string { return string(v) }
 
+// ValidVerdict reports whether s is one of the closed verdict values
+// (§6.4) — the exported gate for writers that take a verdict as free
+// text (the chaos finding CLI flag, the findings-row validator) so the
+// vocabulary stays closed at every surface that renders it.
+func ValidVerdict(s string) bool {
+	return Verdict(s).valid()
+}
+
 // target is the declared target of an experiment (§6.2).
 type target struct {
 	Selector string `yaml:"selector"`

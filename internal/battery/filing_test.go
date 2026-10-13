@@ -83,6 +83,7 @@ func TestValidateRowsRefusals(t *testing.T) {
 		{"bad status", `{"id":"x","status":"done-ish","title":"t","priority":"P1","depends_on":[]}` + "\n", "status: \"done-ish\" not in the board vocabulary"},
 		{"missing title", `{"id":"x","status":"pending","priority":"P1","depends_on":[]}` + "\n", "title: missing"},
 		{"bad priority", `{"id":"x","status":"pending","title":"t","priority":"urgent","depends_on":[]}` + "\n", "priority: \"urgent\" not in the board vocabulary"},
+		{"bad verdict", `{"id":"x","status":"pending","title":"t","priority":"P1","verdict":"banana","depends_on":[]}` + "\n", "verdict: \"banana\" not in the closed verdict vocabulary"},
 		{"duplicate id", good + good, "duplicate id"},
 		{"empty line mid-file", good + "\n" + good, "empty line"},
 	}
@@ -98,6 +99,38 @@ func TestValidateRowsRefusals(t *testing.T) {
 	}
 	if err := ValidateRows(nil); err != nil {
 		t.Errorf("empty findings file must validate: %v", err)
+	}
+}
+
+// TestValidateRowsVerdictVocabulary: the validator is the closed-verdict
+// gate for board rows — every §6.4 value validates, an out-of-vocabulary
+// verdict refuses, and the empty verdict stays valid (the field is
+// optional; a finding may not carry a verdict at all).
+func TestValidateRowsVerdictVocabulary(t *testing.T) {
+	verdictRow := func(v string) []byte {
+		line := `{"id":"MSF-CHAOS-abc123","status":"pending","title":"t","priority":"P1","depends_on":[]`
+		if v != "" {
+			line += `,"verdict":"` + v + `"`
+		}
+		line += "}"
+		return []byte(line + "\n")
+	}
+	declared := []string{
+		"recovered", "degraded", "not_recovered", "hung", "corrupted",
+		"no_op", "aborted", "flaky", "void",
+	}
+	for _, v := range declared {
+		if err := ValidateRows(verdictRow(v)); err != nil {
+			t.Errorf("verdict %q refused: %v", v, err)
+		}
+	}
+	for _, v := range []string{"banana", "Recoverd", "not recovered"} {
+		if err := ValidateRows(verdictRow(v)); err == nil {
+			t.Errorf("verdict %q validated, want refusal", v)
+		}
+	}
+	if err := ValidateRows(verdictRow("")); err != nil {
+		t.Errorf("empty (absent) verdict refused: %v", err)
 	}
 }
 

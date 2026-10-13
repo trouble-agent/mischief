@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/trouble-agent/mischief/internal/journal"
 )
 
 // artefact.go — the detection-matrix artefact writer (S-5): fault ×
@@ -291,8 +293,12 @@ func WriteFindings(dir string, r *RunResult, runID, journalPath string) (string,
 // ValidateRows is the `boardctl validate`-style self-check (AC-18): every
 // line must be a JSON object carrying the mischief board's row fields —
 // id (non-empty), status (in the board's status vocabulary), title
-// (non-empty), priority (P0..P3), depends_on (a list) — and the whole set
-// must be id-unique. Returns the first problem, naming line and field.
+// (non-empty), priority (P0..P3), depends_on (a list) — the optional
+// verdict must be empty or one of PRD §6.4's closed verdict values (the
+// same vocabulary the journal grades and `chaos finding --verdict`
+// accepts — an out-of-vocabulary verdict on a board row is unverifiable
+// against any journal, so it never files) — and the whole set must be
+// id-unique. Returns the first problem, naming line and field.
 func ValidateRows(jsonl []byte) error {
 	lines := strings.Split(strings.TrimRight(string(jsonl), "\n"), "\n")
 	if len(lines) == 1 && lines[0] == "" {
@@ -309,6 +315,7 @@ func ValidateRows(jsonl []byte) error {
 			Title     string   `json:"title"`
 			Priority  string   `json:"priority"`
 			DependsOn []string `json:"depends_on"`
+			Verdict   string   `json:"verdict"`
 		}
 		if err := json.Unmarshal([]byte(ln), &row); err != nil {
 			return fmt.Errorf("row %d: not a JSON object: %v", i+1, err)
@@ -322,6 +329,8 @@ func ValidateRows(jsonl []byte) error {
 			return fmt.Errorf("row %d: title: missing", i+1)
 		case !findingPriorities[row.Priority]:
 			return fmt.Errorf("row %d: priority: %q not in the board vocabulary", i+1, row.Priority)
+		case row.Verdict != "" && !journal.ValidVerdict(row.Verdict):
+			return fmt.Errorf("row %d: verdict: %q not in the closed verdict vocabulary", i+1, row.Verdict)
 		}
 		if ids[row.ID] {
 			return fmt.Errorf("row %d: duplicate id %q", i+1, row.ID)
