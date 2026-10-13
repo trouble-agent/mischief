@@ -170,7 +170,7 @@ func cmdChaosFinding(args []string) int {
 	reason := fs.String("reason", "", "deciding evidence (required)")
 	priority := fs.String("priority", "P3", "P0..P3 (default P3)")
 	primitive := fs.String("primitive", "", "the catalog primitive id, when the finding names one")
-	verdict := fs.String("verdict", "", "the graded verdict, when the finding carries one")
+	verdict := fs.String("verdict", "", "the graded verdict, when the finding carries one (recovered|degraded|not_recovered|hung|corrupted|no_op|aborted|flaky|void — PRD §6.4, closed)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
