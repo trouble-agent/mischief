@@ -1,0 +1,14 @@
+{
+  "tick_id": "mischief-foreman-2026-10-13-14-52-45",
+  "created_at": "2026-10-13T14:57:00-05:00",
+  "base_sha": "4680085",
+  "budget": 5,
+  "tasks": [
+    {"id": "MISCHIEF-CLI-002", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-CLI-002", "branch": "wt/MISCHIEF-CLI-002", "scope": "cmd/mischief flag definition + regression test"},
+    {"id": "MISCHIEF-CHAOS-001", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-CHAOS-001", "branch": "wt/MISCHIEF-CHAOS-001", "scope": "internal/chaos verdict validation + regression test"},
+    {"id": "MISCHIEF-PLANE-003", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-PLANE-003", "branch": "wt/MISCHIEF-PLANE-003", "scope": "internal/plane fold aggregation + regression test"}
+  ],
+  "independence_verified": "no depends_on edges among picked rows; disjoint file scopes (cmd/mischief flag, internal/chaos, internal/plane); each worker in its own worktree",
+  "dispatch_log": "/tmp/misf-wave-dispatch-1013.sh via terminal background proc_67bd98b44e54",
+  "recovery_note": "wave-recovery of mischief-foreman-2026-10-09-23-15-54 completed first: all 10 worker branches already merged into main (SEC-001 e99dabe verdict PASS, DOC-6..10, README-3..6 merges d8b07c6/912d269/f559051/1c466d9), rows complete + ci_result GREEN, worktrees reaped, only finished_at was missing (set 2026-10-13T14:54:56Z)"
+}
