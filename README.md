@@ -154,6 +154,39 @@ green-or-skip; on an unsanctioned host selftest refuses fail-closed with
 declare → plan → arm → LAND → prove landed → hold → observe → revert → prove reverted → grade → journal → findings
 ```
 
+## Arming a hold (`mischief arm`)
+
+The `arm` verb is the write-ahead half of the loop (SPEC-04): it records a
+reverter hold — fault id, target, the inverse action, the measured
+post-revert check, and a TTL — into the run dir's journal, fsynced BEFORE the
+fault may land. The serve daemon (or a detached TTL owner) reverts the hold
+at TTL expiry from the journal bytes alone; `mischief revert --all` is the
+kill switch.
+
+```sh
+mkdir -p /tmp/mischief-scratch
+cp /tmp/mischief-scratch/config.toml /tmp/mischief-scratch/config.toml.bak
+bin/mischief arm \
+  --fault S-001 --target scratch:/tmp/mischief-scratch \
+  --ttl 30s \
+  --inverse-kind restore-file \
+  --inverse-params path=/tmp/mischief-scratch/config.toml,backup=/tmp/mischief-scratch/config.toml.bak \
+  --check-kind file-matches-backup \
+  --check-params path=/tmp/mischief-scratch/config.toml,backup=/tmp/mischief-scratch/config.toml.bak \
+  --dir ~/.mischief/runs/default
+
+bin/mischief status --dir ~/.mischief/runs/default   # shows the armed hold + TTL remaining
+bin/mischief serve --dir ~/.mischief/runs/default    # watchdog reverts at TTL, writes health.json
+```
+
+Decl kinds are the reverter's closed vocabulary (fail closed on unknown
+kinds): inverse — `restore-file` (params `path`,`backup`) | `remove-file`
+(param `path`); check — `file-matches-backup` (params `path`,`backup`) |
+`file-absent` (param `path`). Like the fault-landing verbs, `arm` runs the
+SPEC-13 sanction gate and refuses fail-closed (exit 2, nothing written) on an
+unsanctioned host. Arming writes the hold only — landing the fault remains
+the fault verbs' act.
+
 ## Safety, in one breath
 
 No setuid. Rootless-first (`systemd-run --user` scopes, LD_PRELOAD, seccomp, userspace

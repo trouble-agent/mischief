@@ -9,6 +9,8 @@
 //	revert   — measured revert by --all / --hold selector (AC-4/AC-6)
 //	doctor   — capability/tier ladder report, refuses nothing extra
 //	serve    — the reverter daemon: TTL ownership + boot reconcile + health.json
+//	arm      — write-ahead a reverter hold (fault + inverse/check decls + TTL;
+//	           SPEC-04: the inverse is durable before any fault may land)
 //	__owner  — the detached TTL owner entry (spawned by the reverter package;
 //	           re-execs this binary; not an operator verb)
 //	version  — the stamped build identity
@@ -95,6 +97,11 @@ func run(args []string) int {
 		return cmdSim(args[1:])
 	case "serve":
 		return cmdServe(args[1:])
+	case "arm":
+		// DF-05: the write-ahead verb — arm a reverter hold (fault,
+		// inverse, check, TTL) into the run dir's journal. The write-ahead
+		// half of the loop that serve/owner/revert complete.
+		return cmdArm(args[1:])
 	case "__owner":
 		// The detached TTL owner (reverter.RunOwner). Not listed in usage:
 		// it is a spawn target, not an operator verb.
@@ -138,6 +145,7 @@ Usage:
   mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief chaos   matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim     --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
+  mischief arm     --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
   mischief serve   --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
   mischief install    [--user U] [--prefix P] [--dry-run] [--no-drop-in]
   mischief uninstall  [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
