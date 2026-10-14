@@ -413,3 +413,106 @@ func TestArtefactRoundTripFile(t *testing.T) {
 }
 
 var _ = verdict.Timeline{} // keep the import honest if branches change
+
+// TestPartialCleanCloseNotFlaky (DF-08): a battery run with 4 executed
+// passes + 1 capability skip grades run_closed — the cells are five
+// DIFFERENT experiments, so a skip is honest partial coverage, not
+// disagreement. The skip is still reported per cell (recovery axis
+// "refused", skip reason on the cell artefact).
+func TestPartialCleanCloseNotFlaky(t *testing.T) {
+	rn := stubRunner(stubCat("P-001", "P-002", "P-003", "P-004", "S-1"), map[string]selftest.Result{
+		"P-001": stubPass,
+		"P-002": stubPass,
+		"P-003": stubPass,
+		"P-004": stubPass,
+		"S-1":   stubSkip,
+	})
+	res, err := rn.Run(&Matrix{Cells: []Cell{
+		cell("c1", "P-001"), cell("c2", "P-002"), cell("c3", "P-003"),
+		cell("c4", "P-004"), cell("c5", "S-1"),
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs := res.JournalRecords("run-df08")
+	last := recs[len(recs)-1]
+	if last.Type != journal.RecordRunClosed {
+		t.Fatalf("last record %s, want run_closed", last.Type)
+	}
+	if last.Verdict != journal.VerdictRecovered {
+		t.Errorf("verdict %q (%s), want recovered — 4 pass + 1 skip is a partial CLEAN close, not flaky", last.Verdict, last.Fields["reason"])
+	}
+	if !strings.Contains(last.Fields["reason"], "4 of 5 cells executed") || !strings.Contains(last.Fields["reason"], "1 capability-skipped") {
+		t.Errorf("reason %q must report the executed/skipped census", last.Fields["reason"])
+	}
+	if got := res.Cells[4].Recovery; got != "refused" {
+		t.Errorf("skipped cell recovery %q, want refused (per-cell SKIP kept intact)", got)
+	}
+	if got := res.Cells[4].Verdict; got != journal.VerdictAborted {
+		t.Errorf("skipped cell verdict %q, want aborted (cell-level SKIP intact)", got)
+	}
+	if len(res.Findings) != 0 {
+		t.Errorf("a pass+skip run filed %d findings, want 0", len(res.Findings))
+	}
+}
+
+// TestGenuineDisagreementStillNotClosed (DF-08): 3 executed passes + 2
+// executed not_recovered cells is an adverse close (worst verdict
+// present), never run_closed and never flaky.
+func TestGenuineDisagreementStillNotClosed(t *testing.T) {
+	failRes := selftest.Result{ID: "Z-1", State: "fail", Reason: "inverse did not prove: state stayed T", LandProof: "landed"}
+	rn := stubRunner(stubCat("P-001", "P-002", "P-003", "Z-1", "Z-2"), map[string]selftest.Result{
+		"P-001": stubPass,
+		"P-002": stubPass,
+		"P-003": stubPass,
+		"Z-1":   failRes,
+		"Z-2":   failRes,
+	})
+	res, err := rn.Run(&Matrix{Cells: []Cell{
+		cell("c1", "P-001"), cell("c2", "P-002"), cell("c3", "P-003"),
+		cell("c4", "Z-1"), cell("c5", "Z-2"),
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs := res.JournalRecords("run-df08b")
+	last := recs[len(recs)-1]
+	if last.Verdict != journal.VerdictNotRecovered {
+		t.Errorf("verdict %q, want not_recovered (worst adverse verdict present)", last.Verdict)
+	}
+	if last.Verdict == journal.VerdictFlaky {
+		t.Error("cell heterogeneity must never grade flaky")
+	}
+	if len(res.Findings) != 2 {
+		t.Errorf("findings %d, want 2 (one per failed cell)", len(res.Findings))
+	}
+}
+
+// TestAllSkippedGradesAborted (DF-08): every cell capability-skipped →
+// nothing executed → the run grades aborted, not recovered and not void.
+func TestAllSkippedGradesAborted(t *testing.T) {
+	rn := stubRunner(stubCat("S-1", "S-2"), map[string]selftest.Result{
+		"S-1": stubSkip,
+		"S-2": stubSkip,
+	})
+	res, err := rn.Run(&Matrix{Cells: []Cell{cell("c1", "S-1"), cell("c2", "S-2")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs := res.JournalRecords("run-df08c")
+	last := recs[len(recs)-1]
+	if last.Verdict != journal.VerdictAborted {
+		t.Errorf("verdict %q, want aborted (nothing executed)", last.Verdict)
+	}
+}
+
+// TestSingleExperimentReplayKeepsFlaky (DF-08 corollary): Aggregate's
+// N-run replay shape still grades flaky on disagreement — the DF-08 fix
+// widens NOTHING there.
+func TestSingleExperimentReplayKeepsFlaky(t *testing.T) {
+	rec := verdict.Result{Verdict: journal.VerdictRecovered}
+	nrec := verdict.Result{Verdict: journal.VerdictNotRecovered}
+	if got := verdict.Aggregate([]verdict.Result{rec, nrec, rec}); got.Verdict != journal.VerdictFlaky {
+		t.Errorf("replay disagreement graded %q, want flaky", got.Verdict)
+	}
+}

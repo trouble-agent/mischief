@@ -164,16 +164,33 @@ func (r *RunResult) Counts() string {
 // JournalRecords both consume THIS method, so the CLI's printed verdict,
 // the journal's verdict record, and run_closed always carry the same
 // value (AC-9: one aggregate, every hop).
+// RecordRunClosed. Skip/aborted cells are EXCLUDED from that count (they
+// are reported per cell in Reason instead): the battery's cells are five
+// DIFFERENT experiments, so a pass+skip mix is a partial clean close — a
+// clean close with an adverse (executed, failed) cell stays not_closed.
+// All-skipped cells grade aborted (nothing executed).
 func (r *RunResult) AggregateResult() verdict.Result {
 	graded := make([]verdict.Result, 0, len(r.Cells))
+	executed, aborted := 0, 0
 	for i := range r.Cells {
+		c := r.Cells[i]
 		graded = append(graded, verdict.Result{
-			Verdict:  r.Cells[i].Verdict,
-			Reason:   r.Cells[i].Reason,
-			Timeline: r.Cells[i].Timeline,
+			Verdict:  c.Verdict,
+			Reason:   c.Reason,
+			Timeline: c.Timeline,
 		})
+		// DF-08: a capability skip is an honest "this experiment did not
+		// run" — it neither agrees nor disagrees with anything.
+		if c.SelftestState == "skip" {
+			aborted++
+			continue
+		}
+		executed++
 	}
-	return verdict.AggregateCells(graded)
+	agg := verdict.AggregateCells(graded)
+	agg.Reason = fmt.Sprintf("%d of %d cells executed (%d capability-skipped, reported per cell); %s",
+		executed, len(r.Cells), aborted, agg.Reason)
+	return agg
 }
 
 // AggregateVerdict returns the run's aggregate verdict (see
@@ -580,7 +597,7 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 	add(&journal.Record{Type: journal.RecordVerdict, Verdict: agg.Verdict,
 		Fields: map[string]string{"reason": agg.Reason, "cells": fmt.Sprintf("%d", len(r.Cells))}})
 	add(&journal.Record{Type: journal.RecordRunClosed, Verdict: agg.Verdict,
-		Fields: map[string]string{"kind": "battery", "findings": fmt.Sprintf("%d", len(r.Findings)), "cells": fmt.Sprintf("%d", len(r.Cells))}})
+		Fields: map[string]string{"kind": "battery", "findings": fmt.Sprintf("%d", len(r.Findings)), "cells": fmt.Sprintf("%d", len(r.Cells)), "reason": agg.Reason}})
 	return recs
 }
 
