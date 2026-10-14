@@ -251,11 +251,12 @@ func proofRecord(p Proof, bootID string) record {
 }
 
 // Detach spawns the detached TTL owner for one hold: a process OUTSIDE the
-// CLI's fate that reverts the hold at expiry (AC-5). The proven shape
-// (`systemd-run --user --scope -p RuntimeMaxSec=<ttl+margin>`) is used when
-// the user manager is reachable; otherwise a real setsid child re-execs
-// OwnerMain. The owner survives kill -9 of the CLI; it reverts from the
-// journal bytes alone.
+// CLI's fate that reverts the hold at expiry (AC-5). Shape order on the
+// natural path: the liveness-verified `systemd-run --user --collect
+// --unit=<name> -p RuntimeMaxSec=<ttl+margin>` when the user manager is
+// reachable (a dead/unobservable unit falls back to the setsid shape),
+// otherwise a real setsid child re-execs OwnerMain. The owner survives
+// kill -9 of the CLI; it reverts from the journal bytes alone.
 func (l *Lifecycle) Detach(holdID string, ttl time.Duration) (ownerResult, error) {
 	s := l.store
 	s.mu.Lock()
