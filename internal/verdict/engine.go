@@ -251,12 +251,19 @@ func Grade(p Plan, ev Evidence) Result {
 		ev.Timeline.Recover, p.Budget, len(p.IntegrityNames))
 }
 
-// Aggregate grades N results of the same experiment (the battery/replay
-// shape): unanimous agreement returns the common verdict; disagreement
-// grades flaky (PRD §6.4: "flaky (N runs disagree)"). A single result is
-// itself; zero runs grade void (nothing to grade is not a pass). The
-// returned Result carries the first result's timeline and — on
-// disagreement — a reason naming the disagreeing values in run order.
+// Aggregate grades N results of the SAME experiment run repeatedly (the
+// replay shape, PRD §6.4: "flaky (N runs disagree)"): unanimous agreement
+// returns the common verdict; any disagreement grades flaky. flaky is
+// RESERVED for this shape — one experiment whose repeats do not agree is
+// the only measured instability. Aggregating results of DIFFERENT
+// experiments (battery cells, each executed once) is AggregateCells,
+// which never grades flaky: with no repeat there is nothing to disagree,
+// so a mixed census is heterogeneity, not instability.
+//
+// A single result is itself; zero runs grade void (nothing to grade is
+// not a pass). The returned Result carries the first result's timeline
+// and — on disagreement — a reason naming the disagreeing values in run
+// order.
 func Aggregate(rs []Result) Result {
 	if len(rs) == 0 {
 		return Result{Verdict: journal.VerdictVoid, Reason: "aggregate of zero runs"}
@@ -280,6 +287,86 @@ func Aggregate(rs []Result) Result {
 		out.Reason = fmt.Sprintf("%d runs agree on %s: %s", len(rs), first.Verdict, first.Reason)
 	}
 	return out
+}
+
+// verdictSeverity orders the closed vocabulary from most to least
+// severe (AggregateCells keeps the worst verdict present, so a mixed
+// cell census can never hide an adverse outcome behind a benign one).
+var verdictSeverity = map[journal.Verdict]int{
+	journal.VerdictCorrupted:    0,
+	journal.VerdictHung:         1,
+	journal.VerdictNotRecovered: 2,
+	journal.VerdictNoOp:         3,
+	journal.VerdictVoid:         4,
+	journal.VerdictFlaky:        5,
+	journal.VerdictDegraded:     6,
+	journal.VerdictRecovered:    7,
+	journal.VerdictAborted:      8,
+}
+
+// benignVerdict reports whether v is a verdict with no adverse finding:
+// the fault landed and closed clean (recovered / degraded), or the run
+// honestly did not happen (aborted: rails refusal / capability skip).
+// Everything else — no_op (the run FAILED per AC-3), void, flaky, and
+// the recovery/loss failures — is adverse.
+func benignVerdict(v journal.Verdict) bool {
+	switch v {
+	case journal.VerdictRecovered, journal.VerdictDegraded, journal.VerdictAborted:
+		return true
+	default:
+		return false
+	}
+}
+
+// AggregateCells grades N results of DIFFERENT experiments (the battery
+// shape: one result per matrix cell, each cell executed once). With no
+// repeat of any experiment there is nothing to disagree, so this
+// function NEVER grades flaky — heterogeneity across cells is honest,
+// and instability is unmeasurable here (flaky is reserved for
+// Aggregate's repeat shape, PRD §6.4).
+//
+// Zero cells grade void. Unanimous cells return the common verdict. A
+// mixed census returns the most severe verdict present (never hiding an
+// adverse outcome behind a benign one) with a reason that is the full
+// verdict census, so the journal names the mix instead of mislabeling
+// it: {recovered×3, aborted×2} → recovered ("...3 recovered, 2
+// aborted"), {recovered, no_op} → no_op. The returned Result carries
+// the first cell's timeline.
+func AggregateCells(rs []Result) Result {
+	if len(rs) == 0 {
+		return Result{Verdict: journal.VerdictVoid, Reason: "aggregate of zero cells"}
+	}
+	census := map[journal.Verdict]int{}
+	order := make([]journal.Verdict, 0, len(rs))
+	worst := rs[0]
+	for _, r := range rs {
+		if census[r.Verdict] == 0 {
+			order = append(order, r.Verdict)
+		}
+		census[r.Verdict]++
+		if verdictSeverity[r.Verdict] < verdictSeverity[worst.Verdict] {
+			worst = r
+		}
+	}
+	if len(order) == 1 {
+		out := rs[0]
+		if len(rs) > 1 && out.Reason != "" {
+			out.Reason = fmt.Sprintf("%d cells agree on %s: %s", len(rs), out.Verdict, out.Reason)
+		}
+		return out
+	}
+	parts := make([]string, 0, len(order))
+	for _, v := range order {
+		parts = append(parts, fmt.Sprintf("%d %s", census[v], v))
+	}
+	verdict := worst.Verdict
+	reason := fmt.Sprintf("%d cells, mixed verdicts (heterogeneity across cells, not disagreement): %s",
+		len(rs), strings.Join(parts, ", "))
+	if benignVerdict(verdict) {
+		reason = fmt.Sprintf("%d cells, no adverse verdict (mixed but healthy): %s",
+			len(rs), strings.Join(parts, ", "))
+	}
+	return Result{Verdict: verdict, Timeline: rs[0].Timeline, Reason: reason}
 }
 
 // Record renders the result as a journal verdict record (SPEC-02's wire

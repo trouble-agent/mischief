@@ -157,13 +157,14 @@ func (r *RunResult) Counts() string {
 	return fmt.Sprintf("battery: %d pass, %d skip, %d fail (of %d cells)", pass, skip, fail, len(r.Cells))
 }
 
-// AggregateVerdict returns the run's aggregate verdict (verdict.Aggregate
-// over the per-cell results: unanimous → the common verdict,
-// disagreement → flaky, zero cells → void) — the SAME value the journal's
-// verdict/run_closed records carry, exposed so the CLI hop can print the
-// aggregate verdict with the run id (AC-9: the aggregate value survives
-// to the output, MSF-031).
-func (r *RunResult) AggregateVerdict() journal.Verdict {
+// AggregateResult derives the run's aggregate (verdict.AggregateCells
+// over the per-cell results — cells are DIFFERENT experiments each run
+// once, so a mixed census is graded honestly at the worst verdict
+// present and flaky is never produced here). AggregateVerdict and
+// JournalRecords both consume THIS method, so the CLI's printed verdict,
+// the journal's verdict record, and run_closed always carry the same
+// value (AC-9: one aggregate, every hop).
+func (r *RunResult) AggregateResult() verdict.Result {
 	graded := make([]verdict.Result, 0, len(r.Cells))
 	for i := range r.Cells {
 		graded = append(graded, verdict.Result{
@@ -172,7 +173,17 @@ func (r *RunResult) AggregateVerdict() journal.Verdict {
 			Timeline: r.Cells[i].Timeline,
 		})
 	}
-	return verdict.Aggregate(graded).Verdict
+	return verdict.AggregateCells(graded)
+}
+
+// AggregateVerdict returns the run's aggregate verdict (see
+// AggregateResult: unanimous → the common verdict, mixed cells → the
+// most severe verdict present — never flaky, zero cells → void) — the
+// SAME value the journal's verdict/run_closed records carry, exposed so
+// the CLI hop can print the aggregate verdict with the run id (AC-9: the
+// aggregate value survives to the output, MSF-031).
+func (r *RunResult) AggregateVerdict() journal.Verdict {
+	return r.AggregateResult().Verdict
 }
 
 // findingVerdicts is the set of verdicts that file a finding (a finding is
@@ -519,10 +530,11 @@ func gradeFail(st selftest.Result) (journal.Verdict, string, verdict.Timeline) {
 //	run_planned     — once: kind battery, quick flag, cell ids
 //	fault_landed    — per cell with a measured land proof
 //	fault_reverted  — per cell with a measured revert proof (AC-4)
-//	verdict         — once: the run's aggregate (verdict.Aggregate over
-//	                  per-cell results: unanimous → the common verdict,
-//	                  disagreement → flaky)
-//	run_closed      — once: the counts
+//	verdict         — once: the run's aggregate (AggregateResult:
+//	                  AggregateCells over per-cell results — unanimous →
+//	                  the common verdict, mixed cells → the most severe
+//	                  verdict present, never flaky)
+//	run_closed      — once: the counts, same aggregate value
 func (r *RunResult) JournalRecords(runID string) []journal.Record {
 	now := time.Now().Unix()
 	recs := make([]journal.Record, 0, 2*len(r.Cells)+3)
@@ -564,7 +576,7 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 		})
 	}
 
-	agg := verdict.Aggregate(graded)
+	agg := r.AggregateResult()
 	add(&journal.Record{Type: journal.RecordVerdict, Verdict: agg.Verdict,
 		Fields: map[string]string{"reason": agg.Reason, "cells": fmt.Sprintf("%d", len(r.Cells))}})
 	add(&journal.Record{Type: journal.RecordRunClosed, Verdict: agg.Verdict,

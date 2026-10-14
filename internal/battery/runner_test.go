@@ -252,8 +252,10 @@ func isUnknownKind(err error) bool {
 }
 
 // TestJournalRecordsRoundTrip: the record set survives a journal write →
-// read (the closed vocabulary is enforced at the write path; flaky
-// aggregation surfaces on disagreement).
+// read (the closed vocabulary is enforced at the write path; a mixed
+// cell census with an adverse verdict aggregates to that ADVERSE verdict
+// — never flaky, MISCHIEF-DF-25: flaky is reserved for N repeats of the
+// SAME experiment disagreeing).
 func TestJournalRecordsRoundTrip(t *testing.T) {
 	rn := stubRunner(stubCat("P-001", "Z-1"), map[string]selftest.Result{
 		"P-001": stubPass,
@@ -268,7 +270,9 @@ func TestJournalRecordsRoundTrip(t *testing.T) {
 	if len(recs) == 0 {
 		t.Fatal("no records")
 	}
-	// a disagreement (recovered vs no_op) aggregates flaky
+	// a mixed cell census with an adverse verdict (recovered vs no_op)
+	// aggregates to the adverse verdict — the worst present, never
+	// flaky (MISCHIEF-DF-25)
 	var last journal.Record
 	for _, r := range recs {
 		last = r
@@ -276,8 +280,8 @@ func TestJournalRecordsRoundTrip(t *testing.T) {
 	if last.Type != journal.RecordRunClosed {
 		t.Fatalf("last record %s, want run_closed", last.Type)
 	}
-	if last.Verdict != journal.VerdictFlaky {
-		t.Errorf("aggregate verdict %q, want flaky (disagreeing cell verdicts)", last.Verdict)
+	if last.Verdict != journal.VerdictNoOp {
+		t.Errorf("aggregate verdict %q, want no_op (the adverse cell's verdict; flaky is repeat-only)", last.Verdict)
 	}
 	dir := t.TempDir()
 	path, err := WriteJournal(dir, recs)

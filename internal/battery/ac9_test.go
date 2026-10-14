@@ -225,12 +225,16 @@ func TestAC9AbortedSkipsJournalOnly(t *testing.T) {
 	}
 }
 
-// TestAC9FlakyAggregateHops (AC-9, the flaky shape): two cells whose
-// verdicts disagree aggregate to flaky on the journal hop (verdict +
-// run_closed records AND the aggregate the CLI prints); the run files
-// the adverse cell's row and the row stays the CELL's truth (its own
-// verdict + the shared run id), never the aggregate's.
-func TestAC9FlakyAggregateHops(t *testing.T) {
+// TestAC9MixedCellsAdverseAggregateHops (AC-9, the mixed-cells shape;
+// MISCHIEF-DF-25/DF-08 contract update): cells are DIFFERENT experiments
+// each run once, so their aggregate is AggregateCells — a mixed census
+// with an adverse verdict grades the ADVERSE verdict (here no_op, the
+// worst present: a cell whose land never proved FAILED, AC-3), never
+// flaky (flaky is reserved for N repeats of the SAME experiment
+// disagreeing). The run files the adverse cell's row and the row stays
+// the CELL's truth (its own verdict + the shared run id), never the
+// aggregate's.
+func TestAC9MixedCellsAdverseAggregateHops(t *testing.T) {
 	rn := stubRunner(stubCat("P-001", "Z-1"), map[string]selftest.Result{
 		"P-001": stubPass,
 		"Z-1":   {ID: "Z-1", State: "fail", Reason: "land did not prove: counter stayed 0"},
@@ -241,8 +245,8 @@ func TestAC9FlakyAggregateHops(t *testing.T) {
 	}
 	runID := RunResultRunID(res)
 
-	if agg := res.AggregateVerdict(); agg != journal.VerdictFlaky {
-		t.Fatalf("AggregateVerdict() = %q, want flaky (disagreeing cells)", agg)
+	if agg := res.AggregateVerdict(); agg != journal.VerdictNoOp {
+		t.Fatalf("AggregateVerdict() = %q, want no_op (the worst verdict present; flaky is repeat-only, MISCHIEF-DF-25)", agg)
 	}
 	recs := ac9JournalRecords(t, res.JournalRecords(runID))
 
@@ -256,8 +260,13 @@ func TestAC9FlakyAggregateHops(t *testing.T) {
 	if crec == nil {
 		t.Fatal("missing run_closed record")
 	}
-	if vrec.Verdict != journal.VerdictFlaky || crec.Verdict != journal.VerdictFlaky {
-		t.Fatalf("AC-9 flaky hop: verdict record %q / run_closed %q, want flaky", vrec.Verdict, crec.Verdict)
+	if vrec.Verdict != journal.VerdictNoOp || crec.Verdict != journal.VerdictNoOp {
+		t.Fatalf("AC-9 mixed-cells hop: verdict record %q / run_closed %q, want no_op", vrec.Verdict, crec.Verdict)
+	}
+	for _, want := range []string{"heterogeneity", "1 recovered", "1 no_op"} {
+		if !strings.Contains(vrec.Fields["reason"], want) {
+			t.Fatalf("verdict record reason %q must name the cell census (missing %q)", vrec.Fields["reason"], want)
+		}
 	}
 
 	dir := t.TempDir()
@@ -274,6 +283,52 @@ func TestAC9FlakyAggregateHops(t *testing.T) {
 	}
 	if ac9Str(t, rows[0], "run_id") != runID {
 		t.Fatalf("findings row run_id %v, want %q", rows[0]["run_id"], runID)
+	}
+}
+
+// TestAC9MixedHealthyRunNeverFlaky (the MISCHIEF-DF-25 regression): a
+// healthy battery run whose cells grade {recovered×N, aborted×M, fail=0}
+// — e.g. pass cells plus a capability skip — journals recovered (the
+// most severe benign verdict present) on ALL THREE hops with a reason
+// naming the mix, never 'flaky': heterogeneity across cells is honest,
+// and flaky is the engine's word for recovery instability (PRD §6.4),
+// which a single-shot cell census cannot even measure. A healthy run
+// files no findings.
+func TestAC9MixedHealthyRunNeverFlaky(t *testing.T) {
+	rn := stubRunner(stubCat("P-001", "Z-A"), map[string]selftest.Result{
+		"P-001": stubPass,
+		"Z-A":   stubSkip,
+	})
+	res, err := rn.Run(&Matrix{Cells: []Cell{cell("c1", "P-001"), cell("c2", "Z-A")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runID := RunResultRunID(res)
+
+	if agg := res.AggregateVerdict(); agg != journal.VerdictRecovered {
+		t.Fatalf("AggregateVerdict() = %q, want recovered (healthy mix, fail=0; MISCHIEF-DF-25)", agg)
+	}
+	recs := ac9JournalRecords(t, res.JournalRecords(runID))
+	var crec *journal.Record
+	vrec := ac9VerdictRecord(t, recs)
+	for i := range recs {
+		if recs[i].Type == journal.RecordRunClosed {
+			crec = &recs[i]
+		}
+	}
+	if crec == nil {
+		t.Fatal("missing run_closed record")
+	}
+	if vrec.Verdict != journal.VerdictRecovered || crec.Verdict != journal.VerdictRecovered {
+		t.Fatalf("healthy mix journaled verdict %q / run_closed %q, want recovered on both (never flaky)", vrec.Verdict, crec.Verdict)
+	}
+	for _, want := range []string{"no adverse verdict", "1 recovered", "1 aborted"} {
+		if !strings.Contains(vrec.Fields["reason"], want) {
+			t.Fatalf("verdict record reason %q must name the mix (missing %q)", vrec.Fields["reason"], want)
+		}
+	}
+	if len(res.Findings) != 0 {
+		t.Fatalf("a healthy run (recovered + recorded skip) filed %d findings, want 0", len(res.Findings))
 	}
 }
 
