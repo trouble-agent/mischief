@@ -56,8 +56,11 @@ const ModeRows = "rows"
 // chaos lane instantiated for it refuses — the isolation contract
 // (MSF-020/MSF-022: "it may not run a fault on the scheduler's own
 // host"). The name is matched case-insensitively against the lane's
-// declared host name, and every forbidden host may also be listed
-// explicitly in the template's isolation.forbidden_hosts.
+// declared host name, AND against the machine this check runs on
+// (isSchedulerHost resolves os.Hostname): "the scheduler's own host" is
+// a resolvable identity at validation time, not only a name in a
+// template. Every forbidden host may also be listed explicitly in the
+// template's isolation.forbidden_hosts.
 const SchedulerHost = "fleet-main-host"
 
 // BoardLink is the board path INSIDE a lane workdir that must be the
@@ -142,10 +145,55 @@ type Lane struct {
 	Isolation Isolation `yaml:"isolation"`
 }
 
-// forbidden reports whether the host name hits a forbidden host
-// (case-insensitive: the check is about identity, not spelling).
-func (l *Lane) forbidden(name string) bool {
+// sameHost reports whether two host names denote the same machine
+// (case-insensitive: identity, not spelling). A short name matches its
+// own FQDN form either way — the first DNS label of a hostname is the
+// machine's identity in fleet inventories, which record both spellings.
+func sameHost(a, b string) bool {
+	a, b = strings.ToLower(strings.TrimSpace(a)), strings.ToLower(strings.TrimSpace(b))
+	if a == "" || b == "" {
+		return false
+	}
+	if a == b {
+		return true
+	}
+	return firstLabel(a) == b || firstLabel(b) == a
+}
+
+// firstLabel returns the text before the first '.' (the whole string
+// when it carries no dot).
+func firstLabel(s string) string {
+	if i := strings.IndexByte(s, '.'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
+// isSchedulerHost reports whether the given host name denotes the
+// scheduler's own host: the canonical placeholder name, or THIS
+// machine's real hostname as os.Hostname resolves it (checked in both
+// spellings — full and first DNS label). A resolution error or an empty
+// hostname degrades to literal-name matching only; the placeholder and
+// the explicit forbidden_hosts list still protect the contract.
+func isSchedulerHost(name string) bool {
 	if strings.EqualFold(strings.TrimSpace(name), SchedulerHost) {
+		return true
+	}
+	real, err := os.Hostname()
+	if err != nil || strings.TrimSpace(real) == "" {
+		return false
+	}
+	return sameHost(name, real)
+}
+
+// forbidden reports whether the host name hits a forbidden host
+// (case-insensitive: the check is about identity, not spelling). The
+// scheduler's own host is forbidden by identity — the literal
+// placeholder name OR the machine's resolved hostname (MISCHIEF-DF-18:
+// a lane declaring this machine's real hostname must refuse, not print
+// "template contract OK").
+func (l *Lane) forbidden(name string) bool {
+	if isSchedulerHost(name) {
 		return true
 	}
 	for _, h := range l.Isolation.ForbiddenHosts {
@@ -189,7 +237,11 @@ func ValidateLane(l *Lane) error {
 	}
 	// Isolation contract first: the scheduler's own host is not a lab.
 	if l.forbidden(l.Host.Name) {
-		return fmt.Errorf("chaos lane %s: host %q is a forbidden host (the scheduler's own host is the protected target, not a chaos host — MSF-020/MSF-022 isolation contract)", l.Lane, l.Host.Name)
+		via := ""
+		if !strings.EqualFold(strings.TrimSpace(l.Host.Name), SchedulerHost) {
+			via = " — matched this machine's resolved hostname, not just the placeholder name"
+		}
+		return fmt.Errorf("chaos lane %s: host %q is a forbidden host (the scheduler's own host is the protected target, not a chaos host — MSF-020/MSF-022 isolation contract)%s", l.Lane, l.Host.Name, via)
 	}
 	if strings.TrimSpace(l.Host.Name) == "" {
 		return fmt.Errorf("chaos lane %s: host.name missing", l.Lane)

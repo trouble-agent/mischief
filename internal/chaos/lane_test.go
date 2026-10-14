@@ -81,6 +81,70 @@ func TestValidateLaneRefusesSchedulerHostCaseInsensitive(t *testing.T) {
 	}
 }
 
+// ── isolation rule 1 must also catch the REAL hostname (MISCHIEF-DF-18) ─────
+
+// resolvedHostname is the test's view of this machine's hostname — the
+// same os.Hostname the isolation rule resolves.
+func resolvedHostname(t *testing.T) string {
+	t.Helper()
+	h, err := os.Hostname()
+	if err != nil || strings.TrimSpace(h) == "" {
+		t.Skipf("os.Hostname unavailable (%v) — self-host matching cannot be exercised", err)
+	}
+	return strings.TrimSpace(h)
+}
+
+// The scheduler's own host is not only the literal placeholder name: a
+// lane declaring THIS machine's resolved hostname must refuse too — the
+// check runs on the machine, so "the scheduler's own host" is resolvable
+// at validation time, not just a name in a template.
+func TestValidateLaneRefusesRealHostname(t *testing.T) {
+	host := resolvedHostname(t)
+	l := validLane(t)
+	l.Findings.Board = l.PrimaryBoard
+	l.Host.Name = host
+	err := ValidateLane(&l)
+	if err == nil {
+		t.Fatalf("lane declaring this machine's hostname %q accepted — isolation rule 1 matches only the literal placeholder", host)
+	}
+	if !strings.Contains(err.Error(), "scheduler") {
+		t.Errorf("refusal does not name the isolation contract: %v", err)
+	}
+}
+
+// Spelling variants of the real hostname refuse too: the rule is about
+// identity, not spelling (case; FQDN vs short DNS label).
+func TestValidateLaneRefusesRealHostnameVariants(t *testing.T) {
+	host := resolvedHostname(t)
+	variants := []string{
+		strings.ToUpper(host),     // case variant
+		host + ".lab.example.com", // FQDN form of a short name
+	}
+	if i := strings.IndexByte(host, '.'); i >= 0 { // short-label forms of an FQDN
+		variants = append(variants, host[:i], host[:i]+".other.example.com")
+	}
+	for _, v := range variants {
+		l := validLane(t)
+		l.Findings.Board = l.PrimaryBoard
+		l.Host.Name = v
+		if err := ValidateLane(&l); err == nil {
+			t.Errorf("hostname variant %q accepted (resolved host %q)", v, host)
+		}
+	}
+}
+
+// A genuinely foreign host still passes — the rule widens to the real
+// hostname, not to everything.
+func TestValidateLaneAcceptsForeignHost(t *testing.T) {
+	foreign := "nowhere-" + resolvedHostname(t) + "-lab" // cannot equal the resolved host or the literal placeholder
+	l := validLane(t)
+	l.Findings.Board = l.PrimaryBoard
+	l.Host.Name = foreign
+	if err := ValidateLane(&l); err != nil {
+		t.Fatalf("foreign host %q refused: %v", foreign, err)
+	}
+}
+
 func TestValidateLaneRefusesUnsanctionedHost(t *testing.T) {
 	l := validLane(t)
 	l.Findings.Board = l.PrimaryBoard
