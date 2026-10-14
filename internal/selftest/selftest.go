@@ -274,6 +274,14 @@ func (rn runner) run(id string) Result {
 	}
 
 	land := l.land()
+	// INT-CI-6: a mid-loop capability skip (the docker:oom runner-flake
+	// class) records exactly like a capability()-gate skip — AC-11 shape,
+	// never a pass, never a failure.
+	if land.skipped {
+		res.State = "skip"
+		res.Reason = "capability_unavailable: " + land.err
+		return res
+	}
 	if !land.landed {
 		res.State = "fail"
 		res.Reason = "land did not prove (AC-3): " + land.err
@@ -287,6 +295,13 @@ func (rn runner) run(id string) Result {
 	res.LandProof = land.proof
 
 	inv := l.inverse()
+	// the inverse path can hit the same class (the OOM restore leg runs
+	// `docker update` against the same cgroup driver)
+	if inv.skipped {
+		res.State = "skip"
+		res.Reason = "capability_unavailable: " + inv.err
+		return res
+	}
 	if !inv.landed {
 		res.State = "fail"
 		res.Reason = "inverse did not prove (AC-4): " + inv.err

@@ -46,12 +46,26 @@ type landOutcome struct {
 	proof string
 	// err names why the step failed ("" when landed).
 	err string
+	// skipped grades the step an honest capability skip instead of a
+	// failure: the runner-flake class (INT-CI-6) is an environment
+	// capability boundary that can surface MID-LOOP even though the
+	// capability gate just passed (a race — the probe does not pin the
+	// daemon's next answer). The reason lives in err; a skipped outcome is
+	// never landed, and the runner records it exactly like a
+	// capability()-gate skip (AC-11 shape).
+	skipped bool
 }
 
 func ok(proof string) landOutcome { return landOutcome{landed: true, proof: proof} }
 
 func bad(format string, a ...any) landOutcome {
 	return landOutcome{landed: false, err: fmt.Sprintf(format, a...)}
+}
+
+// skipOut is the mid-loop capability skip: not landed, not failed —
+// unavailable (the err field carries the named observed class).
+func skipOut(format string, a ...any) landOutcome {
+	return landOutcome{landed: false, skipped: true, err: fmt.Sprintf(format, a...)}
 }
 
 // fromSignalOutcome adapts backend_signal's Outcome (the sig/shim/

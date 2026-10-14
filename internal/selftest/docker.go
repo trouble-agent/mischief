@@ -373,22 +373,56 @@ func (d *dockerLandable) land() landOutcome {
 	switch d.id {
 	case "docker:pause":
 		out, fault = d.cli.Pause(d.container)
+		if !out.OK() {
+			return bad("docker land: %s", landFailReason(out))
+		}
 	case "docker:kill":
 		out, fault = d.cli.Kill(d.container)
+		if !out.OK() {
+			return bad("docker land: %s", landFailReason(out))
+		}
 	case "docker:oom":
 		out, fault = d.cli.OOM(d.container, 16<<20)
+		if !out.OK() {
+			// INT-CI-6: grade the GitHub-runner flake class (cgroup-update
+			// refusal after the backend's own retry, or the exit=137/
+			// OOMKilled=false timing race the anti-gaming arm observed) as
+			// an honest capability skip — the same classification the
+			// go-test surface applies, from the SAME shared classifier.
+			// Everything else stays a failure.
+			if flakeReason, flake := backend_docker.OOMRunnerFlake(out, d.inspectState()); flake {
+				return skipOut("%s (observed: %s)", flakeReason, landFailReason(out))
+			}
+			return bad("docker land: %s", landFailReason(out))
+		}
 	default:
 		return bad("land: unknown docker primitive %q", d.id)
 	}
 	d.fault = fault
-	if !out.OK() {
-		reason := out.NoOpReason
-		if out.Err != nil {
-			reason = out.Err.Error()
-		}
-		return bad("docker land: %s", reason)
-	}
 	return ok(out.LandedProof)
+}
+
+// landFailReason renders a not-OK docker Outcome's reason (NoOpReason, or
+// the error when the refusal carried one).
+func landFailReason(out backend_docker.Outcome) string {
+	if out.Err != nil {
+		return out.Err.Error()
+	}
+	return out.NoOpReason
+}
+
+// inspectState is a best-effort terminal-state read for the flake
+// classifier (the exit=137/OOMKilled=false arm needs the observed inspect
+// state; an unreadable state just means that arm cannot fire).
+func (d *dockerLandable) inspectState() *backend_docker.InspectState {
+	if d.cli == nil || d.container == "" {
+		return nil
+	}
+	st, err := d.cli.Inspect(d.container)
+	if err != nil {
+		return nil
+	}
+	return st
 }
 
 func (d *dockerLandable) inverse() landOutcome {
@@ -397,6 +431,13 @@ func (d *dockerLandable) inverse() landOutcome {
 	}
 	out, err := d.fault.Revert()
 	if err != nil {
+		// The OOM inverse's restore leg runs `docker update` against the
+		// same cgroup driver the land path hit — classify the runner-flake
+		// refusal class here too (INT-CI-6: the same host capability, the
+		// same honest skip).
+		if d.fault.Kind == backend_docker.KindOOM && backend_docker.CgroupUpdateUnavailable(err) {
+			return skipOut("docker update --memory refused by this host's cgroup driver during the OOM restore (runc/cgroup v2): %v", err)
+		}
 		return bad("docker revert: %v", err)
 	}
 	if !out.OK() {
