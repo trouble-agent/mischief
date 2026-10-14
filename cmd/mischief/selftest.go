@@ -33,7 +33,7 @@ func cmdSelftest(args []string) int {
 	dir := fs.String("dir", defaultRunDir(), "run dir (journal home for selftest.jsonl)")
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if !*all && *prim == "" {
 		fmt.Fprintln(os.Stderr, "selftest: --all or --primitive <id> is required (there is no default primitive)")

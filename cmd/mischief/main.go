@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -115,6 +116,17 @@ func run(args []string) int {
 	}
 }
 
+// verbParseExit maps a FlagSet parse error to the verb's exit code.
+// flag.ErrHelp — the conventional --help / -h request — is exit 0 with
+// usage text (the flag package prints the FlagSet usage itself); every
+// other parse error stays a usage error (exit 2). MISCHIEF-CLI-001.
+func verbParseExit(err error) int {
+	if errors.Is(err, flag.ErrHelp) {
+		return 0
+	}
+	return 2
+}
+
 func usage(w *os.File) {
 	fmt.Fprint(w, `mischief — fault injection for a fleet of Linux daemons (M1 chassis)
 
@@ -167,7 +179,7 @@ func cmdPlan(args []string) int {
 	skipSanction := fs.Bool("plan-only-sanction-skip", false, "(unimplemented stub flag: reserved for MSF-020; plan never lands faults)")
 	_ = skipSanction
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if *expPath == "" {
 		fmt.Fprintln(os.Stderr, "plan: -f <exp.yaml> is required (no default experiment)")
@@ -236,7 +248,7 @@ func cmdStatus(args []string) int {
 	dir := fs.String("dir", defaultRunDir(), "run dir (journal home)")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	store, err := reverter.Open(*dir)
 	if err != nil {
@@ -283,7 +295,7 @@ func cmdRevert(args []string) int {
 	all := fs.Bool("all", false, "kill switch: revert every live or stuck hold (AC-6)")
 	hold := fs.String("hold", "", "revert one hold by id")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if !*all && *hold == "" {
 		fmt.Fprintln(os.Stderr, "revert: --all or --hold <id> is required (reverting nothing is a report, not a pass)")
@@ -337,7 +349,7 @@ func cmdDoctor(args []string) int {
 	opsPosture := fs.Bool("ops", true, "include the SPEC-11 privileged-surface posture (drop-in/manifest/grants per capability)")
 	opsPrefix := fs.String("prefix", "", "mischief state prefix for the ops posture (default: the ops package default)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	rep, err := doctor.Run(*catalogDir, hostCapabilityRegistry())
 	if err != nil {
@@ -381,7 +393,7 @@ func cmdServe(args []string) int {
 	fs.SetOutput(os.Stderr)
 	dir := fs.String("dir", defaultRunDir(), "run dir to own (journal + health.json)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	d, err := daemon.New(*dir)
 	if err != nil {

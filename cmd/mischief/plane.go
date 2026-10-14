@@ -42,6 +42,12 @@ func cmdPlane(args []string) int {
 		return 2
 	}
 	switch args[0] {
+	case "help", "-h", "--help":
+		// MISCHIEF-CLI-001: dispatcher-level help, conventional exit 0
+		// on stdout (the subcommand FlagSets answer their own --help
+		// via verbParseExit with the flag package's usage).
+		fmt.Fprintf(os.Stdout, planeUsage)
+		return 0
 	case "parse-agent-id":
 		return cmdPlaneParseAgentID(args[1:])
 	case "record":
@@ -61,7 +67,7 @@ func cmdPlaneParseAgentID(args []string) int {
 	fs.SetOutput(os.Stderr)
 	in := fs.String("in", "-", "read spawn output from this file, - for stdin")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	var r io.Reader = os.Stdin
 	if *in != "-" {
@@ -93,7 +99,7 @@ func cmdPlaneRecord(args []string) int {
 	status := fs.String("status", "", "pass | fail | skip (required)")
 	detail := fs.String("detail", "", "reason/proof text (encoded by this verb)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if *file == "" || *step == "" || *status == "" {
 		fmt.Fprintln(os.Stderr, "plane record: --file, --step and --status are required")
@@ -140,7 +146,7 @@ func cmdPlaneSelftestVerdict(args []string) int {
 	fs.SetOutput(os.Stderr)
 	code := fs.Int("exit-code", -1, "the remote selftest's exit code (required)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if *code < 0 {
 		fmt.Fprintln(os.Stderr, "plane selftest-verdict: --exit-code is required")
@@ -155,7 +161,7 @@ func cmdPlaneFold(args []string) int {
 	fs.SetOutput(os.Stderr)
 	file := fs.String("file", "", "evidence JSONL file (required; - reads stdin)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	var body string
 	if *file == "-" {
@@ -231,3 +237,15 @@ func mustJSON(v interface{}) string {
 	}
 	return string(b)
 }
+
+// planeUsage is the dispatcher-level help text for `mischief plane
+// --help` (MISCHIEF-CLI-001); each subcommand's FlagSet documents its own
+// flags via the standard usage (verbParseExit).
+const planeUsage = `mischief plane — bunker test-plane evidence CLI
+
+Usage:
+  mischief plane parse-agent-id [--in <file|->]            extract the agent id from ` + "`bunker spawn`" + ` output
+  mischief plane record --file E --step S --status pass|fail|skip [--detail TEXT]   append one JSONL row
+  mischief plane selftest-verdict --exit-code N            print pass|fail for a remote selftest exit
+  mischief plane fold --file E                             grade an evidence file (0 pass / 1 fail / 3 skip)
+`

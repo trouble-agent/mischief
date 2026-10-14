@@ -44,7 +44,7 @@ func cmdInstall(args []string) int {
 	dryRun := fs.Bool("dry-run", false, "print the exact plan; touch nothing")
 	noDropIn := fs.Bool("no-drop-in", false, "plan/install the manifest only (the drop-in needs root)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	opts := ops.InstallOpts{
 		SudoersUser: *user,
@@ -91,7 +91,7 @@ func cmdUninstall(args []string) int {
 	keepDays := fs.String("keep-days", "", "retention: expire run dirs older than D days")
 	dryRun := fs.Bool("dry-run", false, "print the exact plan; touch nothing")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	pol, err := ops.ParseRetentionFlags(*keepCount, *keepDays)
 	if err != nil {
@@ -131,7 +131,7 @@ func cmdAudit(args []string) int {
 	user := fs.String("user", "", "sudoers grantee the expected drop-in was rendered for (default: mischief)")
 	asJSON := fs.Bool("json", false, "emit JSON (the operator diff surface)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	a, err := ops.RunAudit(ops.AuditOpts{Prefix: *prefix, SudoersUser: *user})
 	if err != nil {
@@ -191,7 +191,7 @@ func cmdRetention(args []string) int {
 	keepDays := fs.String("keep-days", "", "expire run dirs older than D days (default: 30)")
 	dryRun := fs.Bool("dry-run", false, "print the exact plan; touch nothing")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	pol, err := ops.ParseRetentionFlags(*keepCount, *keepDays)
 	if err != nil {

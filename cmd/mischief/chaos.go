@@ -44,6 +44,12 @@ func cmdChaos(args []string) int {
 		return 2
 	}
 	switch args[0] {
+	case "help", "-h", "--help":
+		// MISCHIEF-CLI-001: dispatcher-level help, conventional exit 0
+		// on stdout (the subcommand FlagSets answer their own --help
+		// via verbParseExit with the flag package's usage).
+		fmt.Fprint(os.Stdout, chaosUsage)
+		return 0
 	case "matrix":
 		return cmdChaosMatrix(args[1:])
 	case "check":
@@ -65,7 +71,7 @@ func cmdChaosMatrix(args []string) int {
 	out := fs.String("out", "", "output dir (default: <project>-chaos under the system temp dir)")
 	asMarkdown := fs.Bool("markdown", false, "print the markdown table to stdout instead of the summary line")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if strings.TrimSpace(*project) == "" {
 		fmt.Fprintln(os.Stderr, "chaos matrix: --project is required (a project-scoped matrix needs the project; a fleet-wide matrix is refused by design)")
@@ -132,7 +138,7 @@ func cmdChaosCheck(args []string) int {
 	lanePath := fs.String("lane", "", "instantiated lane file (required)")
 	laneDir := fs.String("lane-dir", "", "the lane workdir whose .coding-hermes/board is probed (default: the lane file's directory)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if *lanePath == "" {
 		fmt.Fprintln(os.Stderr, "chaos check: --lane is required")
@@ -172,7 +178,7 @@ func cmdChaosFinding(args []string) int {
 	primitive := fs.String("primitive", "", "the catalog primitive id, when the finding names one")
 	verdict := fs.String("verdict", "", "the graded verdict, when the finding carries one (recovered|degraded|not_recovered|hung|corrupted|no_op|aborted|flaky|void — PRD §6.4, closed)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if *project == "" || *board == "" || strings.TrimSpace(*title) == "" || strings.TrimSpace(*reason) == "" {
 		fmt.Fprintln(os.Stderr, "chaos finding: --project, --board, --title and --reason are required")
@@ -187,3 +193,15 @@ func cmdChaosFinding(args []string) int {
 	fmt.Printf("chaos finding: %s filed on %s (%d row)\n", row.ID, path, n)
 	return 0
 }
+
+// chaosUsage is the dispatcher-level help text for `mischief chaos
+// --help` (MISCHIEF-CLI-001); each subcommand's FlagSet documents its own
+// flags via the standard usage (verbParseExit).
+const chaosUsage = `mischief chaos — the operator-free fault-matrix verb
+
+Usage:
+  mischief chaos matrix --project P [--tier-max N] [--out D] [--markdown]   derive the project fault matrix
+  mischief chaos check --lane F [--lane-dir D]                              verify one instantiated lane
+  mischief chaos finding --project P --board D --title T --reason R [--priority P3] [--primitive ID] [--verdict V]
+                                                                            file ONE board-vocabulary finding
+`
