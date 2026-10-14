@@ -1,0 +1,27 @@
+{
+  "tick": "mischief-foreman-2026-10-14-03-02-09",
+  "created_at": "2026-10-14T03:10:00Z",
+  "budget": 2,
+  "tasks": [
+    {
+      "id": "INT-CI-6",
+      "worktree": "/home/kara/worktrees/mischief-INT-CI-6",
+      "branch": "wt/INT-CI-6",
+      "base_sha": "121bca1",
+      "brief": "Add the docker:oom runner-flake classification to the SELFTEST land path (internal/selftest/docker.go) mirroring the INT-CI-2 go-test arm in internal/backend_docker/live_test.go: exit=137 with OOMKilled=false during `docker update --memory` must grade as an honest capability_unavailable SKIP, not bad(). Reuse the backend_docker classifier (CgroupUpdateUnavailable / OOM-not-OOMKilled shape) \u2014 do not duplicate the logic. Both CI steps (Test + Selftest suite) must be green-or-named-skip on a runner exhibiting the class. Unit tests for both classification arms; go build ./... && go vet ./... && go test ./internal/... -count=1 green.",
+      "commit": "92b69ea",
+      "result": "merged to main, tier-2 judge COMPLETE, CI green on 34aae2a"
+    },
+    {
+      "id": "MISCHIEF-DF-22",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-22",
+      "branch": "wt/MISCHIEF-DF-22",
+      "base_sha": "121bca1",
+      "brief": "docs/EXPERIMENTS.md marks ex-001 'runnable today' but its fault F-008 has no descriptor in catalog/faults/ so `mischief plan -f catalog/experiments/ex-001-noop-detector.yaml` exits 2 ('F-008: not in the loaded catalog'). Make the doc claim and catalog agree: EITHER ship an F-008 descriptor (file-truncate-under-writer per docs/FAULT-CATALOG.md:102, with landed_proof + inverse per the descriptor contract, matching the format of F-009-file-replaced-under-writer.yaml) OR flip ex-001 to rehearsal-only in EXPERIMENTS.md's status table with the missing-descriptor reason. Prefer shipping the descriptor if F-008's contract is fully documented; flip only if not. Verify `go run ./cmd/mischief plan -f catalog/experiments/ex-001-noop-detector.yaml` no longer fails on unknown primitive (it may fail on sanction/refusal scope, which is fine \u2014 name which). Gate green: go build ./... && go vet ./... && go test ./internal/... -count=1.",
+      "commit": "f1e69ab",
+      "result": "merged to main, tier-2 judge COMPLETE, CI green on 34aae2a"
+    }
+  ],
+  "status": "complete",
+  "finished_at": "2026-10-14T04:25:00Z"
+}
