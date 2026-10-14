@@ -285,9 +285,9 @@ func splitPipe(s string) []string {
 // independent of the fault's own exit code (AC-13 shape; SPEC-05 grades).
 type LandedProof struct {
 	// Kind names the proof mechanism ("proc_state", "command_exit", ...).
-	Kind string `yaml:"kind"`
+	Kind string `yaml:"kind" json:"kind"`
 	// Check is the concrete probe expression ("state T for N samples").
-	Check string `yaml:"check"`
+	Check string `yaml:"check" json:"check"`
 }
 
 // Inverse is the recorded reverter contract: how to undo the fault and how to
@@ -295,11 +295,11 @@ type LandedProof struct {
 type Inverse struct {
 	// Action is a primitive id ("P-001": re-run with different params) or a
 	// named action ("restore-original", "delete-qdisc", ...).
-	Action string
+	Action string `json:"action"`
 	// Params carries the action's parameters when the action is a primitive id.
-	Params map[string]string
+	Params map[string]string `json:"params"`
 	// Verify is the observable condition proving the undo landed.
-	Verify string
+	Verify string `json:"verify"`
 }
 
 // UnmarshalYAML normalises the inverse forms: a bare action string,

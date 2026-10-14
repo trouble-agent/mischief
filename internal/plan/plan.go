@@ -30,63 +30,63 @@ import (
 // Fault is one fault's resolved plan row.
 type Fault struct {
 	// Primitive is the catalog primitive id.
-	Primitive string
+	Primitive string `json:"primitive"`
 	// Params are the declared params (sorted-key canonical text for the
 	// byte-identical rendering).
-	Params string
+	Params string `json:"params"`
 	// TTL is the declared hold bound.
-	TTL time.Duration
+	TTL time.Duration `json:"ttl"`
 	// TTLRaw is the declared TTL string verbatim.
-	TTLRaw string
+	TTLRaw string `json:"ttl_raw"`
 	// LandedProof is the descriptor's landing-proof contract.
-	LandedProof catalog.LandedProof
+	LandedProof catalog.LandedProof `json:"landed_proof"`
 	// Inverse is the descriptor's reverter contract (the write-ahead
 	// preview: this is what Arm would journal before landing).
-	Inverse catalog.Inverse
+	Inverse catalog.Inverse `json:"inverse"`
 	// Capability is the declared capability and the derived status
 	// (AC-11: available, or naming what is absent).
-	Capability string
+	Capability string `json:"capability"`
 	// Status is the derived availability ("ready" / "capability_unavailable").
-	Status catalog.Status
+	Status catalog.Status `json:"status"`
 	// UnavailableNames carries the missing capability (Status only).
-	UnavailableNames string
+	UnavailableNames string `json:"unavailable_names"`
 	// Tier is the declared ladder placement (raw string).
-	Tier string
+	Tier string `json:"tier"`
 	// Selftest is the declared selftest state (AC-19 relevance).
-	Selftest catalog.SelftestState
+	Selftest catalog.SelftestState `json:"selftest"`
 }
 
 // Plan is the resolved plan for one experiment.
 type Plan struct {
 	// ExperimentID is the declared display id.
-	ExperimentID string
+	ExperimentID string `json:"experiment_id"`
 	// RunID is the content-derived run id (hex(sha256(spec+seed))[:16]) —
 	// the id `run` would journal under.
-	RunID string
+	RunID string `json:"run_id"`
 	// Seed is the declared seed.
-	Seed int64
+	Seed int64 `json:"seed"`
 	// Target is the resolved target (kind + selector, as declared).
-	Target rails.Target
+	Target rails.Target `json:"target"`
 	// Faults is the resolved fault set (sorted by primitive id).
-	Faults []Fault
+	Faults []Fault `json:"faults"`
 	// Probes is the declared probe set (verbatim).
-	Probes []*journal.ProbeDecl
+	Probes []*journal.ProbeDecl `json:"probes"`
 	// Budget is the declared recovery budget.
-	Budget journal.Budget
+	Budget journal.Budget `json:"budget"`
 	// Refusals is the rail refusals the plan surfaced (empty = clean plan).
-	Refusals []rails.RefusalReason
+	Refusals []rails.RefusalReason `json:"refusals"`
 	// Notes carries non-refusal advisory lines (capability verdicts,
 	// selftest states) that an operator should read before running.
-	Notes []string
+	Notes []string `json:"notes"`
 	// CatalogVersion is the content-derived catalog version the plan
 	// resolved against.
-	CatalogVersion string
+	CatalogVersion string `json:"catalog_version"`
 	// ScratchDir is the --scratch-dir D the invocation declared (MISCHIEF-
 	// CLI-002): recorded VERBATIM for the run contract to own. Plan never
 	// creates, reads or writes it (AC-1 — Build's only host reads are the
 	// capability registry's); an empty value means the invocation declared
 	// no scratch dir.
-	ScratchDir string
+	ScratchDir string `json:"scratch_dir"`
 }
 
 // Build resolves one loaded experiment against the catalog, the rails and

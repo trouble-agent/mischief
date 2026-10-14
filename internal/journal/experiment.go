@@ -283,15 +283,15 @@ func (iv *InverseDecl) UnmarshalYAML(value *yamlNode) error {
 
 // ProbeDecl is one declared probe.
 type ProbeDecl struct {
-	Name   string `yaml:"name"`
-	Cmd    string `yaml:"cmd"`
-	Expect string `yaml:"expect"`
+	Name   string `yaml:"name" json:"name"`
+	Cmd    string `yaml:"cmd" json:"cmd"`
+	Expect string `yaml:"expect" json:"expect"`
 }
 
 // Budget is the declared recovery budget.
 type Budget struct {
-	RecoverWithin string  `yaml:"recover_within"`
-	MaxErrorRate  float64 `yaml:"max_error_rate"`
+	RecoverWithin string  `yaml:"recover_within" json:"recover_within"`
+	MaxErrorRate  float64 `yaml:"max_error_rate" json:"max_error_rate"`
 }
 
 // ObserveDecl is the observe.trouble declaration.
