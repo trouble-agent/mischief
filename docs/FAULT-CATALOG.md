@@ -187,7 +187,7 @@ request log — the log, not memory, is the proof channel:
 | ID | sim shape (`ShapeKind`) | sim case (armed shape, proof request) | request-log proof line |
 |---|---|---|---|
 | I-003 | `api-rate-limit` | 429 burst of 3, first WITH `Retry-After: 2s`, remainder without | `faulted` 429 entries, detail `Retry-After=2s` / `without Retry-After` |
-| I-004 | `api-5xx` | 5xx burst with malformed JSON bodies + endless-page marker | `faulted` 5xx entries, detail `malformed body` / `endless page` |
+| I-004 | `api-5xx` | 5xx burst of 3 INTERLEAVING both legs: alternating malformed-JSON 5xx and endless-page 200 | `faulted` 5xx entries, detail `malformed body (truncated JSON)` / `endless page — same page forever (next_page=1)` |
 | I-005 | `eventual-lag` | acknowledged PUT seeds the window; the GET inside it serves the pre-write value | `faulted` 200 entry, detail `serving pre-write value for key … (window 5s)` |
 | I-006 | `object-store` | GET with `expired_presign` → 403 `AccessDenied (presigned URL)` | `faulted` 403 entry, detail `403 expired presigned URL` |
 | I-010 | `auth-expiry` | request after expiry → 401 while the prior call succeeded | `faulted` 401 entry, detail `token expired` |

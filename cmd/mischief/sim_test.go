@@ -122,6 +122,10 @@ func TestSimVerbUnknownShapeRefuses(t *testing.T) {
 // table against the ids docs/FAULT-CATALOG.md layer I marks `sim · L4`:
 // I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014. A layer-I
 // id gaining a sim mode without a command shape (or vice versa) fails here.
+//
+// Each id also carries the PROMISED LANDED-PROOF DETAILS the catalog's
+// sim-case table commits to: the proof run must land every marker named
+// for that shape (I-004 both legs — malformed 5xx AND endless page).
 func TestSimShapesCoverLayerISimIDs(t *testing.T) {
 	catalogSimIDs := []string{"I-003", "I-004", "I-005", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014"}
 	if len(catalogSimIDs) != len(simCoveredIDs) {
@@ -132,5 +136,58 @@ func TestSimShapesCoverLayerISimIDs(t *testing.T) {
 		if !ok || !sh.Kind.Valid() {
 			t.Fatalf("catalog layer-I sim id %s has no command shape", id)
 		}
+		// per-shape promised-proof details (the catalog's request-log
+		// proof column): a shape whose catalog row names a marker must
+		// arm the flags that produce it. I-004 promises BOTH the
+		// malformed-body 5xx AND the endless-page marker.
+		switch id {
+		case "I-004":
+			if !sh.Malformed || !sh.PaginationBug {
+				t.Fatalf("I-004 command shape must arm BOTH catalog legs (malformed body + endless page), got %+v", sh)
+			}
+			landI004BothMarkers(t, sh)
+		}
+	}
+}
+
+// landI004BothMarkers runs the I-004 sim case against a real simulator and
+// asserts BOTH markers land in the durable request log: interleaved
+// malformed-body 5xx entries AND endless-page entries — the landed proof
+// the catalog row promises, read back from disk (AC-3).
+func landI004BothMarkers(t *testing.T, sh backend_sim.Shape) {
+	t.Helper()
+	log := filepath.Join(t.TempDir(), "sim-i004.log")
+	sim := backend_sim.NewSimulator(log)
+	if err := sim.Start(); err != nil {
+		t.Fatalf("sim start: %v", err)
+	}
+	defer sim.Close()
+	proof, err := simLandWithProof(sim, "I-004", sh, "/fault")
+	if err != nil {
+		t.Fatalf("I-004 both-legs proof: %v", err)
+	}
+	for _, marker := range []string{"malformed-body 5xx", "endless-page"} {
+		if !strings.Contains(proof, marker) {
+			t.Fatalf("I-004 proof line must name %q, got: %s", marker, proof)
+		}
+	}
+	entries, err := backend_sim.ReadRequestLog(log)
+	if err != nil {
+		t.Fatalf("I-004 request log read: %v", err)
+	}
+	malformed, endless := 0, 0
+	for _, e := range entries {
+		if !e.Faulted || e.Shape != backend_sim.ShapeAPI5xx {
+			continue
+		}
+		if e.Status >= 500 && strings.Contains(e.Detail, "malformed body") {
+			malformed++
+		}
+		if e.Status == 200 && strings.Contains(e.Detail, "endless page") {
+			endless++
+		}
+	}
+	if malformed == 0 || endless == 0 {
+		t.Fatalf("I-004 request log must carry BOTH legs (malformed-5xx=%d endless-page=%d)", malformed, endless)
 	}
 }

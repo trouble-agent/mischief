@@ -410,17 +410,24 @@ func (s *Simulator) serveAPI5xx(r *http.Request, sh Shape) (int, []byte, bool, s
 	if burstExhausted(sh, s.burstSpent) {
 		return s.healthy()
 	}
-	if sh.PaginationBug {
+	// I-004's two legs: when BOTH Malformed and PaginationBug are armed
+	// (the catalog's I-004 case), the burst INTERLEAVES them — odd probes
+	// (0th, 2nd, ...) serve the malformed 5xx, even probes the
+	// endless-page 200 — so one burst lands BOTH markers in the request
+	// log. A single-flag shape keeps its single leg (pagination first
+	// would starve the 5xx leg).
+	paginationTurn := sh.PaginationBug && (!sh.Malformed || s.burstSpent%2 == 1)
+	if paginationTurn {
 		body, _ := json.Marshal(map[string]any{"page": 1, "next_page": 1,
 			"items": []string{"same-item"}})
-		return http.StatusOK, body, true, "pagination bug: same page forever (next_page=1)", nil
+		return http.StatusOK, body, true, "pagination bug: endless page — same page forever (next_page=1)", nil
 	}
 	status := 500
 	if sh.Status != 0 {
 		status = sh.Status
 	}
 	if sh.Malformed {
-		return status, []byte(`{"error": "internal`), true, fmt.Sprintf("%d with malformed (truncated) body", status), nil
+		return status, []byte(`{"error": "internal`), true, fmt.Sprintf("%d with malformed body (truncated JSON)", status), nil
 	}
 	body, _ := json.Marshal(map[string]string{"error": "internal_error"})
 	return status, body, true, fmt.Sprintf("%d burst", status), nil

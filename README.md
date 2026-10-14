@@ -86,7 +86,31 @@ mischief status    # folds the run dir's journal: armed/held holds, stuck, proof
 mischief doctor    # capability/tier ladder report (see the catalog note below)
 ```
 
-**About the shim `.so` — where mischief actually looks.** The tarball ships a prebuilt
+**Run an experiment end-to-end (plan).** From a checkout, `plan` is the
+zero-side-effects preview of an experiment: it resolves the target and every
+fault against the catalog and prints what would land, what proves it landed,
+and how it is reverted — without touching anything. One thing the verb will
+not do without being told: mischief only runs on a **sanctioned host**
+(SPEC-13). On a fresh machine the gate refuses with `host_not_sanctioned`
+until you export `MISCHIEF_SANCTION=1` (the env half of the sanction marker;
+the file half is `/etc/mischief-sanction`, overridable with
+`MISCHIEF_SANCTION_FILE` — see the Safety section). Of the shipped
+experiments, exactly one is plan-clean by default:
+
+```sh
+MISCHIEF_SANCTION=1 bin/mischief plan -f catalog/experiments/ex-001-noop-detector.yaml
+```
+
+This replays S-1 ("the false green") and must grade `no_op` — the injector
+finds no live target holding the state file, so the fault never lands. `plan`
+creates a run dir and journal entry but no fault. The other three shipped
+experiments (`ex-002`, `ex-003`, `ex-004`) are rehearsal-only: they need
+capabilities or selectors not yet in the catalog (`I-002`, `P-006`), or an
+explicit sanction override for `F-009`, and their YAML headers say why — read
+them before adapting any of them. And per SPEC-13 the sanctioned host for a
+*real* run is an ephemeral scratch instance, never your daily driver.
+
+**About the shim `.so` — where mischief actually looks.**** The tarball ships a prebuilt
 `libfault-anchored.so`, but mischief does NOT load it from beside the binary. When it
 arms a shim fault it checks exactly one prebuilt location:
 

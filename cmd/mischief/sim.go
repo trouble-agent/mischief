@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -169,6 +170,14 @@ func simLandWithProof(sim *backend_sim.Simulator, primitive string, sh backend_s
 			return "", fmt.Errorf("backend_sim: %s: sim request: %w", primitive, err)
 		}
 		return simProofFromLog(sim, primitive, path, sh.Kind, st)
+	case backend_sim.ShapeAPI5xx:
+		if sh.Malformed && sh.PaginationBug {
+			// the catalog's I-004 case arms BOTH legs: drive the full
+			// burst (interleaved malformed 5xx / endless-page) and print
+			// a proof line naming BOTH markers — one probe would land
+			// only one of the two promised faults.
+			return simI004BothLegsProof(sim, primitive, path, sh)
+		}
 	}
 	return backend_sim.LandInSimOnRefusal(sim, primitive, sh, path)
 }
@@ -192,4 +201,58 @@ func simProofFromLog(sim *backend_sim.Simulator, primitive, path string, kind ba
 	}
 	return "", fmt.Errorf("backend_sim: %s: sim served %s -> %d but the request log at %s carries no faulted %s entry — the landed-proof did not fire (AC-3)",
 		primitive, path, st, sim.LogPath(), kind)
+}
+
+// simI004BothLegsProof drives I-004's interleaved burst end to end and
+// prints the AC-17 landed-proof line naming BOTH catalog markers: the
+// malformed-body 5xx entries AND the endless-page marker. Each leg must
+// land (a burst serving only one leg is a failed proof — the catalog
+// promises both), and the log path in the line is the durable evidence.
+func simI004BothLegsProof(sim *backend_sim.Simulator, primitive, path string, sh backend_sim.Shape) (string, error) {
+	burst := sh.Burst
+	if burst <= 0 {
+		burst = 3
+	}
+	statuses := make([]int, 0, burst)
+	for i := 0; i < burst; i++ {
+		st, _, err := sim.SelfCall(path)
+		if err != nil {
+			return "", fmt.Errorf("backend_sim: %s: sim request %d: %w", primitive, i+1, err)
+		}
+		statuses = append(statuses, st)
+	}
+	entries, err := backend_sim.ReadRequestLog(sim.LogPath())
+	if err != nil {
+		return "", fmt.Errorf("backend_sim: %s: request log read: %w", primitive, err)
+	}
+	malformed, endless := 0, 0
+	for _, e := range entries {
+		if !e.Faulted || e.Shape != backend_sim.ShapeAPI5xx || e.Path != path {
+			continue
+		}
+		if e.Status >= 500 && strings.Contains(e.Detail, "malformed body") {
+			malformed++
+		}
+		if e.Status == 200 && strings.Contains(e.Detail, "endless page") {
+			endless++
+		}
+	}
+	if malformed == 0 || endless == 0 {
+		return "", fmt.Errorf(
+			"backend_sim: %s: I-004 proof incomplete — served %v but the request log at %s carries malformed-5xx=%d endless-page=%d (both catalog markers must land; AC-3)",
+			primitive, statuses, sim.LogPath(), malformed, endless)
+	}
+	return fmt.Sprintf(
+		"ac17-redirect: %s refused the real plane and landed in the simulator: %s -> %s interleaved (%d malformed-body 5xx + %d endless-page) — request log %s proves it",
+		primitive, path, statusSummary(statuses), malformed, endless, sim.LogPath()), nil
+}
+
+// statusSummary renders the burst's status sequence compactly
+// ("200,500,200" — the mixed wire surface the operator expects to see).
+func statusSummary(statuses []int) string {
+	parts := make([]string, len(statuses))
+	for i, st := range statuses {
+		parts[i] = strconv.Itoa(st)
+	}
+	return strings.Join(parts, ",")
 }
