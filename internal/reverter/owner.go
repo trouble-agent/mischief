@@ -75,8 +75,18 @@ var errOwnerExecClass = errors.New("owner unit exited immediately (systemd exec-
 //
 // Both shapes exec THIS binary (os.Executable) — no external helper exists
 // to forget, no cwd assumption: the owner names the journal by absolute dir.
+//
+// On the NATURAL path (no DETACH_MODE pin) shape 1's failure — including
+// the verified-dead 203/EXEC class and an unobservable unit — falls back to
+// shape 2: the verified-dead spawn means no owner exists, so a setsid owner
+// can only improve on it. The systemd error is never discarded: if the
+// fallback also fails, errors.Join reports BOTH (the systemd exec-formation
+// class stays in the message; errors.Is matches either).
+// A DETACH_MODE pin is a pin, not a preference: "setsid" never shape-switches,
+// and "systemd-run" returns its failure as-is with no fallback (the operator
+// asked for exactly that shape).
 func defaultDetach(req ownerRequest) (ownerResult, error) {
-	self, err := os.Executable()
+	self, err := selfExe()
 	if err != nil {
 		return ownerResult{}, fmt.Errorf("%w: executable: %v", ErrNoOwner, err)
 	}
@@ -87,10 +97,27 @@ func defaultDetach(req ownerRequest) (ownerResult, error) {
 		return detachSystemdRun(self, req)
 	}
 	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" && systemdUserReachable(runtimeDir) {
-		return detachSystemdRun(self, req)
+		res, err := detachSystemdRun(self, req)
+		if err != nil {
+			// The systemd-run owner did not start (spawn refused,
+			// unit verified dead, or unit unobservable). Fall back to
+			// the setsid shape; if that ALSO fails, surface both
+			// errors — the systemd class must stay visible.
+			sres, serr := detachSetsid(self, req)
+			if serr != nil {
+				return ownerResult{}, errors.Join(err, serr)
+			}
+			return sres, nil
+		}
+		return res, nil
 	}
 	return detachSetsid(self, req)
 }
+
+// selfExe is the owner-binary seam (os.Executable in production). It is a
+// package variable so tests can force the fallback leg's exec to fail
+// without touching the real binary (a nil var means production behaviour).
+var selfExe = os.Executable
 
 // systemdUserReachable reports whether the user manager answers on the
 // runtime dir's bus socket (the cheap existence probe; a full systemd-run
@@ -281,7 +308,8 @@ func probeOwnerUnit(ctx context.Context, b systemdRunBackend, env []string, unit
 //   - dead/never-ran → errOwnerExecClass failure naming the class, the
 //     unit's exec status and the show reading. When the DETACH_MODE pin
 //     forced this shape, the error is returned as-is (no silent shape
-//     switch); on the natural path Detach falls back to the setsid shape.
+//     switch); on the natural path defaultDetach falls back to the setsid
+//     shape (joining both errors if that fails too).
 //   - the probe itself fails (user bus gone) → failure naming the probe —
 //     unknown is never graded success.
 //
