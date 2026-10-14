@@ -378,3 +378,36 @@ func CgroupUpdateUnavailable(err error) bool {
 	return strings.Contains(msg, "cgroup.controllers") ||
 		strings.Contains(msg, "runc did not terminate successfully")
 }
+
+// OOMRunnerFlake classifies one observed docker:oom land attempt as the
+// known GitHub-runner flake class (INT-CI-2/5/6), returning the
+// capability-skip reason when it matches. Both arms are environment
+// capability boundaries, not code defects:
+//
+//   - cgroup-update refusal: the `docker update --memory` squeeze was
+//     refused with runc's openat2 cgroup.controllers error — including
+//     after the land path's single retry (INT-CI-5). Observable on the
+//     failed Outcome's Err (the land path grades refusals failed()).
+//   - cgroup timing race: the workload exited code=137 but the kernel
+//     never marked OOMKilled (INT-CI-2) — the anti-gaming arm grades it
+//     no_op, so the caller reads the terminal state back with Inspect and
+//     passes it here.
+//
+// Everything else — a genuine OOM landing (OK outcome), the
+// workload-never-died anti-gaming arm (still running), a different
+// refusal class — is NOT the flake and must keep its own grading. Both
+// grading surfaces (the go-test live selftest and the selftest harness's
+// land/inverse path) route through this one classifier so they behave
+// identically on the flake class.
+func OOMRunnerFlake(out Outcome, st *InspectState) (string, bool) {
+	if out.OK() {
+		return "", false
+	}
+	if out.Err != nil && CgroupUpdateUnavailable(out.Err) {
+		return fmt.Sprintf("docker update --memory refused by this host's cgroup driver (runc/cgroup v2): %v", out.Err), true
+	}
+	if st != nil && !st.Running && st.ExitCode == 137 && !st.OOMKilled {
+		return fmt.Sprintf("runner cgroup timing: container %s exited code=137 but OOMKilled=false (the workload did not allocate past the cap inside the poll window, or the kernel marked the death late)", st.Name), true
+	}
+	return "", false
+}

@@ -1,7 +1,6 @@
 package backend_docker
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -120,19 +119,19 @@ func TestLiveOOMLandAndRevert(t *testing.T) {
 	name := runScratchForTest(t, c, 64<<20, oomAllocCmd)
 	out, f := c.OOM(name, 16<<20)
 	if !out.OK() {
-		if strings.Contains(fmt.Sprint(out.Err), "cgroup.controllers") ||
-			strings.Contains(fmt.Sprint(out.Err), "runc did not terminate successfully") {
-			t.Skipf("capability_unavailable: live docker update --memory refused by this host's cgroup driver (runc/cgroup v2): %v", out.Err)
+		// INT-CI-2/5/6: the known GitHub-runner flake class (the
+		// cgroup-update refusal — including after the land path's own
+		// retry — and the exit=137/OOMKilled=false timing race) is an
+		// environment capability boundary, not a code failure. The
+		// classification lives in ONE shared classifier (OOMRunnerFlake);
+		// the selftest harness's land path consumes the SAME function, so
+		// both surfaces grade the flake identically.
+		if flakeReason, flake := OOMRunnerFlake(out, mustInspect(t, c, name)); flake {
+			t.Skipf("capability_unavailable: %s", flakeReason)
 		}
 		t.Fatalf("oom did not land: %+v", out)
 	}
 	st, _ := c.Inspect(name)
-	// INT-CI-2: GitHub runners sometimes report exit=137 with OOMKilled=false
-	// (cgroup v2 timing: workload exits before the kernel marks OOMKilled).
-	// Classify as capability_unavailable rather than a code failure.
-	if st.ExitCode == 137 && !st.OOMKilled {
-		t.Skipf("capability_unavailable: runner cgroup timing — exit=137 but OOMKilled=false (workload exited before kernel marked OOM)")
-	}
 	if st.Running || !st.OOMKilled {
 		t.Fatalf("landed state wrong: running=%t oom=%t", st.Running, st.OOMKilled)
 	}
@@ -144,6 +143,18 @@ func TestLiveOOMLandAndRevert(t *testing.T) {
 	if !st.Running || st.MemoryBytes != 64<<20 {
 		t.Fatalf("post-revert state drifted: running=%t memory=%d", st.Running, st.MemoryBytes)
 	}
+}
+
+// mustInspect reads one container's state inside a test, failing the test
+// on an unreadable state (the classifier's inspect arm needs the terminal
+// state; a missing container is a real failure, not a skip).
+func mustInspect(t *testing.T, c *CLI, name string) *InspectState {
+	t.Helper()
+	st, err := c.Inspect(name)
+	if err != nil {
+		t.Fatalf("inspect %s: %v", name, err)
+	}
+	return st
 }
 
 // TestLiveJournalExecutedInverseFromDetachedShape: the journal-path inverse

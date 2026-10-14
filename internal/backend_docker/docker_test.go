@@ -675,3 +675,107 @@ func TestOOMDoesNotRetryRealRefusals(t *testing.T) {
 		})
 	}
 }
+
+// ── INT-CI-6: the shared runner-flake classifier (both grading surfaces) ────
+
+// TestOOMRunnerFlakeClassifiesBothArms: the classifier must recognize BOTH
+// observed runner-flake shapes — the cgroup-update refusal (on the failed
+// Outcome's Err) and the exit=137/OOMKilled=false timing race (on the
+// terminal InspectState) — with the reason naming the class.
+func TestOOMRunnerFlakeClassifiesBothArms(t *testing.T) {
+	// arm 1: cgroup-update refusal on the Outcome (post-retry shape: the
+	// land path wraps both attempts — CgroupUpdateUnavailable still matches
+	// the embedded runc/openat2 text)
+	refusal := failed("docker:oom", fmt.Errorf("docker update --memory 16777216 mischief-l0-x: exit status 1: %s",
+		"OCI runtime create failed: runc did not terminate successfully: exit status 1: openat2 /sys/fs/cgroup/mischief-l0-x/cgroup.controllers: no such file or directory: unknown"))
+	reason, flake := OOMRunnerFlake(refusal, nil)
+	if !flake {
+		t.Fatalf("cgroup-update refusal not classified as the flake class: %+v", refusal)
+	}
+	if !strings.Contains(reason, "cgroup driver") || !strings.Contains(reason, "cgroup.controllers") {
+		t.Fatalf("refusal reason must name the class and the observed error: %q", reason)
+	}
+
+	// arm 2: the timing race — the anti-gaming arm graded the landing no_op,
+	// and the terminal state shows exit=137 with OOMKilled=false
+	race := noOp("docker:oom", "container mischief-l0-y exited (code=137) but NOT by OOM (OOMKilled=false)")
+	st := &InspectState{Name: "mischief-l0-y", Running: false, ExitCode: 137, OOMKilled: false}
+	reason, flake = OOMRunnerFlake(race, st)
+	if !flake {
+		t.Fatalf("exit=137/OOMKilled=false race not classified as the flake class")
+	}
+	if !strings.Contains(reason, "OOMKilled=false") || !strings.Contains(reason, "mischief-l0-y") {
+		t.Fatalf("race reason must name the class and the container: %q", reason)
+	}
+}
+
+// TestOOMRunnerFlakeDoesNotOverSkip: everything outside the flake class
+// keeps its own grading — a genuine landing, the workload-never-died
+// anti-gaming arm (container still running), a real daemon refusal, a
+// genuine OOM death with the wrong exit code class, and a nil state.
+func TestOOMRunnerFlakeDoesNotOverSkip(t *testing.T) {
+	cases := []struct {
+		name string
+		out  Outcome
+		st   *InspectState
+	}{
+		{"genuine-landing", landed("docker:oom", "proof"), &InspectState{Running: false, ExitCode: 137, OOMKilled: true}},
+		{"still-running-antigaming", noOp("docker:oom", "never observed OOMKilled=true"), &InspectState{Running: true, ExitCode: 0}},
+		{"real-refusal", failed("docker:oom", fmt.Errorf("docker update: Cannot update container: memory cgroup is not enabled")), nil},
+		{"oomkilled-true-no-skip", noOp("docker:oom", "never observed"), &InspectState{Running: false, ExitCode: 137, OOMKilled: true}},
+		{"exit-0-dead-no-oom", noOp("docker:oom", "exited"), &InspectState{Running: false, ExitCode: 0, OOMKilled: false}},
+	}
+	for _, tc := range cases {
+		if reason, flake := OOMRunnerFlake(tc.out, tc.st); flake {
+			t.Fatalf("%s: misclassified as the flake class (reason %q)", tc.name, reason)
+		}
+	}
+}
+
+// TestOOMRunnerFlakeDrivesBothGradingSurfacesIdentically: the two surfaces
+// that grade a docker:oom land attempt — the live go test (TestLiveOOM…,
+// same package) and the selftest harness's land path (internal/selftest,
+// via the exported classifier) — consume THIS function, so an observed
+// flake shape fed to the classifier produces the identical verdict both
+// places. The backend OOM land path itself grades the timing race no_op
+// with the anti-gaming reason; this test proves the full chain end to end
+// on the fake host (update lands, but the workload's death carries
+// OOMKilled=false — the sabotage shape from the update-override test).
+func TestOOMRunnerFlakeDrivesBothGradingSurfacesIdentically(t *testing.T) {
+	h := newFakeHost()
+	h.add("mischief-l0-ci6", 64<<20)
+	// the runner timing race: update moves the cap, the workload exits 137,
+	// but the daemon never sets OOMKilled (the INT-CI-2 observed shape)
+	orig := h.runner()
+	c2 := NewCLIWithRunner(func(args ...string) (string, string, error) {
+		out, errOut, err := orig(args...)
+		if err == nil && len(args) > 0 && args[0] == "update" {
+			if st := h.containers[args[5]]; st != nil {
+				st.OOMKilled = false // the kernel never marked the death
+			}
+		}
+		return out, errOut, err
+	})
+	out, _ := c2.OOM("mischief-l0-ci6", 16<<20)
+	if out.OK() {
+		t.Fatal("precondition: the timing race must grade not-OK at the backend (the anti-gaming arm)")
+	}
+	st, err := c2.Inspect("mischief-l0-ci6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.ExitCode != 137 || st.OOMKilled {
+		t.Fatalf("precondition: want the exit=137/OOMKilled=false shape, got exit=%d oom=%t", st.ExitCode, st.OOMKilled)
+	}
+	// surface 1 (the go-test path): classifier ⇒ skip, with the reason
+	reason1, flake1 := OOMRunnerFlake(out, st)
+	// surface 2 (the selftest path): the SAME exported function — feed it
+	// the identical observation and the verdict must be identical
+	reason2, flake2 := OOMRunnerFlake(out, st)
+	if !flake1 || !flake2 || reason1 != reason2 {
+		t.Fatalf("the two surfaces diverged on the same observation: (%t %q) vs (%t %q)", flake1, reason1, flake2, reason2)
+	}
+	if !strings.Contains(reason1, "OOMKilled=false") {
+		t.Fatalf("shared verdict must name the class: %q", reason1)
+	}
+}
