@@ -27,7 +27,9 @@ import (
 //	mischief plane parse-agent-id [--in <file|->]   — extract the agent id
 //	    from `bunker spawn` output ("" when absent), exit 0.
 //	mischief plane record --file E --step S --status pass|fail|skip
-//	    [--detail TEXT]                                  — append one JSONL row.
+//	    [--detail TEXT]                                  — append one JSONL row
+//	    (S must be a vocabulary stage: preflight | build | spawn | ship |
+//	    selftest | collect | destroy; anything else is refused, exit 2).
 //	mischief plane selftest-verdict --exit-code N      — print pass|fail.
 //	mischief plane fold --file E                       — grade the evidence
 //	    file: prints "PLANE <status> <stage>: <reason>", exit 0 pass / 1 fail
@@ -97,10 +99,17 @@ func cmdPlaneRecord(args []string) int {
 		fmt.Fprintln(os.Stderr, "plane record: --file, --step and --status are required")
 		return 2
 	}
+	// Stage names are validated against the plane's closed vocabulary
+	// (NewStep refuses anything else): a nonsense stage must never be
+	// appended as evidence — fold would otherwise read it back later.
 	switch *status {
 	case plane.StatusPass, plane.StatusFail, plane.StatusSkip:
 	default:
 		fmt.Fprintf(os.Stderr, "plane record: unknown --status %q (pass | fail | skip)\n", *status)
+		return 2
+	}
+	if _, serr := plane.NewStep(*step, *status, *detail, ""); serr != nil {
+		fmt.Fprintf(os.Stderr, "plane record: %v\n", serr)
 		return 2
 	}
 	// One write syscall per row (O_APPEND): a driver killed mid-run leaves
@@ -112,7 +121,13 @@ func cmdPlaneRecord(args []string) int {
 		return 1
 	}
 	defer f.Close()
-	s := plane.NewStep(*step, *status, *detail, strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	s, err := plane.NewStep(*step, *status, *detail, strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	if err != nil {
+		// Unreachable for flag-validated input (the pre-check above
+		// already refused alien stages); kept for the contract.
+		fmt.Fprintf(os.Stderr, "plane record: %v\n", err)
+		return 2
+	}
 	if _, err := fmt.Fprintln(f, mustJSON(s)); err != nil {
 		fmt.Fprintln(os.Stderr, "plane record:", err)
 		return 1
@@ -164,11 +179,7 @@ func cmdPlaneFold(args []string) int {
 		}
 		body = string(b)
 	}
-	steps, dropped, err := plane.ParseEvidence(body)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "plane fold:", err)
-		return 1
-	}
+	steps, dropped, perr := plane.ParseEvidence(body)
 	if dropped > 0 {
 		// Corrupt lines never silently shrink the census — the fold names
 		// them in its own record before grading.
@@ -177,6 +188,20 @@ func cmdPlaneFold(args []string) int {
 		}
 	}
 	status, reason, stage := plane.Fold(steps)
+	if perr != nil {
+		// ParseEvidence found rows whose stage is outside the plane
+		// vocabulary (a hand-edited or foreign-writer file). Fold has
+		// already failed such rows closed; this arm guarantees no PASS
+		// survives an alien-stage file and names the finding in the
+		// rendered reason alongside Fold's own row-level defect note.
+		if status == plane.StatusPass {
+			status = plane.StatusFail
+			if stage == "" {
+				stage = "unknown"
+			}
+		}
+		reason = perr.Error() + "; " + reason
+	}
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		reason = "all stages green (agent obtained, selftest exit 0, evidence pulled, agent destroyed)"

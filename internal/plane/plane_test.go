@@ -7,6 +7,18 @@ import (
 	"testing"
 )
 
+// fx builds a vocabulary-valid Step for fixtures, panicking if NewStep's
+// closed-stage gate ever rejects one (a fixture drift would otherwise
+// surface as a confusing Fold failure downstream; canonical fixture args
+// make the panic unreachable, mirroring mustJSON's contract in the CLI).
+func fx(step, status, detail, ts string) Step {
+	s, err := NewStep(step, status, detail, ts)
+	if err != nil {
+		panic("plane test fixture rejected by NewStep: " + err.Error())
+	}
+	return s
+}
+
 // TestParseAgentIDFromSpawnOutput: the real `bunker spawn` output shape
 // (the id rides after "keys/" in the key-path line) yields the agent id;
 // every non-spawn output — a capacity refusal, a transport error, empty
@@ -91,16 +103,16 @@ func TestFoldEmptyEvidenceIsNamedFail(t *testing.T) {
 // step's status is the run verdict.
 func TestFoldLastStepIsVerdict(t *testing.T) {
 	steps := []Step{
-		NewStep("preflight", StatusPass, "server reachable", "0"),
-		NewStep("ship", StatusPass, "SYNC-OK", "0"),
-		NewStep("selftest", StatusFail, "exit 1: P-001 FAIL", "0"),
+		fx("preflight", StatusPass, "server reachable", "0"),
+		fx("ship", StatusPass, "SYNC-OK", "0"),
+		fx("selftest", StatusFail, "exit 1: P-001 FAIL", "0"),
 	}
 	status, reason, stage := Fold(steps)
 	if status != StatusFail || stage != "selftest" || !strings.Contains(reason, "P-001") {
 		t.Fatalf("Fold = (%q,%q,%q), want fail/selftest/P-001 in reason", status, reason, stage)
 	}
 
-	steps = append(steps, NewStep("collect", StatusPass, "journal pulled 42 lines", "0"))
+	steps = append(steps, fx("collect", StatusPass, "journal pulled 42 lines", "0"))
 	if status, _, stage = Fold(steps); status != StatusPass || stage != "collect" {
 		t.Fatalf("after green collect: (%q,%q), want pass/collect", status, stage)
 	}
@@ -136,8 +148,8 @@ func TestFoldUnknownStatusFailsClosed(t *testing.T) {
 // overwrite. This is the MISCHIEF-PLANE-003 reproduction.
 func TestFoldUnknownStatusOnAnyRowFailsClosed(t *testing.T) {
 	bogusFirst := []Step{
-		NewStep("preflight", "bogus", "", "0"),
-		NewStep("destroy", StatusPass, "agent destroyed", "0"),
+		fx("preflight", "bogus", "", "0"),
+		fx("destroy", StatusPass, "agent destroyed", "0"),
 	}
 	status, reason, stage := Fold(bogusFirst)
 	if status != StatusFail {
@@ -167,10 +179,10 @@ func TestFoldUnknownStatusOnAnyRowFailsClosed(t *testing.T) {
 // to that last verdict (steps append in pipeline order).
 func TestFoldFullyValidMultiRowFileStaysPass(t *testing.T) {
 	valid := []Step{
-		NewStep("build", StatusPass, "binaries built", "0"),
-		NewStep("preflight", StatusFail, "first preflight attempt failed, retried", "1"),
-		NewStep("spawn", StatusPass, "Agent created: abc123", "2"),
-		NewStep("destroy", StatusPass, "agent destroyed", "3"),
+		fx("build", StatusPass, "binaries built", "0"),
+		fx("preflight", StatusFail, "first preflight attempt failed, retried", "1"),
+		fx("spawn", StatusPass, "Agent created: abc123", "2"),
+		fx("destroy", StatusPass, "agent destroyed", "3"),
 	}
 	status, _, stage := Fold(valid)
 	if status != StatusPass || stage != "destroy" {
@@ -178,8 +190,8 @@ func TestFoldFullyValidMultiRowFileStaysPass(t *testing.T) {
 	}
 
 	skippedEarly := []Step{
-		NewStep("preflight", StatusSkip, "no fault target in scope", "0"),
-		NewStep("destroy", StatusPass, "nothing to destroy", "1"),
+		fx("preflight", StatusSkip, "no fault target in scope", "0"),
+		fx("destroy", StatusPass, "nothing to destroy", "1"),
 	}
 	if status, _, _ = Fold(skippedEarly); status != StatusPass {
 		t.Fatalf("valid skip-then-pass file graded %q, want pass", status)
@@ -190,7 +202,7 @@ func TestFoldFullyValidMultiRowFileStaysPass(t *testing.T) {
 // evidence file must not silently shrink — dropped lines are counted and
 // named.
 func TestParseEvidenceDropsAndCountsCorruptLines(t *testing.T) {
-	good := NewStep("ship", StatusPass, "SYNC-OK", "1000")
+	good := fx("ship", StatusPass, "SYNC-OK", "1000")
 	body := good.DetailB64 // not used directly; build lines by marshalling
 	raw, err := json.Marshal(good)
 	if err != nil {
@@ -215,7 +227,7 @@ func TestParseEvidenceDropsAndCountsCorruptLines(t *testing.T) {
 // included — the contract that lets the bash script append rows with
 // printf while Go owns the meaning.
 func TestEvidenceRoundTripThroughJSONL(t *testing.T) {
-	step := NewStep("collect", StatusSkip, "agent unreachable: timeout after 180s", "1700000000")
+	step := fx("collect", StatusSkip, "agent unreachable: timeout after 180s", "1700000000")
 	raw, err := json.Marshal(step)
 	if err != nil {
 		t.Fatal(err)
@@ -295,11 +307,118 @@ func TestSanitizeKeyPathNeverEmpty(t *testing.T) {
 // TestDetailEncodingIsPrintableASCII: the driver's printf contract — the
 // encoded payload must survive a shell single-quoted argument untouched.
 func TestDetailEncodingIsPrintableASCII(t *testing.T) {
-	step := NewStep("selftest", StatusFail, "quotes '\" backslash \\ newline \n tail -1 output", "0")
+	step := fx("selftest", StatusFail, "quotes '\" backslash \\ newline \n tail -1 output", "0")
 	if len(step.DetailB64) == 0 {
 		t.Fatal("empty encoding")
 	}
 	if _, err := base64.StdEncoding.DecodeString(step.DetailB64); err != nil {
 		t.Fatalf("encoding not valid base64: %v", err)
+	}
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MISCHIEF-PLANE-001 regression tests: the closed STAGE vocabulary.
+// The original defect: `plane record --step nonsense` appended a row and
+// `plane fold` graded it "PLANE pass at nonsense" — an alien stage name
+// rode straight through record and fold as a PASS. Now: NewStep refuses to
+// build an alien-stage row, the record verb refuses the flag, ParseEvidence
+// reports alien-stage rows in a file, and Fold fails closed on them.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// TestNewStepRejectsUnknownStage: the constructor is the first door — an
+// unknown stage builds nothing and the error names the allowed set
+// (AC-11 style: the refusal says what is absent).
+func TestNewStepRejectsUnknownStage(t *testing.T) {
+	if s, err := NewStep("nonsense", StatusPass, "bad-step", "0"); err == nil {
+		t.Fatalf("NewStep built an alien-stage row: %+v", s)
+	} else if !strings.Contains(err.Error(), "unknown stage") || !strings.Contains(err.Error(), "nonsense") {
+		t.Fatalf("error %q must name the unknown stage and the refusal", err)
+	} else {
+		for _, want := range StageVocabulary {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("error %q must name the allowed set (missing %q)", err, want)
+			}
+		}
+	}
+	// Every canonical stage still builds — the vocabulary must stay open
+	// to exactly the pipeline's stages, nothing more, nothing less.
+	for _, stage := range StageVocabulary {
+		if s, err := NewStep(stage, StatusPass, "ok", "0"); err != nil {
+			t.Fatalf("canonical stage %q refused: %v", stage, err)
+		} else if s.Step != stage {
+			t.Fatalf("NewStep(%q) → %q", stage, s.Step)
+		}
+	}
+}
+
+// TestFoldAlienStageDoesNotPass: the fold-level regression — an evidence
+// file carrying an alien stage row can never fold PASS, no matter how
+// green the final row is. The fold fails closed naming the offending
+// stage, at every position (first, middle, last).
+func TestFoldAlienStageDoesNotPass(t *testing.T) {
+	alienFirst := []Step{
+		{Step: "nonsense", Status: StatusPass, DetailB64: "", TS: "0"},
+		{Step: "destroy", Status: StatusPass, DetailB64: "", TS: "1"},
+	}
+	status, reason, stage := Fold(alienFirst)
+	if status != StatusFail {
+		t.Fatalf("alien-first-stage file graded %q, want fail", status)
+	}
+	if !strings.Contains(reason, "unknown stage") || !strings.Contains(reason, "nonsense") {
+		t.Fatalf("reason %q must name the unknown stage", reason)
+	}
+	if stage != "nonsense" {
+		t.Fatalf("stage = %q, want the offending row's stage", stage)
+	}
+
+	alienLast := []Step{
+		{Step: "preflight", Status: StatusPass, DetailB64: "", TS: "0"},
+		{Step: "selftest", Status: StatusPass, DetailB64: "", TS: "1"},
+		{Step: "collect", Status: StatusPass, DetailB64: "", TS: "2"},
+		{Step: "banana", Status: StatusPass, DetailB64: "", TS: "3"},
+	}
+	if status, reason, _ = Fold(alienLast); status != StatusFail || !strings.Contains(reason, "banana") {
+		t.Fatalf("alien-last-stage file = (%q,%q), want fail naming banana", status, reason)
+	}
+
+	// The exact live shape from the defect report: pass at "nonsense" with
+	// detail "bad-step" cannot grade pass — and a green pipeline with one
+	// alien row in the middle fails too.
+	repro := []Step{
+		{Step: "preflight", Status: StatusPass, DetailB64: "", TS: "0"},
+		{Step: "nonsense", Status: StatusPass, DetailB64: "", TS: "1"},
+		{Step: "destroy", Status: StatusPass, DetailB64: "", TS: "2"},
+	}
+	if status, reason, _ = Fold(repro); status != StatusFail || !strings.Contains(reason, "nonsense") {
+		t.Fatalf("repro shape = (%q,%q), want fail naming nonsense", status, reason)
+	}
+}
+
+// TestParseEvidenceReportsAlienStageRows: the file decoder counts
+// alien-stage rows and returns a non-nil error naming them (and the
+// allowed set) while still passing the parsed rows through for Fold to
+// grade — the caller gets both the verdict and the named finding.
+func TestParseEvidenceReportsAlienStageRows(t *testing.T) {
+	steps, dropped, err := ParseEvidence(
+		`{"step":"nonsense","status":"pass","detail_b64":"bad-step","ts":"0"}` + "\n" +
+			`{"step":"destroy","status":"pass","detail_b64":"","ts":"1"}` + "\n")
+	if err == nil {
+		t.Fatal("alien-stage file decoded with a nil error — the finding would be silent")
+	}
+	if !strings.Contains(err.Error(), "nonsense") || !strings.Contains(err.Error(), "destroy") {
+		t.Fatalf("error %q must name the allowed set (which contains destroy)", err)
+	}
+	if len(steps) != 2 {
+		t.Fatalf("rows must still parse through for Fold: %d steps", len(steps))
+	}
+	if dropped != 0 {
+		t.Fatalf("dropped = %d, want 0 (structurally valid rows are not dropped)", dropped)
+	}
+	// A vocabulary-clean file still decodes with a nil error.
+	clean, dropped, err := ParseEvidence(
+		`{"step":"spawn","status":"pass","detail_b64":"","ts":"0"}` + "\n" +
+			`{"step":"collect","status":"skip","detail_b64":"YQ==","ts":"1"}` + "\n")
+	if err != nil || dropped != 0 || len(clean) != 2 {
+		t.Fatalf("clean file: err=%v dropped=%d steps=%d", err, dropped, len(clean))
 	}
 }

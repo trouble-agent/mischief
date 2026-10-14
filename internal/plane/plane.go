@@ -12,10 +12,14 @@
 //     contract (0 = every primitive green-or-skip; anything else fail).
 //   - Step / Fold      the evidence JSONL row shape and the verdict fold:
 //     every row's status must be in the closed vocabulary (the first
-//     unknown status anywhere fails the fold closed); otherwise the LAST
-//     step's status is the run verdict; a skip without a named reason is
-//     a plane defect rendered as a named skip, never a pass; an empty
-//     evidence file is a named FAIL (the zero-byte evidence class).
+//     unknown status anywhere fails the fold closed) and every row's
+//     STAGE must be a StageVocabulary name — NewStep refuses to build a
+//     row for an unknown stage, and Fold fails closed on any alien-stage
+//     row already in a file, so a nonsense stage can never fold as PASS;
+//     otherwise the LAST step's status is the run verdict; a skip
+//     without a named reason is a plane defect rendered as a named skip,
+//     never a pass; an empty evidence file is a named FAIL (the
+//     zero-byte evidence class).
 //   - SSHArgs          the exact ssh argv shape the plane uses, asserted by
 //     test so the script and the tests cannot drift apart.
 //   - FinalVerdict     the honesty rule AC 3/4 demand: an unobtainable agent
@@ -41,6 +45,35 @@ const (
 	StatusFail = "fail"
 	StatusSkip = "skip"
 )
+
+// StageVocabulary is the closed set of pipeline stage names an evidence row
+// may carry — exactly the stages scripts/bunker-plane.sh documents and
+// records (see the stage table at the top of that script). Anything else is
+// not a stage of this plane and is refused at every door that can admit it:
+// record (NewStep), file decode (ParseEvidence) and grading (Fold). The
+// vocabulary is closed so an alien stage name can never ride a row into an
+// evidence file and then fold as PASS ("PLANE pass at nonsense").
+var StageVocabulary = []string{
+	"preflight",
+	"build",
+	"spawn",
+	"ship",
+	"selftest",
+	"collect",
+	"destroy",
+}
+
+// ValidateStage reports whether stage is in the closed vocabulary. The
+// error names the allowed set (the refusal says what is absent), so a
+// caller sees the whole vocabulary at the moment of the mistake.
+func ValidateStage(stage string) error {
+	for _, ok := range StageVocabulary {
+		if stage == ok {
+			return nil
+		}
+	}
+	return fmt.Errorf("unknown stage %q (allowed: %s)", stage, strings.Join(StageVocabulary, " | "))
+}
 
 // SelftestVerdict maps the remote `mischief selftest --all` exit code onto
 // the verdict vocabulary. The CLI's contract (cmd/mischief/selftest.go) is
@@ -113,9 +146,10 @@ func isHex(c byte) bool {
 // append rows with printf and never fight shell quoting on error text —
 // the payload is always printable ASCII by construction.
 type Step struct {
-	// Step names the pipeline stage: build | preflight | spawn | ship |
-	// selftest | collect | destroy (the closed set the doc's stage table
-	// enumerates).
+	// Step names the pipeline stage — a StageVocabulary name (preflight |
+	// build | spawn | ship | selftest | collect | destroy): the closed set
+	// the doc's stage table enumerates. NewStep refuses anything else, and
+	// Fold grades an alien stage a plane defect.
 	Step string `json:"step"`
 	// Status is pass | fail | skip (the closed vocabulary above).
 	Status string `json:"status"`
@@ -141,8 +175,16 @@ func (s Step) Detail() string {
 }
 
 // NewStep builds a Step from plain-text detail (the encoder side of Detail).
-func NewStep(step, status, detail, ts string) Step {
-	return Step{Step: step, Status: status, DetailB64: base64.StdEncoding.EncodeToString([]byte(detail)), TS: ts}
+// The stage name is validated against the closed vocabulary BEFORE any row
+// can exist: an unknown stage returns an error naming the allowed set and
+// the caller records nothing. Status validation is NOT duplicated here —
+// the record verb already refuses unknown statuses, and Fold fails closed
+// on any that slip through an out-of-band writer.
+func NewStep(step, status, detail, ts string) (Step, error) {
+	if err := ValidateStage(step); err != nil {
+		return Step{}, err
+	}
+	return Step{Step: step, Status: status, DetailB64: base64.StdEncoding.EncodeToString([]byte(detail)), TS: ts}, nil
 }
 
 // Fold grades a whole evidence file. Rules, in order:
@@ -154,9 +196,16 @@ func NewStep(step, status, detail, ts string) Step {
 //     skip): the FIRST unknown status anywhere in the file fails the fold
 //     closed, naming that row — an invalid row on an early stage must
 //     never be overwritten by a later valid pass.
-//  3. Otherwise the LAST step's status is the run verdict (steps append
+//  3. Every row's stage must be a vocabulary stage (preflight | build |
+//     spawn | ship | selftest | collect | destroy): an alien stage name is
+//     the same plane defect as an unknown status and fails the fold closed
+//     naming that row and stage — a nonsense stage can never carry a PASS
+//     verdict, no matter what a later row claims. (Rows with alien stages
+//     can only appear in hand-edited or foreign-writer files: NewStep and
+//     the record verb refuse them at the source.)
+//  4. Otherwise the LAST step's status is the run verdict (steps append
 //     in pipeline order; destroy/teardown records last).
-//  4. A skip whose detail is empty is still a skip, but its reason is
+//  5. A skip whose detail is empty is still a skip, but its reason is
 //     rendered as a plane defect — a skip without a named reason is never
 //     allowed to masquerade as a clean, understood skip.
 //
@@ -166,6 +215,9 @@ func Fold(steps []Step) (string, string, string) {
 		return StatusFail, "empty evidence: no steps recorded (the plane died before its first record)", ""
 	}
 	for i, s := range steps {
+		if err := ValidateStage(s.Step); err != nil {
+			return StatusFail, fmt.Sprintf("plane defect: unknown stage %q on row %d of %d (allowed: %s)", s.Step, i+1, len(steps), strings.Join(StageVocabulary, " | ")), s.Step
+		}
 		if s.Status != StatusPass && s.Status != StatusFail && s.Status != StatusSkip {
 			return StatusFail, fmt.Sprintf("plane defect: unknown status %q on step %q (row %d of %d)", s.Status, s.Step, i+1, len(steps)), s.Step
 		}
@@ -184,6 +236,8 @@ func Fold(steps []Step) (string, string, string) {
 func ParseEvidence(body string) ([]Step, int, error) {
 	var steps []Step
 	dropped := 0
+	alien := 0
+	var alienNames []string
 	for _, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -194,7 +248,28 @@ func ParseEvidence(body string) ([]Step, int, error) {
 			dropped++
 			continue
 		}
+		// An alien stage on a structurally parseable row is not silently
+		// folded later as if it were plane output: count it here so the
+		// caller can name the foreign row before Fold fails it closed.
+		// The row still parses through — Fold owns the verdict.
+		if s.Step != "" && ValidateStage(s.Step) != nil {
+			alien++
+			seen := false
+			for _, n := range alienNames {
+				if n == s.Step {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				alienNames = append(alienNames, s.Step)
+			}
+		}
 		steps = append(steps, s)
+	}
+	if alien > 0 {
+		return steps, dropped, fmt.Errorf("%d evidence row(s) carry stage(s) outside the plane vocabulary (%s; allowed: %s)",
+			alien, strings.Join(alienNames, ", "), strings.Join(StageVocabulary, " | "))
 	}
 	return steps, dropped, nil
 }
