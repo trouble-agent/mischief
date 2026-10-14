@@ -18,6 +18,12 @@ import (
 // mutated outside tests.
 var Root = ""
 
+// UIDOf is the seam tests pin to drive the privileged pre-screen without
+// changing the real process identity. Empty = os.Getuid() (production);
+// tests set a literal uid (0 = root, anything else = unprivileged). Same
+// discipline as Root: package-level, never mutated outside tests.
+var UIDOf = func() int { return os.Getuid() }
+
 // resolve maps a logical absolute path onto the active root.
 func resolve(logical string) string {
 	if Root == "" {
@@ -62,6 +68,35 @@ func (o *InstallOpts) defaults() {
 // the prefix moves mischief's own state, never the sudoers drop-in).
 func (o *InstallOpts) dropInPath() string { return DefaultDropInPath }
 
+// privilegedDropInBlocked is the pre-screen: the drop-in target is FIXED
+// (/etc/sudoers.d/mischief — dropInPath ignores the prefix by design), so
+// an unprivileged caller planning an install is guaranteed to fail at the
+// drop-in write (or half-install on a real /etc). Return the advisory line
+// naming the blocker when both facts hold; "" when not applicable.
+func (o *InstallOpts) privilegedDropInBlocked() string {
+	if UIDOf() == 0 {
+		return "" // root can write /etc: nothing to screen
+	}
+	if o.SkipDropIn {
+		return "" // no drop-in action: no privileged target in the plan
+	}
+	if isPrivilegedPath(o.dropInPath()) {
+		return fmt.Sprintf("%s requires root (sudo install) — an unprivileged prefix (%s) cannot carry %s", DefaultDropInPath, o.Prefix, DefaultDropInPath)
+	}
+	return ""
+}
+
+// isPrivilegedPath: only the top-level system dirs an unprivileged account
+// cannot write. Anything deeper (temp roots, /tmp, $HOME) is writable.
+func isPrivilegedPath(logical string) bool {
+	top := strings.SplitN(strings.TrimPrefix(logical, "/"), "/", 2)[0]
+	switch top {
+	case "etc", "usr", "boot", "var", "proc", "sys":
+		return true
+	}
+	return false
+}
+
 // manifestPath returns the helper manifest path under the prefix.
 func (o *InstallOpts) manifestPath() string {
 	return filepath.Join(o.Prefix, "helper-manifest.json")
@@ -88,6 +123,9 @@ func PlanInstall(opts InstallOpts) (*Plan, error) {
 	}
 
 	p := &Plan{Op: "install", DryRun: opts.DryRun}
+	if adv := opts.privilegedDropInBlocked(); adv != "" {
+		p.Advisories = append(p.Advisories, adv)
+	}
 	p.Actions = append(p.Actions,
 		Action{Kind: OpWriteDir, Path: opts.Prefix, Reason: "mischief state prefix"},
 	)

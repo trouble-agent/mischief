@@ -74,6 +74,11 @@ type Plan struct {
 	// Actions is the ordered action list (order matters: mkdir before
 	// write, files before their dir rmdir).
 	Actions []Action
+	// Advisories carries loud pre-screen lines (data, not errors): the
+	// plan proceeds exactly as before, but a line the operator must read
+	// before executing lands here and is rendered by Render before the
+	// action list (SPEC-11's plan is the operator's last look).
+	Advisories []string
 }
 
 // Render renders the plan as operator-readable text.
@@ -84,6 +89,9 @@ func (p Plan) Render() string {
 		state = "DRY-RUN PLAN (nothing executed)"
 	}
 	fmt.Fprintf(&b, "%s %s: %d action(s)\n", state, p.Op, len(p.Actions))
+	for _, adv := range p.Advisories {
+		b.WriteString("ADVISORY: " + adv + "\n")
+	}
 	for _, a := range p.Actions {
 		b.WriteString("  " + a.DryRunString() + "\n")
 	}
