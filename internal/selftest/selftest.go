@@ -12,7 +12,7 @@
 // force-sets green).
 //
 // Where the primitive set comes from: selftest walks the CATALOG
-// (catalog/faults at MSF-015: C-009 F-009 I-002 N-001 N-012 P-001 R-001
+// (catalog/faults at MSF-015: C-009 F-008 F-009 I-002 N-001 N-012 P-001 R-001
 // S-001 S-004 T-001), not a hand list — a primitive added to the catalog
 // is selftested by construction. Green states live in the "green"
 // registry here (greenStates), consumed downstream by the AC-19 wiring:
@@ -186,7 +186,7 @@ func (r Result) String() string {
 // needs a container the run can kill and restart, which the docker
 // backend provides). C-009 (rolling replace) stays a skip: multi-container
 // orchestration is out of v0.1's docker backend scope.
-var coveredSkips = []string{"C-009", "I-002", "N-001", "S-004", "T-001"}
+var coveredSkips = []string{"C-009", "F-008", "I-002", "N-001", "S-004", "T-001"}
 
 // CoveredIDs returns every primitive id this build's harness covers
 // (green live selftests + recorded skips), sorted. The runner's corpus

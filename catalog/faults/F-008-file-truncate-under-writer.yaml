@@ -1,0 +1,18 @@
+id: F-008
+name: file-truncate-under-live-writer
+what: truncate a file to 0 bytes while a live process holds it open — every reader of the
+    path sees an empty file while the writer keeps appending at its offset (the
+    QA-TROUBLE-3 false green — the legacy chaos cell truncated a state.db and graded
+    the run green)
+    breaks: append-only logs, state DBs, journals, anything that trusts the path's size
+params: {path: str, mode: truncate}
+landed_proof:
+  kind: size-zero + fd-identity
+  check: "stat(path).size == 0 AND stat(path).inode == fstat(open_fd).inode for the target pid"
+inverse: {action: restore-from-copy, verify: "the path's size and bytes match the pre-fault copy and the writer's next flush appends cleanly"}
+capability: none
+tier: L0 (copy) / L1 (declared path)
+backend: fs
+maturity: L1-only        # needs its selftest + a battery cell before any shared target
+selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
+expect_when_healthy: "the writer detects the truncation (its own byte count against the path's size) and either recreates the state or fails loudly"

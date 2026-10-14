@@ -9,13 +9,13 @@ import (
 	"testing"
 )
 
-// corpusIDs are the 10 machine-readable examples shipped in catalog/faults.
+// corpusIDs are the 11 machine-readable examples shipped in catalog/faults.
 var corpusIDs = []string{
-	"C-009", "F-009", "I-002", "N-001", "N-012",
+	"C-009", "F-008", "F-009", "I-002", "N-001", "N-012",
 	"P-001", "R-001", "S-001", "S-004", "T-001",
 }
 
-// TestLoadDefaultCorpus: all 10 existing YAML examples must pass the loader.
+// TestLoadDefaultCorpus: all 11 existing YAML examples must pass the loader.
 func TestLoadDefaultCorpus(t *testing.T) {
 	cat, err := LoadDefault()
 	if err != nil {
@@ -250,6 +250,7 @@ func TestTierParsing(t *testing.T) {
 		t.Fatalf("LoadDefault: %v", err)
 	}
 	want := map[string]int{
+		"F-008": 0, // "L0 (copy) / L1 (declared path)"
 		"F-009": 0, // "L0 (copy) / L1 (declared path) / L2 (...)"
 		"N-001": 2,
 		"T-001": 1,
@@ -313,6 +314,49 @@ func TestParamsParsing(t *testing.T) {
 	for id := range corpusIDSet() {
 		if len(cat.Get(id).Params) == 0 {
 			t.Errorf("%s has no params parsed", id)
+		}
+	}
+}
+
+// TestF008Descriptor: F-008 (truncate-under-live-writer — MISCHIEF-DF-22)
+// loads with its full fault contract populated. It is the descriptor behind
+// ex-001-noop-detector, the one experiment docs/EXPERIMENTS.md marks
+// runnable today; a missing or hollow descriptor makes the docs lie.
+func TestF008Descriptor(t *testing.T) {
+	cat, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault: %v", err)
+	}
+	d := cat.Get("F-008")
+	if d == nil {
+		t.Fatal("F-008 not in the loaded catalog (ex-001 advertises it)")
+	}
+	if d.Name != "file-truncate-under-live-writer" {
+		t.Errorf("F-008 name = %q", d.Name)
+	}
+	if d.LandedProof.Kind == "" || d.LandedProof.Check == "" {
+		t.Errorf("F-008 landed_proof incomplete: %+v", d.LandedProof)
+	}
+	if d.Inverse.Action == "" {
+		t.Errorf("F-008 inverse = %+v, want restore-from-copy + verify", d.Inverse)
+	}
+	if d.Capability.Kind != "none" {
+		t.Errorf("F-008 capability = %+v, want none (L0 scratch, rootless)", d.Capability)
+	}
+	if d.Tier == nil || d.Tier.Min != 0 {
+		t.Errorf("F-008 tier = %+v, want min L0", d.Tier)
+	}
+	if d.Backend != "fs" {
+		t.Errorf("F-008 backend = %q, want fs", d.Backend)
+	}
+	if len(d.Params) != 2 || d.Params["path"] == nil || d.Params["mode"] == nil {
+		t.Errorf("F-008 params = %v, want path + mode", d.Params)
+	}
+	// the experiment's fault row (params {path, mode: truncate}) matches
+	// the declared schema: every fault param is declared
+	for _, p := range []string{"path", "mode"} {
+		if d.Params[p] == nil {
+			t.Errorf("ex-001 fault param %q not declared by the F-008 schema", p)
 		}
 	}
 }

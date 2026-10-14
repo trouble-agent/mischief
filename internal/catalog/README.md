@@ -87,7 +87,7 @@ proves nothing beyond the bytes it hashes (see NOT-LIST).
 
 ## The repair pre-pass (read this before "fixing" the YAML)
 
-All 10 `catalog/faults/*.yaml` inputs are syntactically INVALID YAML (strict
+All 11 `catalog/faults/*.yaml` inputs are syntactically INVALID YAML (strict
 yaml.v3 refuses every file). The corpus was authored with prose continuations
 inside plain scalars. The loader carries a small, named repair pre-pass that
 runs BEFORE strict parsing and rewrites exactly four mechanical classes —

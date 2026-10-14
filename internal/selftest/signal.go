@@ -100,6 +100,13 @@ func buildLandable(id, dir string) landable {
 		return &proxyLandable{}
 	case "F-009":
 		return &fileReplaceLandable{dir: dir}
+	case "F-008":
+		// the truncate-under-live-writer shape (MISCHIEF-DF-22): rootless
+		// on a scratch path is exactly the descriptor's tier L0 (copy),
+		// but the v0.1 harness has no measured land+inverse loop for it
+		// yet — a recorded skip with the missing piece NAMED, never a
+		// silent refusal and never a pass
+		return &skipLandable{id: id, missing: "no measured selftest actuator at M1: the truncate-under-live-writer land+inverse loop (size-zero + fd-identity proof, restore-from-copy with a byte-identical compare) is not built yet; the scratch path is rootless-reachable (tier L0 copy), so only the harness loop is missing"}
 	case "R-001":
 		return &scopeLandable{}
 	// SPEC-09 (MSF-010): the sim primitives — the catalog's I-layer rows
