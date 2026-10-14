@@ -201,6 +201,12 @@ type armPayload struct {
 	Inverse Decl              `json:"inverse"`
 	Check   Decl              `json:"check"`
 	TTL     durationNanos     `json:"ttl"`
+	// BootID is the REVERTER boot id (from run/boot.json's reverter_boot
+	// field), NOT the host boot id from /proc/sys/kernel/random/boot_id.
+	// Boot reconcile compares this against the journal's current BootID to
+	// find previous-boot leftovers. Using the host boot id instead of the
+	// reverter boot id causes arm records to be instantly graded stuck
+	// with reason previous_boot (same live boot, false stuck). See DF-06.
 	BootID  string            `json:"boot_id"`
 	ArmPID  int               `json:"arm_pid,omitempty"`
 	Extra   map[string]string `json:"extra,omitempty"`

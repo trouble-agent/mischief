@@ -183,8 +183,12 @@ func (s HoldStatus) Valid() bool {
 type Store struct {
 	// Dir is the state directory (the journal lives at Dir/reverter.jsonl).
 	Dir string
-	// BootID is this process generation's id (boot reconcile compares it
-	// against arm records to find previous-boot leftovers).
+	// BootID is the REVERTER boot id (from run/boot.json's reverter_boot
+	// field), NOT the host boot id from /proc/sys/kernel/random/boot_id.
+	// Boot reconcile compares it against arm records' BootID to find
+	// previous-boot leftovers. Using the host boot id in arm records
+	// causes them to be instantly graded stuck with reason previous_boot
+	// (same live boot, false stuck). See DF-06.
 	BootID string
 	// Now returns the wall clock (tests inject). The clock feeds record
 	// timestamps and expiry math only — never identities (ids are content-
