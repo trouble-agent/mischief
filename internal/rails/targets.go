@@ -65,19 +65,19 @@ func (d DeclaredTarget) Explicit() bool { return d.Kind != "" && strings.TrimSpa
 // resolver learned about it.
 type Target struct {
 	// Kind and Selector are as declared.
-	Kind TargetKind
+	Kind TargetKind `json:"kind"`
 	// Selector is as declared.
-	Selector string
+	Selector string `json:"selector"`
 	// PID is the resolved process id when Kind is process and the selector
 	// named one; 0 when not applicable.
-	PID int
+	PID int `json:"pid"`
 	// Protected is set when the resolved target is on the protected list.
-	Protected ProtectedKind
+	Protected ProtectedKind `json:"protected"`
 	// ProtectedAllowed records an operator explicitly allowing a protected
 	// target (AC-7's "the same target runs only with the explicit operator
 	// flag and the journal records it"). It is false for every automatic
 	// path; the run's journal is expected to record it when true.
-	ProtectedAllowed bool
+	ProtectedAllowed bool `json:"protected_allowed"`
 }
 
 // IsProtected reports whether the target landed on the protected list.
