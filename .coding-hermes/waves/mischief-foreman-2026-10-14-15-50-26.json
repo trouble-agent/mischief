@@ -1,0 +1,15 @@
+{
+  "scheduler_tick_id": "mischief-foreman-2026-10-14-15-50-26",
+  "wave_budget": 4,
+  "base_sha": "36ede8b",
+  "created_at": "2026-10-14T15:55:00Z",
+  "tasks": [
+    {"id": "DF-07", "worktree": "/home/kara/worktrees/mischief-DF-07", "branch": "wt/DF-07", "brief": "/tmp/DF-07-brief.md"},
+    {"id": "MISCHIEF-DF-15", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-15", "branch": "wt/MISCHIEF-DF-15", "brief": "/tmp/MISCHIEF-DF-15-brief.md"},
+    {"id": "MISCHIEF-DF-17", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-17", "branch": "wt/MISCHIEF-DF-17", "brief": "/tmp/MISCHIEF-DF-17-brief.md"},
+    {"id": "MISCHIEF-DF-26", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-26", "branch": "wt/MISCHIEF-DF-26", "brief": "/tmp/MISCHIEF-DF-26-brief.md"}
+  ],
+  "independence_check": "no depends_on edges between picks; each touches a distinct file set",
+  "worker_model": "glm-5.3-flash",
+  "worker_provider": "zai-glm-default"
+}
