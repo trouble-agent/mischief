@@ -147,6 +147,10 @@ func Build(exp *journal.Experiment, specBytes []byte, cat *catalog.Catalog, reg 
 				p.Notes = append(p.Notes, fmt.Sprintf("%s: capability_unavailable: %s is absent on this host", f.Primitive, st.UnavailableNames))
 			}
 		} else {
+			// DF-01: an unresolvable primitive is a typed refusal row,
+			// never an empty-fields row — a scripted consumer branches on
+			// status, it does not parse notes lines.
+			row.Status = catalog.StatusUnknownPrimitive
 			p.Refusals = append(p.Refusals, rails.ReasonScope)
 			p.Notes = append(p.Notes, fmt.Sprintf("%s: not in the loaded catalog", f.Primitive))
 		}
