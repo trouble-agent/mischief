@@ -1,14 +1,53 @@
 {
   "tick_id": "mischief-foreman-2026-10-14-04-55-49",
   "wave_budget": 7,
-  "status": "dispatching",
+  "status": "finished",
   "workers": [
-    {"task": "DF-01", "brief": "/tmp/mischief-wave-brief-DF-01.txt"},
-    {"task": "DF-02", "brief": "/tmp/mischief-wave-brief-DF-02.txt"},
-    {"task": "DF-05", "brief": "/tmp/mischief-wave-brief-DF-05.txt"},
-    {"task": "DF-06", "brief": "/tmp/mischief-wave-brief-DF-06.txt"},
-    {"task": "DF-08", "brief": "/tmp/mischief-wave-brief-DF-08.txt"},
-    {"task": "MISCHIEF-PLANE-002", "brief": "/tmp/mischief-wave-brief-MISCHIEF-PLANE-002.txt"},
-    {"task": "MISCHIEF-DF-14", "brief": "/tmp/mischief-wave-brief-MISCHIEF-DF-14.txt"}
-  ]
+    {
+      "task": "DF-01",
+      "brief": "/tmp/mischief-wave-brief-DF-01.txt",
+      "merge": "not_dispatched",
+      "judge": "n/a"
+    },
+    {
+      "task": "DF-02",
+      "brief": "/tmp/mischief-wave-brief-DF-02.txt",
+      "merge": "merged",
+      "commit": "fe1b29b",
+      "judge": "PASS (gitreins 1c04f53c)"
+    },
+    {
+      "task": "DF-05",
+      "brief": "/tmp/mischief-wave-brief-DF-05.txt",
+      "merge": "not_dispatched",
+      "judge": "n/a"
+    },
+    {
+      "task": "DF-06",
+      "brief": "/tmp/mischief-wave-brief-DF-06.txt",
+      "merge": "not_dispatched",
+      "judge": "n/a"
+    },
+    {
+      "task": "DF-08",
+      "brief": "/tmp/mischief-wave-brief-DF-08.txt",
+      "merge": "not_dispatched",
+      "judge": "n/a"
+    },
+    {
+      "task": "MISCHIEF-PLANE-002",
+      "brief": "/tmp/mischief-wave-brief-MISCHIEF-PLANE-002.txt",
+      "merge": "not_dispatched",
+      "judge": "n/a"
+    },
+    {
+      "task": "MISCHIEF-DF-14",
+      "brief": "/tmp/mischief-wave-brief-MISCHIEF-DF-14.txt",
+      "merge": "merged",
+      "commit": "fe1b29b",
+      "judge": "PASS (gitreins 1c04f53c)"
+    }
+  ],
+  "finished_at": "2026-10-14T12:42:00Z",
+  "recovery_note": "Recovered 2026-10-14 12:15 tick: only the DF-14/DF-02 changeset was ever produced (uncommitted in main tree); gates green -> committed fe1b29b + pushed. Remaining 5 tasks never dispatched (no branches/worktrees existed)."
 }
