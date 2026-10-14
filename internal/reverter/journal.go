@@ -107,9 +107,12 @@ func readBootMarker(path string) (bootMarker, error) {
 	return m, nil
 }
 
-// DefaultDir is the default state directory: ~/.mischief/reverter/.
+// DefaultDir is the default state directory: ~/.mischief/runs/default —
+// the same run dir the CLI verbs (arm/status/revert/serve) default to via
+// defaultRunDir (cmd/mischief). It is only a fallback: Open is normally
+// called with the CLI's --dir value.
 func DefaultDir() string {
-	return filepath.Join(homeDir(), ".mischief", "reverter")
+	return filepath.Join(homeDir(), ".mischief", "runs", "default")
 }
 
 // Proof is the measured revert outcome for one fault (AC-4/AC-6): which

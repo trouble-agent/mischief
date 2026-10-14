@@ -12,6 +12,11 @@ detached owner process and the LD_PRELOAD shim can carry their orders across a
 process boundary. Setting them by hand outside tests reproduces what the CLI
 already does — and can fight it.
 
+The reverter journal lives in the active run dir: `~/.mischief/runs/default`
+unless a verb's `--dir` flag overrides it. That is the shared default of the
+journal-touching verbs (arm, status, revert, serve) and of the reverter
+package's `DefaultDir` fallback (internal/reverter).
+
 Where the behavior lives: `internal/reverter/owner.go` (reverter variables) and
 `internal/backend_signal/rule.go` + `tools/shim-extracted.c` (shim variables).
 

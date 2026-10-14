@@ -30,8 +30,10 @@
 //     the wall budget (2s) and appends one revert_proof per fault — which
 //     fault, the measured check, the outcome, the duration.
 //
-// State is an append-only JSONL journal under Dir (default ~/.mischief/
-// reverter/), plus one boot.json identity marker (host boot id → reverter
+// State is an append-only JSONL journal under Dir (default ~/.mischief/runs/
+// default, the same run dir the CLI verbs arm/status/revert/serve use via
+// --dir; library callers get it via DefaultDir when Open is called with an
+// empty dir), plus one boot.json identity marker (host boot id → reverter
 // boot id) that makes "previous boot" a DISK fact, not a process generation:
 // every process on one host boot shares the marker's reverter boot id, a new
 // host boot rotates it. Record lines are never rewritten in place; state
