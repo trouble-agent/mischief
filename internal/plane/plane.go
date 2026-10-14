@@ -230,15 +230,19 @@ func Fold(steps []Step) (string, string, string) {
 	return last.Status, reason, last.Step
 }
 
-// ParseEvidence decodes a JSONL evidence file body into steps. Lines that
-// do not parse are SKIPPED but counted: the returned error names how many
-// lines were dropped, so a truncated/corrupt file cannot silently shrink.
+// ParseEvidence decodes a JSONL evidence file body into steps. It FAILS
+// CLOSED on undecodable lines: any line that is not a valid Step JSON row
+// makes the returned error name the corrupt-line count (and the first
+// offending line number), so a truncated or tampered evidence file can
+// never grade as a successful plane run — a corrupt line followed by a
+// valid pass row is an incomplete run, not a pass.
 func ParseEvidence(body string) ([]Step, int, error) {
 	var steps []Step
 	dropped := 0
+	firstCorruptLine := 0
 	alien := 0
 	var alienNames []string
-	for _, line := range strings.Split(body, "\n") {
+	for lineNo, line := range strings.Split(body, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -246,6 +250,9 @@ func ParseEvidence(body string) ([]Step, int, error) {
 		var s Step
 		if err := json.Unmarshal([]byte(line), &s); err != nil {
 			dropped++
+			if firstCorruptLine == 0 {
+				firstCorruptLine = lineNo + 1
+			}
 			continue
 		}
 		// An alien stage on a structurally parseable row is not silently
@@ -270,6 +277,9 @@ func ParseEvidence(body string) ([]Step, int, error) {
 	if alien > 0 {
 		return steps, dropped, fmt.Errorf("%d evidence row(s) carry stage(s) outside the plane vocabulary (%s; allowed: %s)",
 			alien, strings.Join(alienNames, ", "), strings.Join(StageVocabulary, " | "))
+	}
+	if dropped > 0 {
+		return steps, dropped, fmt.Errorf("%d undecodable evidence line(s) dropped (first at line %d) — incomplete evidence, refusing to grade", dropped, firstCorruptLine)
 	}
 	return steps, dropped, nil
 }

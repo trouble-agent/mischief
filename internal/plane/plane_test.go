@@ -199,19 +199,22 @@ func TestFoldFullyValidMultiRowFileStaysPass(t *testing.T) {
 }
 
 // TestParseEvidenceDropsAndCountsCorruptLines: a truncated/corrupt JSONL
-// evidence file must not silently shrink — dropped lines are counted and
-// named.
+// evidence file must not silently shrink — dropped lines are counted, named,
+// and the decode FAILS CLOSED (a corrupt line followed by a valid pass row
+// is an incomplete run, never a gradeable file).
 func TestParseEvidenceDropsAndCountsCorruptLines(t *testing.T) {
 	good := fx("ship", StatusPass, "SYNC-OK", "1000")
-	body := good.DetailB64 // not used directly; build lines by marshalling
 	raw, err := json.Marshal(good)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(raw) + "\n{not json}\n\n  \n{\"step\":\"half\" nope\n"
 	steps, dropped, err := ParseEvidence(text)
-	if err != nil {
-		t.Fatalf("ParseEvidence: %v", err)
+	if err == nil {
+		t.Fatal("corrupt evidence decoded with a nil error — an incomplete file would grade as a plane run")
+	}
+	if !strings.Contains(err.Error(), "2 undecodable") || !strings.Contains(err.Error(), "line 2") {
+		t.Fatalf("error %q must name the corrupt count and first offending line", err)
 	}
 	if len(steps) != 1 || steps[0].Step != "ship" {
 		t.Fatalf("parsed %d steps (%+v), want 1 ship step", len(steps), steps)
@@ -219,7 +222,6 @@ func TestParseEvidenceDropsAndCountsCorruptLines(t *testing.T) {
 	if dropped != 2 {
 		t.Fatalf("dropped = %d, want 2", dropped)
 	}
-	_ = body
 }
 
 // TestEvidenceRoundTripThroughJSONL: the driver writes rows as one JSON
