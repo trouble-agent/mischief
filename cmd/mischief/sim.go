@@ -42,7 +42,7 @@ func cmdSim(args []string) int {
 	resource := fs.String("resource", "", "allowlisted resource tag (AC-17 triad)")
 	spendCap := fs.Float64("spend-cap", 0, "spend cap in USD (AC-17 triad)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 
 	if *shapeID == "" {

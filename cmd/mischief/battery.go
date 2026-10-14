@@ -59,7 +59,7 @@ func cmdBattery(args []string) int {
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
 	dryRun := fs.Bool("dry-run", false, "print the resolved matrix and exit (nothing executes)")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return verbParseExit(err)
 	}
 	if !*quick && *projects == "" && *prims == "" {
 		fmt.Fprintln(os.Stderr, "battery: nothing to run — pass --quick (the parity matrix), or --project/--primitive for the full matrix")
