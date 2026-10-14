@@ -1,28 +1,38 @@
 {
   "tick_id": "mischief-foreman-2026-10-14-12-15-53",
   "wave_budget": 4,
-  "status": "dispatching",
+  "status": "finished",
   "workers": [
     {
       "task": "DF-05",
       "brief": "/tmp/mischief-wave2-brief-DF-05.txt",
       "worktree": "/home/kara/worktrees/mischief-DF-05",
       "branch": "wt/DF-05",
-      "base_sha": "e497df2"
+      "base_sha": "e497df2",
+      "merge": "merged",
+      "commit": "8137f85",
+      "judge": "PASS"
     },
     {
       "task": "DF-08",
       "brief": "/tmp/mischief-wave2-brief-DF-08.txt",
       "worktree": "/home/kara/worktrees/mischief-DF-08",
       "branch": "wt/DF-08",
-      "base_sha": "e497df2"
+      "base_sha": "e497df2",
+      "merge": "merged",
+      "commit": "97a5cd0",
+      "judge": "PASS"
     },
     {
       "task": "MISCHIEF-PLANE-002",
       "brief": "/tmp/mischief-wave2-brief-MISCHIEF-PLANE-002.txt",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-PLANE-002",
       "branch": "wt/MISCHIEF-PLANE-002",
-      "base_sha": "e497df2"
+      "base_sha": "e497df2",
+      "merge": "merged",
+      "commit": "b68e7b4",
+      "judge": "PASS"
     }
-  ]
+  ],
+  "finished_at": "2026-10-14T13:22:00Z"
 }
