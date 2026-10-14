@@ -381,8 +381,84 @@ func TestAssertionsAndBudget(t *testing.T) {
 	})
 }
 
+// TestAggregateCellsNeverFlaky: the battery shape (DIFFERENT cells, each
+// run once) is graded by AggregateCells, and its contract is the
+// MISCHIEF-DF-25 fix: a mixed-but-healthy census {recovered×N,
+// aborted×M, fail=0} grades the most severe benign verdict present with
+// a census reason — never flaky (flaky is reserved for Aggregate's
+// same-experiment-repeat shape, PRD §6.4); a mixed census WITH an
+// adverse verdict grades the adverse verdict (never hidden behind a
+// benign one, never flaky); unanimous cells still grade the common
+// verdict.
+func TestAggregateCellsNeverFlaky(t *testing.T) {
+	rec := Result{Verdict: journal.VerdictRecovered, Reason: "probe set green within budget", Timeline: Timeline{Recover: time.Second}}
+	rec2 := Result{Verdict: journal.VerdictRecovered, Timeline: Timeline{Recover: 2 * time.Second}}
+	ab := Result{Verdict: journal.VerdictAborted, Timeline: Timeline{Recover: 3 * time.Second}}
+	noop := Result{Verdict: journal.VerdictNoOp}
+
+	// The DF-25 shape: a healthy all-green battery run is journaled
+	// 'flaky'. Zero adverse, mixed recovered/aborted → recovered with a
+	// reason naming the mix.
+	mixed := AggregateCells([]Result{rec, rec2, ab, ab})
+	if mixed.Verdict != journal.VerdictRecovered {
+		t.Fatalf("mixed healthy cells graded %q, want recovered", mixed.Verdict)
+	}
+	for _, want := range []string{"no adverse verdict", "2 recovered", "2 aborted"} {
+		if !strings.Contains(mixed.Reason, want) {
+			t.Fatalf("mixed healthy reason %q must be the census (missing %q)", mixed.Reason, want)
+		}
+	}
+	if mixed.Timeline != rec.Timeline {
+		t.Fatalf("mixed aggregate lost the first cell's timeline: %+v", mixed.Timeline)
+	}
+
+	// A single cell is itself (not a census).
+	single := AggregateCells([]Result{ab})
+	if single.Verdict != journal.VerdictAborted || single != ab {
+		t.Fatalf("single cell mutated: %+v", single)
+	}
+
+	// Unanimous cells grade the common verdict (census wording).
+	un := AggregateCells([]Result{rec, rec2})
+	if un.Verdict != journal.VerdictRecovered {
+		t.Fatalf("unanimous cells graded %q, want recovered", un.Verdict)
+	}
+	if !strings.Contains(un.Reason, "2 cells agree on recovered") {
+		t.Fatalf("unanimous reason %q must name the census", un.Reason)
+	}
+
+	// Heterogeneous healthy: degraded + recovered + aborted → degraded
+	// (most severe benign verdict present — still no adverse verdict).
+	dg := Result{Verdict: journal.VerdictDegraded}
+	het := AggregateCells([]Result{dg, rec, ab})
+	if het.Verdict != journal.VerdictDegraded || !strings.Contains(het.Reason, "no adverse verdict") {
+		t.Fatalf("healthy heterogeneity graded %q (%q), want degraded with a no-adverse census", het.Verdict, het.Reason)
+	}
+
+	// A mixed census with an adverse verdict grades the ADVERSE verdict
+	// (an adverse outcome is never hidden behind a benign one, and a
+	// single-shot cell census is never flaky — instability is
+	// unmeasurable without repeats).
+	adv := AggregateCells([]Result{rec, noop})
+	if adv.Verdict != journal.VerdictNoOp {
+		t.Fatalf("mixed adverse census graded %q, want no_op (the worst verdict present)", adv.Verdict)
+	}
+	if !strings.Contains(adv.Reason, "heterogeneity") || !strings.Contains(adv.Reason, "1 no_op") {
+		t.Fatalf("adverse census reason %q must name the mix", adv.Reason)
+	}
+
+	// The aggregate survives the journal envelope like every vocabulary
+	// value (the mixed-healthy verdict record validates).
+	back := journalRoundTrip(t, mixed.Record("0123456789abcdef", 9, 2000))
+	if back.Verdict != journal.VerdictRecovered {
+		t.Fatalf("mixed-healthy verdict mutated through journal: %q", back.Verdict)
+	}
+}
+
 // TestAggregateFlakyAndSingletons: N runs disagree → flaky; unanimous →
-// the common verdict; zero runs → void.
+// the common verdict; zero runs → void. flaky stays RESERVED for this
+// shape: N runs of the SAME experiment (MISCHIEF-DF-25 contract note —
+// the battery shape is AggregateCells, which never grades flaky).
 func TestAggregateFlakyAndSingletons(t *testing.T) {
 	rec := Result{Verdict: journal.VerdictRecovered, Timeline: Timeline{Recover: time.Second}}
 	nrec := Result{Verdict: journal.VerdictNotRecovered, Timeline: Timeline{Recover: 2 * time.Second}}
