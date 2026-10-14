@@ -230,3 +230,99 @@ func TestPlaneFoldSubcommand(t *testing.T) {
 		t.Fatalf("stdin fold = (%d, %q)", code, out)
 	}
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MISCHIEF-PLANE-001 regression tests: record refuses an unknown --step at
+// the flag surface (exit 2, nothing appended), and fold over a file with
+// an alien-stage row never prints/returns PASS — the live repro at HEAD
+// b3789e6 was `record --step nonsense --status pass` (rc=0, row appended)
+// followed by `fold` printing "PLANE pass at nonsense".
+// ═════════════════════════════════════════════════════════════════════════════
+
+// TestPlaneRecordRefusesUnknownStep: the record verb's refusal names the
+// offending stage and the allowed set, exits 2 (usage), and appends
+// NOTHING to the evidence file.
+func TestPlaneRecordRefusesUnknownStep(t *testing.T) {
+	ev := filepath.Join(t.TempDir(), "ev.jsonl")
+	var code int
+	var stderr string
+	code, _, stderr = capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "record", "--file", ev, "--step", "nonsense", "--status", "pass", "--detail", "bad-step"})
+	})
+	if code != 2 {
+		t.Fatalf("alien-stage record exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr, "unknown stage") || !strings.Contains(stderr, "nonsense") {
+		t.Fatalf("stderr %q must name the unknown stage", stderr)
+	}
+	if !strings.Contains(stderr, "destroy") {
+		t.Fatalf("stderr %q must name the allowed set", stderr)
+	}
+	if body, err := os.ReadFile(ev); err == nil && len(body) > 0 {
+		t.Fatalf("refused record still appended evidence: %q", body)
+	}
+	// Every canonical stage is still accepted (one probe per stage).
+	for _, stage := range plane.StageVocabulary {
+		code, _, _ = capturePlaneOutput(t, func() int {
+			return run([]string{"plane", "record", "--file", ev, "--step", stage, "--status", "pass", "--detail", "ok"})
+		})
+		if code != 0 {
+			t.Fatalf("canonical stage %q refused by record (exit %d)", stage, code)
+		}
+	}
+}
+
+// TestPlaneFoldAlienStageFileNeverPasses: the fold-level regression — the
+// defect file (alien-stage pass rows + a green final row) folds to a named
+// FAIL (exit 1) that names the alien stage, never "PLANE pass at
+// nonsense".
+func TestPlaneFoldAlienStageFileNeverPasses(t *testing.T) {
+	dir := t.TempDir()
+	// The exact live repro shape: `record --step nonsense --status pass
+	// --detail bad-step` (base64 of "bad-step": YmFkLXN0ZXA=) plus a green
+	// final destroy row.
+	ev := filepath.Join(dir, "alien.jsonl")
+	if err := os.WriteFile(ev, []byte(
+		`{"step":"nonsense","status":"pass","detail_b64":"YmFkLXN0ZXA=","ts":"0"}`+"\n"+
+			`{"step":"destroy","status":"pass","detail_b64":"","ts":"1"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "fold", "--file", ev})
+	})
+	if code != 1 {
+		t.Fatalf("alien-stage fold exit %d, want 1 (fail)", code)
+	}
+	if strings.Contains(out, "PLANE pass") {
+		t.Fatalf("alien-stage file folded as PASS: %q", out)
+	}
+	if !strings.Contains(out, "PLANE fail") || !strings.Contains(out, "nonsense") {
+		t.Fatalf("fold output %q must be a named FAIL citing the alien stage", out)
+	}
+
+	// Hand-built alien-stage evidence must also refuse at the source: the
+	// same file written through `record` is impossible now — proven by the
+	// record-refusal test above; here the green pipeline still passes so
+	// the closure did not over-tighten.
+	evGreen := filepath.Join(dir, "green.jsonl")
+	for _, row := range [][2]string{
+		{"preflight", "server reachable"},
+		{"ship", "SYNC-OK"},
+		{"selftest", "exit 0"},
+		{"collect", "journal pulled"},
+		{"destroy", "TEARDOWN-GONE"},
+	} {
+		code, _, _ = capturePlaneOutput(t, func() int {
+			return run([]string{"plane", "record", "--file", evGreen, "--step", row[0], "--status", "pass", "--detail", row[1]})
+		})
+		if code != 0 {
+			t.Fatalf("green row %v exit %d", row, code)
+		}
+	}
+	code, out, _ = capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "fold", "--file", evGreen})
+	})
+	if code != 0 || !strings.Contains(out, "PLANE pass at destroy") {
+		t.Fatalf("green pipeline = (%d, %q), want pass at destroy", code, out)
+	}
+}
