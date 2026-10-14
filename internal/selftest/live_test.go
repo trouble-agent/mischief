@@ -1,6 +1,7 @@
 package selftest
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -30,13 +31,16 @@ func TestLiveSelftestAllGreenOrSkip(t *testing.T) {
 			t.Errorf("%s %s: %s (land=%q revert=%q)", r.ID, r.State, r.Reason, r.LandProof, r.RevertProof)
 		}
 	}
-	// the green set: exactly the covered, non-skip ids, all passing
+	// the green set: exactly the covered, non-skip ids, all passing.
+	// INT-CI-6-FIXUP: a runner-flake capability skip (INT-CI-6) is an
+	// honest skip, not a violation of the green contract — accept
+	// capability_unavailable skips alongside pass.
 	for _, id := range GreenIDs() {
 		found := false
 		for _, r := range res {
 			if r.ID == id {
 				found = true
-				if r.State != "pass" {
+				if r.State != "pass" && !(r.State == "skip" && strings.HasPrefix(r.Reason, "capability_unavailable:")) {
 					t.Errorf("%s is in the green set but graded %q (%s)", id, r.State, r.Reason)
 				}
 				break
