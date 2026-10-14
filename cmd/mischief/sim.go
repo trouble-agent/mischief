@@ -86,7 +86,15 @@ func cmdSim(args []string) int {
 	}
 
 	fmt.Println(backend_sim.RefusalText(*shapeID, decision, detail))
-	fmt.Println(proof)
+	if decision == backend_sim.DecideReal {
+		// MISCHIEF-DF-15: the full AC-17 triad passed, so the gate ADMITS
+		// the real plane — the v0.1 stub is the only reason this still
+		// lands in the simulator. The refusal wording ("refused the real
+		// plane") contradicted the decision; print the admission instead.
+		fmt.Println("ac17: real adapter is a v0.1 documented stub — landing in the simulator")
+	} else {
+		fmt.Println(proof)
+	}
 	fmt.Printf("request log: %s\n", log)
 	return 0
 }

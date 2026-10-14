@@ -157,6 +157,26 @@ func TestRefusalTextShape(t *testing.T) {
 	}
 }
 
+// TestRefusalTextRealDecisionHasNoTrailingEmptyDetail: the full opt-in
+// triad decides "real" with an empty detail — the rendered line must not
+// end with the dangling "%s: " separator (MISCHIEF-DF-15).
+func TestRefusalTextRealDecisionHasNoTrailingEmptyDetail(t *testing.T) {
+	got := RefusalText("I-003", DecideReal, "")
+	if strings.HasSuffix(got, ": ") || strings.HasSuffix(got, ":") {
+		t.Fatalf("real-decision render leaves an empty trailing detail: %q", got)
+	}
+	if !strings.HasPrefix(got, "backend_sim: I-003: real") {
+		t.Fatalf("real-decision render lost its prefix: %q", got)
+	}
+	// a populated detail keeps the existing three-part shape
+	withDetail := RefusalText("I-012", DecideSim, "real-provider fault requires a spend cap above zero")
+	for _, want := range []string{"backend_sim: I-012: simulator: real-provider fault requires a spend cap above zero"} {
+		if !strings.Contains(withDetail, want) {
+			t.Fatalf("populated-detail render changed: %q", withDetail)
+		}
+	}
+}
+
 // TestAllowlistSemantics: nil allowlist allows nothing; tags match exactly.
 func TestAllowlistSemantics(t *testing.T) {
 	var empty Allowlist

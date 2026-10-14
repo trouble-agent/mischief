@@ -77,9 +77,14 @@ func (g RealGate) Decide(destroyClass string) (Decision, string) {
 	return DecideReal, ""
 }
 
-// RefusalText renders the operator-facing refusal line (the "command output
-// naming the refusal" half of AC-17's proof).
+// RefusalText renders the operator-facing decision line (the "command
+// output naming the refusal" half of AC-17's proof). A decision carrying
+// no detail (DecideReal) renders without the trailing empty separator —
+// "backend_sim: I-003: real:", never a dangling ": " (MISCHIEF-DF-15).
 func RefusalText(primitive string, d Decision, detail string) string {
+	if detail == "" {
+		return fmt.Sprintf("backend_sim: %s: %s", primitive, d)
+	}
 	return fmt.Sprintf("backend_sim: %s: %s: %s", primitive, d, detail)
 }
 

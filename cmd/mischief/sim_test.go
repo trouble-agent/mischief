@@ -70,14 +70,27 @@ func TestSimVerbRealGateRedirectWithoutOptIn(t *testing.T) {
 // decision line must say so (never a silent 200).
 func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
-	rc := cmdSim([]string{"--shape", "I-012", "--log", log,
-		"--allow-real", "--resource", "aws:sandbox-lab", "--spend-cap", "0.50"})
+	rc, out := captureStdout(t, func() int {
+		return cmdSim([]string{"--shape", "I-012", "--log", log,
+			"--allow-real", "--resource", "aws:sandbox-lab", "--spend-cap", "0.50"})
+	})
 	if rc != 0 {
 		t.Fatalf("exit %d, want 0", rc)
 	}
-	// The gate admitted real; the adapter is a v0.1 stub. The proof of the
-	// run is still the sim request log (the sim received the redirected
-	// probe) — assert it landed.
+	// MISCHIEF-DF-15: a gate that DECIDES real must not print the refusal
+	// wording — the command prints the v0.1 stub-admission line instead.
+	if strings.Contains(out, "refused the real plane") {
+		t.Fatalf("real decision printed the refusal wording:\n%s", out)
+	}
+	if !strings.Contains(out, "backend_sim: I-012: real") {
+		t.Fatalf("output does not carry the real decision line:\n%s", out)
+	}
+	if !strings.Contains(out, "ac17: real adapter is a v0.1 documented stub") ||
+		!strings.Contains(out, "landing in the simulator") {
+		t.Fatalf("output lacks the stub-admission line:\n%s", out)
+	}
+	// The proof of the run is still the sim request log (the sim received
+	// the redirected probe) — assert it landed.
 	entries, err := backend_sim.ReadRequestLog(log)
 	if err != nil {
 		t.Fatalf("redirect proof log read: %v", err)
@@ -90,6 +103,33 @@ func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
 	}
 	if !faulted {
 		t.Fatalf("redirect proof missing from %s (no faulted entry)", log)
+	}
+}
+
+// TestSimVerbRealGateMissingPieceStillNamesRefusal: a PARTIAL triad
+// (--allow-real without resource tag and cap) still refuses — the output
+// names the missing pieces exactly as before (MISCHIEF-DF-15 regression
+// guard for the non-real decisions).
+func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
+	log := filepath.Join(t.TempDir(), "sim-requests.log")
+	rc, out := captureStdout(t, func() int {
+		return cmdSim([]string{"--shape", "I-012", "--log", log, "--allow-real"})
+	})
+	if rc != 0 {
+		t.Fatalf("exit %d, want 0 (the refusal lands in the sim)", rc)
+	}
+	for _, want := range []string{
+		"backend_sim: I-012: simulator:",
+		"an allowlisted resource tag",
+		"a spend cap above zero",
+		"refused the real plane and landed in the simulator",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("partial-triad refusal lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "is a v0.1 documented stub") {
+		t.Fatalf("partial triad must not print the stub-admission line:\n%s", out)
 	}
 }
 
