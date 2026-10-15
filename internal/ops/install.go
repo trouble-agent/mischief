@@ -1,7 +1,9 @@
 package ops
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -115,16 +117,41 @@ func PlanInstall(opts InstallOpts) (*Plan, error) {
 	body := RenderDropIn(opts.SudoersUser)
 	manifest := RenderHelperManifest()
 
-	if err := checkForeignFile(opts.dropInPath(), body); err != nil {
+	dropInPerm, err := checkForeignFile(opts.dropInPath(), body)
+	if err != nil {
 		return nil, err
 	}
-	if err := checkForeignFile(opts.manifestPath(), manifest); err != nil {
+	// The manifest lives under the OPERATOR-owned prefix: a permission
+	// refusal there is not the hardened-sudoers.d shape (the prefix is
+	// this caller's own state), so it keeps failing closed like any
+	// other unreadable file.
+	if fact, err := checkForeignFile(opts.manifestPath(), manifest); err != nil {
 		return nil, err
+	} else if fact != nil {
+		return nil, &InstallError{
+			Path:   fact.logicalPath,
+			Reason: "unreadable (permission denied) — the state prefix is operator-owned, so a permission refusal here is not the hardened-sudoers.d shape; fix the prefix permissions instead of planning blind",
+		}
 	}
 
 	p := &Plan{Op: "install", DryRun: opts.DryRun}
 	if adv := opts.privilegedDropInBlocked(); adv != "" {
+		if dropInPerm != nil {
+			// MISCHIEF-DF-27: fold the unmeasurable existing drop-in
+			// into the DF-17 privileged advisory (one line — not a new
+			// advisory kind). The overwrite policy is re-verified by
+			// whichever identity performs the write (a sudo install
+			// re-plans as root; the privileged helper re-verifies at
+			// execution time).
+			adv += fmt.Sprintf(" — existing %s unreadable (permission denied): the overwrite policy is re-verified by the privileged writer", DefaultDropInPath)
+		}
 		p.Advisories = append(p.Advisories, adv)
+	} else if dropInPerm != nil {
+		// The DF-17 screen is silent (root, or --no-drop-in) yet the
+		// read was still refused: never plan silently over an
+		// unverified target — the same fact stands alone as the
+		// plan-warn line.
+		p.Advisories = append(p.Advisories, fmt.Sprintf("%s unreadable (permission denied): existing content cannot be measured unprivileged — verify with a privileged reader", DefaultDropInPath))
 	}
 	p.Actions = append(p.Actions,
 		Action{Kind: OpWriteDir, Path: opts.Prefix, Reason: "mischief state prefix"},
@@ -153,24 +180,80 @@ func countWildcards() int {
 	return n
 }
 
+// permDenied is the plan-warn fact checkForeignFile returns for an
+// existing file it cannot read because of permissions (nil = the read
+// succeeded or the file is absent): not a refusal, not a fake clean.
+type permDenied struct{ logicalPath string }
+
+func (p *permDenied) Error() string {
+	return fmt.Sprintf("%s unreadable (permission denied)", p.logicalPath)
+}
+
+// readVerdict is the DF-27 read-error classification.
+type readVerdict int
+
+const (
+	readAbsent     readVerdict = iota // no existing file: clean install
+	readPermDenied                    // existing but unmeasurable (hardened dir): plan-warn
+	readRefused                       // any other read failure (EIO, EISDIR, ...): refuse
+)
+
+// classifyReadError maps one ReadFile failure onto the DF-27 verdict.
+// Only two error classes plan through: absence (nothing to clobber) and
+// permission denial (hardened sudoers.d — see checkForeignFile). Every
+// other failure keeps the fail-closed refusal.
+//
+// errors.Is, not os.IsPermission: measured on this toolchain (go1.26.5),
+// os.IsPermission returns FALSE for a %w-wrapped EACCES while errors.Is
+// unwraps it correctly — the read path wraps, so the un-wrap-capable
+// matcher is the fail-safe one.
+func classifyReadError(err error) readVerdict {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return readAbsent
+	case errors.Is(err, fs.ErrPermission):
+		return readPermDenied
+	default:
+		return readRefused
+	}
+}
+
 // checkForeignFile refuses an install over an existing file that is
 // neither byte-identical nor a previous mischief render (drift). The
 // error names the path and both recovery routes.
-func checkForeignFile(logicalPath string, fresh []byte) error {
+//
+// Read-error classification (MISCHIEF-DF-27, fail closed per class):
+//   - os.IsNotExist: absent — clean install (unchanged).
+//   - EACCES-class (os.IsPermission): a hardened drop-in dir (Debian's
+//     default 0750 root:root /etc/sudoers.d) leaves the EXISTING file
+//     unmeasurable by an unprivileged planner. That is a plan-warn fact,
+//     not corruption: PlanInstall proceeds with an advisory (the SPEC-11
+//     DF-17 privileged path — a sudo install re-plans as root and the
+//     overwrite policy is re-verified by whichever identity writes).
+//     Returned as a non-nil *permDenied fact with a nil error. The
+//     manifest path keeps failing closed (see PlanInstall): the
+//     operator-owned prefix cannot produce this shape.
+//   - anything else (EIO, EISDIR at the path, ...): refused — an
+//     unmeasurable target is never written over silently.
+func checkForeignFile(logicalPath string, fresh []byte) (*permDenied, error) {
 	raw, err := os.ReadFile(resolve(logicalPath))
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // absent: clean install
+		switch classifyReadError(err) {
+		case readAbsent:
+			return nil, nil // absent: clean install
+		case readPermDenied:
+			return &permDenied{logicalPath: logicalPath}, nil // hardened dir: plan-warn
+		default:
+			return nil, &InstallError{Path: logicalPath, Reason: fmt.Sprintf("unreadable: %v", err)}
 		}
-		return &InstallError{Path: logicalPath, Reason: fmt.Sprintf("unreadable: %v", err)}
 	}
 	if string(raw) == string(fresh) {
-		return nil // idempotent re-install
+		return nil, nil // idempotent re-install
 	}
 	if isPreviousMischiefRender(raw) {
-		return nil // drifted mischief artefact: refresh it
+		return nil, nil // drifted mischief artefact: refresh it
 	}
-	return &InstallError{
+	return nil, &InstallError{
 		Path:   logicalPath,
 		Reason: "a file mischief did not generate already exists at this path — install refuses to clobber it (remove it explicitly, or take it over by making it byte-identical to a fresh render)",
 	}
