@@ -21,6 +21,9 @@ func writeSanctionMarker(t *testing.T) {
 	t.Setenv("MISCHIEF_SANCTION_FILE", marker)
 }
 
+// (writeHealthyLoad for the AC-8 gate lives in battery_test.go and pins
+// the selftest package's seam too — one helper, both verb test files.)
+
 // selftest-verb tests (MSF-015): usage refusals, catalog validation, the
 // journal write, and the AC-19 wiring line. The live land+revert loop is
 // covered by internal/selftest's own suite (TestLiveSelftestAllGreenOrSkip).
@@ -68,6 +71,7 @@ func TestSelftestVerbUnknownPrimitiveRefuses(t *testing.T) {
 // format), and demonstrates the AC-19 wiring for the primitive.
 func TestSelftestVerbWritesJournalAndWiring(t *testing.T) {
 	writeSanctionMarker(t) // the MSF-032 gate runs before the land+revert loop
+	writeHealthyLoad(t)    // MISCHIEF-DF-28: the AC-8 gate reads the injected posture, not the box's /proc
 	dir := t.TempDir()
 	code, out := captureStdout(t, func() int {
 		return run([]string{"selftest", "--primitive", "P-001", "--dir", dir})

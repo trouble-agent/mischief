@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
+	"github.com/trouble-agent/mischief/internal/doctor"
 	"github.com/trouble-agent/mischief/internal/journal"
+	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/selftest"
 	"github.com/trouble-agent/mischief/internal/verdict"
 )
@@ -292,17 +294,53 @@ type Runner struct {
 	executeCell func(c Cell) selftest.Result
 	// now is the clock seam.
 	now func() time.Time
+	// readLoad is the AC-8 measurement seam (MISCHIEF-DF-28): production
+	// points at rails.ReadLoad (the live /proc read); tests inject a
+	// LoadReading (ambient-filesystem discipline — the suite never
+	// depends on the box it runs on). A nil readLoad is the ungated stub
+	// posture the pre-existing stubRunner tests rely on: gate checks run
+	// only when a measurement is wired.
+	readLoad func() (rails.LoadReading, error)
+	// loadGate is the AC-8 gate (rails.LoadGate, doctor's run thresholds:
+	// load 12.0, PSI 50.0 — the numbers doctor reports, so the doctor's
+	// grade and the runner's refusal agree). nil alongside a non-nil
+	// readLoad is a wiring bug the Run refuses loudly.
+	loadGate *rails.LoadGate
 }
 
 // NewRunner wires the production runner: the selftest harness (RunOnePublic)
-// as the per-cell executor, the wall clock.
+// as the per-cell executor, the wall clock, and the AC-8 load gate measured
+// at run time (MISCHIEF-DF-28: a battery that lands faults on a saturated
+// host manufactures the incident it claims to observe — PRD §7).
 func NewRunner(cat *catalog.Catalog) *Runner {
-	return &Runner{
+	rn := &Runner{
 		Cat:         cat,
 		executeCell: func(c Cell) selftest.Result { return selftest.RunOnePublic(c.Primitive) },
 		now:         time.Now,
+		// call-time indirection: the gate reads the package seam AT RUN
+		// TIME (the doctor's pattern), so a test pinning ReadLoad after
+		// construction still controls the measurement.
+		readLoad: func() (rails.LoadReading, error) { return ReadLoad() },
 	}
+	gate, err := rails.NewLoadGate(rails.LoadGateConfig{
+		LoadThreshold: doctor.LoadThreshold,
+		PSIThreshold:  doctor.PSIThreshold,
+	})
+	if err != nil {
+		// unreachable with the doctor's constants (both arms enabled);
+		// the misconfigured wiring is refused loudly by Run (fail
+		// closed), never silently ungated
+		return rn
+	}
+	rn.loadGate = gate
+	return rn
 }
+
+// ReadLoad is the AC-8 measurement seam (the doctor's own pattern:
+// package-level so tests can point it at an injected LoadReading instead
+// of the box's real /proc numbers — a test never depends on, or perturbs,
+// the live host's load). Production = rails.ReadLoad.
+var ReadLoad = rails.ReadLoad
 
 // ErrUnknownPrimitive is the refusal for a matrix cell whose primitive is
 // not in the loaded catalog (rails unknown-primitive shape).
@@ -344,6 +382,12 @@ func knownTargetKind(selector string) bool {
 // Run executes the matrix. Validation refusals (unknown primitive,
 // non-scratch target, unknown selector kind, empty matrix) return before
 // anything executes — a matrix that validates partially is refused whole.
+// The AC-8 load gate is the LAST rail (the rails' own order: sanction
+// first, target resolution, scope, load gate last — it bounds WHETHER a
+// saturated host takes more): a mis-declared matrix refuses for its own
+// reason, and a valid matrix on a saturated host refuses the whole run
+// with the rails' load_gate shape — the same "this run did not happen"
+// class as the validation refusals (MISCHIEF-DF-28).
 func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 	if rn.executeCell == nil || rn.now == nil {
 		return nil, fmt.Errorf("battery runner misconfigured: nil seam")
@@ -366,6 +410,23 @@ func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 			return nil, fmt.Errorf("duplicate cell id %q", c.ID)
 		}
 		seen[c.ID] = true
+	}
+	if rn.readLoad != nil {
+		if rn.loadGate == nil {
+			return nil, fmt.Errorf("battery runner misconfigured: readLoad wired without a loadGate")
+		}
+		reading, err := rn.readLoad()
+		if err != nil {
+			return nil, fmt.Errorf("load gate: %w", err)
+		}
+		if err := rn.loadGate.Check(reading); err != nil {
+			// the rails refusal verbatim (reason load_gate, verdict
+			// aborted): the run records refused, not faults — no cell
+			// executes, no journal, no artefact (MISCHIEF-DF-28; dogfood
+			// run-12 landed 5 battery faults at loadavg 30.75 — this
+			// check is the fix for exactly that).
+			return nil, err
+		}
 	}
 
 	res := &RunResult{Quick: m.Quick, Matrix: m, StartedAt: rn.now().Unix()}
