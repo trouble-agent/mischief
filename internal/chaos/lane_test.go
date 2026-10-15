@@ -1,10 +1,12 @@
 package chaos
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/trouble-agent/mischief/internal/battery"
 )
@@ -469,6 +471,135 @@ func TestNewFindingIDIsContentDerivedAndStable(t *testing.T) {
 	}
 	if !strings.HasPrefix(a, "MSF-CHAOS-") {
 		t.Errorf("id %q lacks the MSF-CHAOS- prefix", a)
+	}
+}
+
+// ── matrix artifact vs the lane (MISCHIEF-DF-19) ────────────────────────────
+//
+// The lane consumes the matrix.json in its workdir. check verifies the
+// artifact the lane will RUN, not only the lane's declaration: schema,
+// project, scope, catalog_version, and tier_max at or below the lane's
+// declared ceiling. A matrix generated at tier-max 3 used to validate
+// green under an L1 lane.
+
+// writeMatrixArtifact marshals one MatrixArtifact into dir/matrix.json —
+// the file a real `chaos matrix --out <laneDir>` run leaves behind.
+func writeMatrixArtifact(t *testing.T, dir string, m *MatrixArtifact) {
+	t.Helper()
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, MatrixFile), append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// validArtifact returns an artifact matching the validLane's declaration
+// (project mischief, scope project, tier_max 1, a named catalog).
+func validArtifact(t *testing.T) *MatrixArtifact {
+	t.Helper()
+	return &MatrixArtifact{
+		Schema:         MatrixSchema,
+		Project:        "mischief",
+		Scope:          ScopeProject,
+		TierMax:        1,
+		CatalogVersion: "test-catalog-v1",
+		GeneratedAt:    time.Now().Unix(),
+		Cells:          []ProjectCell{{Primitive: "P-001", Name: "sigstop", Capability: "none", TierRaw: "L1", TierMin: 1, Status: "included"}},
+	}
+}
+
+// The row's core refusal: an artifact above the lane's ceiling is named —
+// tier_max, both numbers, and the lane — never a green check.
+func TestValidateMatrixArtifactRefusesTierAboveCeiling(t *testing.T) {
+	l := validLane(t)
+	dir := t.TempDir()
+	a := validArtifact(t)
+	a.TierMax = 3
+	writeMatrixArtifact(t, dir, a)
+	err := ValidateMatrixArtifact(&l, dir)
+	if err == nil {
+		t.Fatal("tier-3 artifact accepted under an L1 lane — the tick body would run tier-3 faults on an L1-scoped lane")
+	}
+	for _, want := range []string{"tier_max", "3", "1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refusal missing %q: %v", want, err)
+		}
+	}
+}
+
+// An artifact matching the lane's ceiling validates green.
+func TestValidateMatrixArtifactAcceptsAtCeiling(t *testing.T) {
+	l := validLane(t)
+	dir := t.TempDir()
+	writeMatrixArtifact(t, dir, validArtifact(t))
+	if err := ValidateMatrixArtifact(&l, dir); err != nil {
+		t.Fatalf("ceiling-matching artifact refused: %v", err)
+	}
+}
+
+// Below the ceiling is not above it: a narrower artifact is safe.
+func TestValidateMatrixArtifactAcceptsBelowCeiling(t *testing.T) {
+	l := validLane(t)
+	dir := t.TempDir()
+	a := validArtifact(t)
+	a.TierMax = 0
+	writeMatrixArtifact(t, dir, a)
+	if err := ValidateMatrixArtifact(&l, dir); err != nil {
+		t.Fatalf("below-ceiling artifact refused: %v", err)
+	}
+}
+
+// No artifact yet is not an error: a fresh lane workdir has nothing for
+// the lane to consume (the file's absence is checked first).
+func TestValidateMatrixArtifactSkipsMissing(t *testing.T) {
+	l := validLane(t)
+	if err := ValidateMatrixArtifact(&l, t.TempDir()); err != nil {
+		t.Fatalf("missing artifact refused: %v", err)
+	}
+}
+
+// Every artifact field the row names refuses with the offending field
+// named: schema, project, scope, catalog_version.
+func TestValidateMatrixArtifactRefusesOffendingFields(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*MatrixArtifact)
+		want   string
+	}{
+		{"schema", func(a *MatrixArtifact) { a.Schema = "mischief.chaos.matrix/v2" }, "schema"},
+		{"project", func(a *MatrixArtifact) { a.Project = "other-project" }, "project"},
+		{"scope", func(a *MatrixArtifact) { a.Scope = "fleet" }, "scope"},
+		{"catalog_version", func(a *MatrixArtifact) { a.CatalogVersion = "" }, "catalog_version"},
+	}
+	for _, tc := range cases {
+		l := validLane(t)
+		dir := t.TempDir()
+		a := validArtifact(t)
+		tc.mutate(a)
+		writeMatrixArtifact(t, dir, a)
+		err := ValidateMatrixArtifact(&l, dir)
+		if err == nil {
+			t.Errorf("%s: tampered artifact accepted", tc.name)
+			continue
+		}
+		if !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: refusal does not name the offending field %q: %v", tc.name, tc.want, err)
+		}
+	}
+}
+
+// A corrupt artifact is a refusal, not a silent skip: the check must not
+// read "cannot parse" as "nothing to validate".
+func TestValidateMatrixArtifactRefusesGarbage(t *testing.T) {
+	l := validLane(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, MatrixFile), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateMatrixArtifact(&l, dir); err == nil {
+		t.Fatal("garbage artifact accepted")
 	}
 }
 

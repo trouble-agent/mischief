@@ -162,6 +162,16 @@ func cmdChaosCheck(args []string) int {
 		fmt.Fprintln(os.Stderr, "chaos check:", err)
 		return 2
 	}
+	// The lane consumes the generated matrix artifact in its workdir;
+	// when one is present it must agree with the lane (schema, project,
+	// scope, catalog_version, and tier_max at or below the lane's
+	// declared ceiling — MISCHIEF-DF-19: a tier-3 artifact used to
+	// validate green under an L1 lane). Checked against the same lane
+	// workdir the symlink evidence probed.
+	if err := chaos.ValidateMatrixArtifact(l, dir); err != nil {
+		fmt.Fprintln(os.Stderr, "chaos check:", err)
+		return 2
+	}
 	fmt.Printf("chaos lane %s: template contract OK (isolation, sanction, project scope, findings-on-owning-board)\n", l.Lane)
 	fmt.Printf("board symlink: %s -> %s (resolves to %s = the primary's board)\n", ev.Link, ev.Raw, ev.Resolved)
 	return 0
