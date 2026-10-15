@@ -3,6 +3,7 @@ package reverter
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 )
@@ -73,9 +74,6 @@ func TestRevertAllFailureProofsContinue(t *testing.T) {
 	_, lf := newTestStore(t)
 	good, _, _ := scratchHold(t, "P-SWEEP-GOOD")
 	bad, badFile, badBackup := scratchHold(t, "P-SWEEP-BAD")
-	// the bad hold's inverse points at a nonexistent backup: its revert
-	// measurably fails (the live file keeps its faulted bytes).
-	bad.Inverse.Params["backup"] = badBackup + "-MISSING"
 	idGood, err := lf.Arm(good)
 	if err != nil {
 		t.Fatalf("arm good: %v", err)
@@ -83,6 +81,12 @@ func TestRevertAllFailureProofsContinue(t *testing.T) {
 	idBad, err := lf.Arm(bad)
 	if err != nil {
 		t.Fatalf("arm bad: %v", err)
+	}
+	// The bad hold's backup EXISTED at arm (DF-23's probe requires it) and
+	// is sabotaged afterwards: its revert measurably fails (the live file
+	// keeps its faulted bytes).
+	if err := os.Remove(badBackup); err != nil {
+		t.Fatalf("sabotage: %v", err)
 	}
 	proofs, _, err := lf.RevertAll(testContext(), "kill_switch")
 	if err != nil {

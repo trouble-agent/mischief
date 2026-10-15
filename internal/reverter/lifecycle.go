@@ -26,6 +26,14 @@ var ErrWriteAheadMissing = errors.New("reverter: write-ahead inverse not durable
 // in-process: the CLI must not pretend a detached owner exists.
 var ErrNoOwner = errors.New("reverter: detached TTL owner could not be started")
 
+// ErrInverseUnreadable is Arm's refusal when the inverse's undo cannot
+// possibly execute: a restore-file inverse reads its backup at revert time,
+// so a backup that is not readable AT ARM TIME can only ever grade
+// revert_failed later (MISCHIEF-DF-23 — the arm side refuses the hold up
+// front instead of booking a live un-reverted fault at TTL expiry). The
+// error names the unreadable path; refusals precede the write-ahead line.
+var ErrInverseUnreadable = errors.New("reverter: arm: inverse restore-file backup is not readable")
+
 // Lifecycle is the reverter API: arm → land → (hold) → measured revert, with
 // TTL ownership and the kill switch. All methods are safe for concurrent
 // use; all durable state is the journal.
@@ -77,14 +85,43 @@ func New(store *Store) *Lifecycle {
 	return &Lifecycle{store: store, exec: scratchExec{}, detach: defaultDetach}
 }
 
+// validateInverseUndo is the arm-side probe behind Arm's refusal: for a
+// restore-file inverse it performs the SAME read the executor performs at
+// revert time (scratchExec.execAction's os.ReadFile of the backup), so the
+// arm-time verdict cannot drift from what the undo will actually do. An
+// absent backup param is the same unreadable class (a paramless restore
+// touches nothing). Every not-delivered outcome returns a non-nil error
+// naming the path; kinds other than restore-file are outside the probe
+// (unknown kinds are graded by exec.go at revert, fail-closed there).
+func validateInverseUndo(d Decl) error {
+	if d.Kind != "restore-file" {
+		return nil
+	}
+	backup := d.Params["backup"]
+	if backup == "" {
+		return fmt.Errorf("%w: missing backup param (a restore-file inverse needs one)", ErrInverseUnreadable)
+	}
+	if _, err := os.ReadFile(backup); err != nil {
+		return fmt.Errorf("%w: %s: %v", ErrInverseUnreadable, backup, err)
+	}
+	return nil
+}
+
 // Arm is the write-ahead half of the contract: the hold — fault, inverse,
 // measured check, TTL — is appended to the journal and fsynced BEFORE the
 // caller may land the fault. The returned hold id is content-derived
 // (hex(sha256)[:16]); arming the same declaration twice yields the same id
 // and a second arm line (the fold collapses duplicate states, not evidence).
+// Before anything is written, the inverse's undo is probed for executability
+// (validateInverseUndo): a hold whose restore backup is not readable is
+// refused with the path named — the arm side does not book a fault whose
+// undo can only grade revert_failed (MISCHIEF-DF-23).
 func (l *Lifecycle) Arm(h Hold) (string, error) {
 	if err := h.Validate(); err != nil {
 		return "", fmt.Errorf("reverter: arm: %w", err)
+	}
+	if err := validateInverseUndo(h.Inverse); err != nil {
+		return "", err
 	}
 	l.store.mu.Lock()
 	now := l.store.Now()

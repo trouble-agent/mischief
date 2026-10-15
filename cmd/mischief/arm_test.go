@@ -13,16 +13,25 @@ import (
 
 // armTestArgs is the happy-path arm invocation against a scratch run dir:
 // inverse restores a backup over a scratch path, check measures the restore.
-func armTestArgs(dir string) []string {
+// The backup is written FIRST (DF-23: arm probes its readability — an arm
+// whose undo cannot execute is refused) into its OWN scratch dir (NOT the
+// run dir: the refusal tests assert the run dir stays empty).
+func armTestArgs(t *testing.T, dir string) []string {
+	t.Helper()
+	scratch := t.TempDir()
+	backup := filepath.Join(scratch, "backup")
+	if err := os.WriteFile(backup, []byte("pristine\n"), 0o644); err != nil {
+		t.Fatalf("armTestArgs: write backup: %v", err)
+	}
 	return []string{
 		"arm",
 		"--fault", "S-001",
 		"--target", "scratch:/tmp/mischief-arm-test",
 		"--ttl", "10s",
 		"--inverse-kind", "restore-file",
-		"--inverse-params", "path=" + dir + "/fault-file,backup=" + dir + "/backup",
+		"--inverse-params", "path=" + dir + "/fault-file,backup=" + backup,
 		"--check-kind", "file-matches-backup",
-		"--check-params", "path=" + dir + "/fault-file,backup=" + dir + "/backup",
+		"--check-params", "path=" + dir + "/fault-file,backup=" + backup,
 		"--dir", dir,
 	}
 }
@@ -35,7 +44,7 @@ func armTestArgs(dir string) []string {
 func TestArmWritesHoldAndStatusShowsIt(t *testing.T) {
 	writeSanctionMarker(t)
 	dir := t.TempDir()
-	code, out := captureStdout(t, func() int { return run(armTestArgs(dir)) })
+	code, out := captureStdout(t, func() int { return run(armTestArgs(t, dir)) })
 	if code != 0 {
 		t.Fatalf("arm exit: %d, want 0", code)
 	}
@@ -64,7 +73,7 @@ func TestArmWritesHoldAndStatusShowsIt(t *testing.T) {
 func TestArmRefusesUnsanctionedHost(t *testing.T) {
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	dir := t.TempDir()
-	code, stderr := captureStderr(t, func() int { return run(armTestArgs(dir)) })
+	code, stderr := captureStderr(t, func() int { return run(armTestArgs(t, dir)) })
 	if code != 2 {
 		t.Fatalf("arm on unsanctioned host: exit %d, want 2", code)
 	}
@@ -101,14 +110,14 @@ func TestArmUsageValidation(t *testing.T) {
 			}
 		}
 	}
-	args = armTestArgs(dir)
+	args = armTestArgs(t, dir)
 	mutateParam(args, "--inverse-params", "path-only-no-equals")
 	code, stderr = captureStderr(t, func() int { return run(args) })
 	if code != 2 || !strings.Contains(stderr, "malformed pair") {
 		t.Fatalf("malformed params: exit %d stderr=%q, want 2 + malformed pair", code, stderr)
 	}
 	// empty-VALUE param pair (an empty path is the classic no-op restore).
-	args = armTestArgs(dir)
+	args = armTestArgs(t, dir)
 	mutateParam(args, "--inverse-params", "path=,backup=/tmp/b")
 	code, stderr = captureStderr(t, func() int { return run(args) })
 	if code != 2 || !strings.Contains(stderr, "malformed pair") {
@@ -136,7 +145,7 @@ func TestArmToServeRevertAtTTL(t *testing.T) {
 	if err := os.WriteFile(faultFile, []byte("faulted\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	args := armTestArgs(dir)
+	args := armTestArgs(t, dir)
 	// swap --ttl 10s → 1ms so the daemon's first heartbeat sweep finds it expired.
 	for i, a := range args {
 		if a == "10s" {

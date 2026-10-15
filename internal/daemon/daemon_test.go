@@ -189,17 +189,19 @@ func TestDaemonHealthAtomicPublish(t *testing.T) {
 func TestDaemonRevertFailedFlipsOK(t *testing.T) {
 	dir := localTempDir(t)
 	live, backup := scratchPair(t, dir)
-	// sabotage the undo: delete the backup so the inverse cannot restore
-	if err := os.Remove(backup); err != nil {
-		t.Fatal(err)
-	}
 	d, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer d.store.Close()
+	// arm FIRST (DF-23: the arm-side probe requires a readable backup —
+	// an undo that cannot execute is refused at arm), then sabotage the
+	// undo by deleting the backup so the measured revert fails.
 	id, err := d.lf.Arm(testHold(live, backup, time.Minute))
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(backup); err != nil {
 		t.Fatal(err)
 	}
 	// land + revert directly through the lifecycle (the health fold reads

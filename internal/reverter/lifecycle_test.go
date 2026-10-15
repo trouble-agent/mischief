@@ -101,6 +101,78 @@ func TestArmValidation(t *testing.T) {
 	}
 }
 
+// TestArmRefusesUnreadableRestoreBackup (MISCHIEF-DF-23): the arm side must
+// not accept a hold whose undo cannot possibly execute. A restore-file
+// inverse's backup path is probed for readability at Arm — the same read the
+// inverse performs at revert time (exec.go) — and an unreadable backup is
+// refused BEFORE the write-ahead line (nothing journaled), naming the path.
+// A readable backup arms normally; an absent backup param is the same
+// refusal class; non-restore-file kinds sit outside the probe (an unknown
+// kind still arms and grades revert_failed at revert, per exec.go).
+func TestArmRefusesUnreadableRestoreBackup(t *testing.T) {
+	t.Run("nonexistent backup refused, path named, nothing written", func(t *testing.T) {
+		st, lf := newTestStore(t)
+		hold, _, backup := scratchHold(t, "P-DF23-BAD")
+		missing := backup + "-MISSING"
+		hold.Inverse.Params["backup"] = missing
+
+		id, err := lf.Arm(hold)
+		if err == nil {
+			t.Fatalf("arm with unreadable backup graded SUCCESS (id %s) — the undo cannot possibly execute", id)
+		}
+		if !errorIs(err, ErrInverseUnreadable) {
+			t.Fatalf("err=%v, want an ErrInverseUnreadable wrap", err)
+		}
+		if !strings.Contains(err.Error(), missing) {
+			t.Fatalf("refusal does not name the unreadable path %q: %v", missing, err)
+		}
+		if lines := journalLines(t, st.Dir); len(lines) != 0 {
+			t.Fatalf("refused arm wrote %d journal lines, want 0 (refusal precedes the write-ahead line)", len(lines))
+		}
+	})
+
+	t.Run("readable backup accepted", func(t *testing.T) {
+		_, lf := newTestStore(t)
+		hold, _, _ := scratchHold(t, "P-DF23-GOOD")
+		id, err := lf.Arm(hold)
+		if err != nil {
+			t.Fatalf("arm with readable backup: %v", err)
+		}
+		if len(id) != 16 {
+			t.Fatalf("hold id %q: want 16 hex chars", id)
+		}
+	})
+
+	t.Run("absent backup param refused", func(t *testing.T) {
+		_, lf := newTestStore(t)
+		hold := Hold{
+			FaultID: "P-DF23-NOPARAM",
+			Target:  "file:/tmp/x",
+			Inverse: Decl{Kind: "restore-file", Params: map[string]string{"path": "/tmp/x"}},
+			Check:   Decl{Kind: "file-absent", Params: map[string]string{"path": "/tmp/x"}},
+			TTL:     time.Second,
+		}
+		_, err := lf.Arm(hold)
+		if err == nil || !errorIs(err, ErrInverseUnreadable) {
+			t.Fatalf("arm without a backup param: err=%v, want ErrInverseUnreadable (a paramless restore touches nothing)", err)
+		}
+	})
+
+	t.Run("non-restore-file inverse outside the probe", func(t *testing.T) {
+		_, lf := newTestStore(t)
+		hold := Hold{
+			FaultID: "P-DF23-OTHERKIND",
+			Target:  "file:/tmp/x",
+			Inverse: Decl{Kind: "unexist", Params: map[string]string{"path": "/tmp/x"}},
+			Check:   Decl{Kind: "file-absent", Params: map[string]string{"path": "/tmp/x"}},
+			TTL:     time.Second,
+		}
+		if _, err := lf.Arm(hold); err != nil {
+			t.Fatalf("arm with unknown inverse kind: %v (the probe must not over-reach; the kind grades at revert)", err)
+		}
+	})
+}
+
 // TestHoldIDContentDerived: the hold id is hex(sha256)[:16] over the
 // declared content — same declaration, same id; any declared difference, a
 // different id (internal/journal's RunID convention). Never clock-dependent:
@@ -155,6 +227,7 @@ func TestRevertMeasuredNotAsserted(t *testing.T) {
 	cases := []struct {
 		name          string
 		mutate        func(h *Hold)
+		postArm       func(t *testing.T, file, backup string)
 		wantOutcome   Outcome
 		wantDetailSub string
 	}{
@@ -165,11 +238,15 @@ func TestRevertMeasuredNotAsserted(t *testing.T) {
 		},
 		{
 			name: "sabotaged inverse (fault still present) is revert_failed",
-			mutate: func(h *Hold) {
-				// the inverse restores from a NONEXISTENT backup: the action
-				// fails, the fault is measurably still present, and the
-				// check (against the REAL backup) proves it.
-				h.Inverse.Params["backup"] = h.Inverse.Params["backup"] + "-MISSING"
+			postArm: func(t *testing.T, _, backup string) {
+				// the inverse's backup EXISTED at arm (the DF-23 probe
+				// requires it — an undo that could not execute is refused
+				// there) and is deleted afterwards: at revert time the
+				// action fails, the fault is measurably still present, and
+				// the check (against the now-missing backup) proves it.
+				if err := os.Remove(backup); err != nil {
+					t.Fatalf("sabotage: %v", err)
+				}
 			},
 			wantOutcome:   OutcomeRevertFailed,
 			wantDetailSub: "inverse failed",
@@ -195,13 +272,16 @@ func TestRevertMeasuredNotAsserted(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			st, lf := newTestStore(t)
-			hold, file, _ := scratchHold(t, "P-MEASURE")
+			hold, file, backup := scratchHold(t, "P-MEASURE")
 			if tc.mutate != nil {
 				tc.mutate(&hold)
 			}
 			id, err := lf.Arm(hold)
 			if err != nil {
 				t.Fatalf("arm: %v", err)
+			}
+			if tc.postArm != nil {
+				tc.postArm(t, file, backup)
 			}
 			if err := lf.Land(id); err != nil {
 				t.Fatalf("land: %v", err)

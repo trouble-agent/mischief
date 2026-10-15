@@ -1,6 +1,8 @@
 package reverter
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -109,11 +111,20 @@ func TestScrubRedactsCredentialShapes(t *testing.T) {
 func TestJournalCarriesNoCredentialMaterial(t *testing.T) {
 	st, lf := newTestStore(t)
 	secret := string([]byte{'s', 'k'}) + "-proj-SecretValue0987654321"
+	// A REAL readable backup (the DF-23 arm-time probe reads it — the
+	// scrub contract is about what the journal carries, not about
+	// arming an undo that cannot execute), with the secret still entering
+	// through every OTHER caller field: fault id, target, inverse path
+	// param, check path param.
+	backupFile := filepath.Join(localTempDir(t), "scrub-backup")
+	if err := os.WriteFile(backupFile, []byte("SCRUB-GOOD\n"), 0o644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
 	hold := Hold{
 		FaultID: "P-SCRUB-" + secret,
 		Target:  "file:/tmp/mischief-scrub/live?token=" + secret,
-		Inverse: Decl{Kind: "restore-file", Params: map[string]string{"path": "/tmp/live", "backup": secret}},
-		Check:   Decl{Kind: "file-matches-backup", Params: map[string]string{"path": "/tmp/live", "backup": secret}},
+		Inverse: Decl{Kind: "restore-file", Params: map[string]string{"path": "/tmp/live", "backup": backupFile}},
+		Check:   Decl{Kind: "file-matches-backup", Params: map[string]string{"path": secret, "backup": backupFile}},
 		TTL:     time.Minute,
 	}
 	id, err := lf.Arm(hold)
