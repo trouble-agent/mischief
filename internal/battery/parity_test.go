@@ -33,6 +33,7 @@ import (
 // outcome fixed to r, on a real catalog.
 func runQuickWith(t *testing.T, r selftest.Result) *RunResult {
 	t.Helper()
+	pinHealthyLoad(t) // MISCHIEF-DF-28: the gate-armed runner gets an injected healthy reading
 	cat, err := catalog.LoadDefault()
 	if err != nil {
 		t.Fatalf("catalog load: %v", err)

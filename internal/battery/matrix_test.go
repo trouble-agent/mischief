@@ -108,6 +108,7 @@ func TestQuickPrimitivesAreCatalogPrimitives(t *testing.T) {
 // verdict and a reason-bearing detection entry. This is the run whose
 // artefact a later milestone cites when deleting the bash cells.
 func TestQuickMatrixReachesEveryCellLive(t *testing.T) {
+	pinHealthyLoad(t) // MISCHIEF-DF-28: the gate-armed runner gets an injected healthy reading
 	cat, err := catalog.LoadDefault()
 	if err != nil {
 		t.Fatalf("catalog load: %v", err)

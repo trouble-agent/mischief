@@ -57,6 +57,8 @@ import (
 	"os"
 	"sort"
 	"time"
+
+	"github.com/trouble-agent/mischief/internal/rails"
 )
 
 // L0 is the scratch scope level (the ladder's "everything, always
@@ -205,21 +207,58 @@ type runner struct {
 	corpus func() []string
 	build  func(id, dir string) landable
 	now    func() time.Time
+	// readLoad is the AC-8 measurement seam (MISCHIEF-DF-28): the
+	// production runner (newRunner) wires ReadLoad (rails.ReadLoad via
+	// the package seam); tests leave it nil — the loop is then ungated
+	// and the suite never reads the box's real /proc. checkLoad is the
+	// gate seam (the doctor's CheckLoad thresholds); a nil gate seam
+	// alongside a non-nil readLoad is a wiring bug RunOne reports
+	// loudly.
+	readLoad  func() (rails.LoadReading, error)
+	checkLoad func(rails.LoadReading) error
 }
 
 // newRunner builds the production runner: the covered corpus, the real
-// backend builder, the wall clock.
+// backend builder, the wall clock, and the AC-8 load gate measured at
+// run time (MISCHIEF-DF-28).
 func newRunner() runner {
-	return runner{
+	rn := runner{
 		corpus: CoveredIDs,
 		build:  buildLandable,
 		now:    time.Now,
+		// call-time indirection: the gate reads the package seam AT RUN
+		// TIME (the doctor's pattern), so a test pinning ReadLoad after
+		// construction still controls the measurement.
+		readLoad: func() (rails.LoadReading, error) { return ReadLoad() },
+		checkLoad: func(r rails.LoadReading) error {
+			gate, err := newGate()
+			if err != nil {
+				return err
+			}
+			return gate.Check(r)
+		},
 	}
+	return rn
+}
+
+// checkLoad consults the wired gate seam for one reading (nil gate seam
+// alongside a non-nil readLoad is the wiring bug RunOne reports). The gate
+// is stateless; the production wiring builds it per call — the doctor's
+// CheckLoad pattern.
+func (rn runner) gateCheck(r rails.LoadReading) error {
+	if rn.checkLoad == nil {
+		return fmt.Errorf("selftest harness misconfigured: readLoad wired without checkLoad")
+	}
+	return rn.checkLoad(r)
 }
 
 // RunOne selftests one primitive id on a fresh L0 scratch target. An id
 // outside the corpus is a fail (a selftest for an unknown primitive must
-// not silently pass — same refusal shape as an unknown catalog id).
+// not silently pass — same refusal shape as an unknown catalog id). The
+// AC-8 load gate (MISCHIEF-DF-28) is consulted BEFORE anything arms: a
+// saturated host records the gate refusal per primitive (the rails'
+// load_gate shape, verdict aborted — the run records refused, not faults)
+// and never reaches the land+revert loop.
 func (rn runner) RunOne(id string) Result {
 	if rn.corpus == nil || rn.build == nil || rn.now == nil {
 		return Result{ID: id, State: "fail", Reason: "harness misconfigured: nil seam"}
@@ -233,6 +272,20 @@ func (rn runner) RunOne(id string) Result {
 	}
 	if !known {
 		return Result{ID: id, State: "fail", Reason: fmt.Sprintf("unknown primitive %q: not in the selftest corpus (the catalog ids it covers)", id)}
+	}
+	if rn.readLoad != nil {
+		// MISCHIEF-DF-28: the load gate is the rails' LAST admission rail
+		// (sanction → target → scope → load): the unknown-primitive fail
+		// above keeps its own reason, and only a KNOWN primitive's
+		// landing path is gated. nil readLoad (tests) is ungated — the
+		// ambient discipline: no test reads the box's real /proc.
+		reading, err := rn.readLoad()
+		if err != nil {
+			return Result{ID: id, State: "fail", Reason: "load gate: " + err.Error()}
+		}
+		if err := rn.gateCheck(reading); err != nil {
+			return refused(id, gateReason(err))
+		}
 	}
 	start := rn.now()
 	res := rn.run(id)

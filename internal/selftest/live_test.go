@@ -3,7 +3,25 @@ package selftest
 import (
 	"strings"
 	"testing"
+
+	"github.com/trouble-agent/mischief/internal/rails"
 )
+
+// pinHealthyLoad pins the package ReadLoad seam to an injected healthy
+// reading for the test's duration (MISCHIEF-DF-28; the doctor seams_test
+// pattern: pin the measurement, leave the gate real — the actual gate
+// grades the pinned reading). Ambient discipline: the live test never
+// depends on the box's real /proc numbers, so a saturated CI host records
+// healthy gate posture here instead of mass refusals. The gate's refusal
+// arm is tested against INJECTED BREACHING readings (load_gate_test.go).
+func pinHealthyLoad(t *testing.T) {
+	t.Helper()
+	old := ReadLoad
+	ReadLoad = func() (rails.LoadReading, error) {
+		return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil
+	}
+	t.Cleanup(func() { ReadLoad = old })
+}
 
 // TestLiveSelftestAllGreenOrSkip is the M1 exit criterion as a go test:
 // run the FULL covered corpus on the real backends (fresh scratch target
@@ -13,6 +31,7 @@ import (
 // A red here means a primitive's land+revert loop stopped measuring on
 // this host — the AC-19 set must not be touched up by hand.
 func TestLiveSelftestAllGreenOrSkip(t *testing.T) {
+	pinHealthyLoad(t) // MISCHIEF-DF-28: the gate consults the pinned reading, not the box's
 	res := RunAllPublic()
 	if len(res) != len(CoveredIDs()) {
 		t.Fatalf("ran %d primitives, want %d", len(res), len(CoveredIDs()))

@@ -10,6 +10,7 @@ import (
 
 	"github.com/trouble-agent/mischief/internal/catalog"
 	"github.com/trouble-agent/mischief/internal/journal"
+	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/selftest"
 	"github.com/trouble-agent/mischief/internal/verdict"
 )
@@ -17,6 +18,24 @@ import (
 // runner_test.go — run orchestration against STUB seams (the live harness
 // is exercised by matrix_test's TestQuickMatrixReachesEveryCellLive; here
 // every grading branch is reached deterministically).
+
+// healthyReading is the ambient-discipline reading (MISCHIEF-DF-28): the
+// gate-armed runners (NewRunner, the live tests) pin THIS via the ReadLoad
+// seam — a test never depends on the box's real /proc numbers. Healthy on
+// both arms so the gate's refusal cannot fire for the wrong arm.
+func healthyReading() rails.LoadReading {
+	return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}
+}
+
+// pinHealthyLoad pins the package ReadLoad seam to healthyReading for the
+// test's duration (the doctor seams_test pattern: pin the measurement,
+// leave the gate real).
+func pinHealthyLoad(t *testing.T) {
+	t.Helper()
+	old := ReadLoad
+	ReadLoad = func() (rails.LoadReading, error) { return healthyReading(), nil }
+	t.Cleanup(func() { ReadLoad = old })
+}
 
 // stubCat is a minimal catalog stand-in: the runner only reads
 // Cat.Get(id).Name and the unknown-primitive check (Get == nil).
