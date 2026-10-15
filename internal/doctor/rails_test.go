@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
+	"github.com/trouble-agent/mischief/internal/rails"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // railsCatalog builds the two-descriptor synthetic catalog the ladder arm
@@ -156,5 +158,62 @@ func TestRailsSelfChecksEmptyCatalogNoPanic(t *testing.T) {
 	RunRailsSelfChecks(rep, nil)
 	if len(rep.Rails) != 0 {
 		t.Fatalf("nil catalog produced rails rows: %+v", rep.Rails)
+	}
+}
+
+// TestRailsSanctionFailHintsReadOnlyEtc: the MISCHIEF-DF-13 L1 placement
+// hint — when the sanction refusal carries *sanction.Details with
+// ReadOnlyDir (the default /etc marker probed on a host whose /etc is not
+// writable), the sanction row's detail appends the route that works there:
+// a reason-bearing marker at $HOME/mischief-sanction pointed at by
+// MISCHIEF_SANCTION_FILE. The row still FAILs — the hint explains the
+// refusal, it never admits.
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestRailsSanctionFailHintsReadOnlyEtc evidence=internal/doctor/doctor.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestRailsSanctionFailHintsReadOnlyEtc(t *testing.T) {
+	restoreSanction := pinSanction(t, sanction.NewDetails(
+		&rails.Refusal{Reason: rails.ReasonSanction, Verdict: rails.VerdictAborted,
+			Detail: `host "bunker-ephemeral-01" is not sanctioned for mischief (SPEC-13)`},
+		sanction.Inspect{MarkerPath: sanction.DefaultMarkerPath}, true))
+	defer restoreSanction()
+	restoreLoad := pinLoad(t, railsReading{load1: 0.5, load5: 0.4, psi: 1})
+	defer restoreLoad()
+
+	rep := &Report{}
+	RunRailsSelfChecks(rep, railsCatalog(t))
+	san := rep.Rails[0]
+	if san.OK || san.Check != "sanction_marker" {
+		t.Fatalf("sanction row must FAIL and come first: %+v", san)
+	}
+	for _, want := range []string{"not sanctioned", sanction.HomeMarkerSuggestion, sanction.EnvSanctionFile} {
+		if !strings.Contains(san.Detail, want) {
+			t.Fatalf("read-only-etc hint must name %q: %s", want, san.Detail)
+		}
+	}
+	// render: the hint is visible in the doctor's text form
+	if out := Render(rep); !bytes.Contains(out, []byte(sanction.HomeMarkerSuggestion)) {
+		t.Fatalf("render drops the L1 placement hint:\n%s", out)
+	}
+}
+
+// TestRailsSanctionFailPlainRefusalNoHint: a plain (unwrapped) refusal — a
+// host whose /etc IS writable, or a seam stubbed with the bare refusal —
+// gets NO placement hint; the detail is the refusal text verbatim.
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestRailsSanctionFailPlainRefusalNoHint evidence=internal/doctor/doctor.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestRailsSanctionFailPlainRefusalNoHint(t *testing.T) {
+	restore := pinSanction(t, errSanctionRefusal)
+	defer restore()
+	restoreLoad := pinLoad(t, railsReading{load1: 0.5, load5: 0.4, psi: 1})
+	defer restoreLoad()
+
+	rep := &Report{}
+	RunRailsSelfChecks(rep, railsCatalog(t))
+	san := rep.Rails[0]
+	if san.OK {
+		t.Fatal("sanction row reports OK on an unsanctioned host")
+	}
+	if strings.Contains(san.Detail, sanction.HomeMarkerSuggestion) {
+		t.Fatalf("plain refusal must not carry the placement hint: %s", san.Detail)
 	}
 }

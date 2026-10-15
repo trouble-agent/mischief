@@ -57,7 +57,10 @@ package sanction
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/trouble-agent/mischief/internal/rails"
 )
@@ -81,6 +84,15 @@ const EnvSanctionFile = "MISCHIEF_SANCTION_FILE"
 // DefaultMarkerPath is the marker file a sanctioned host provisions
 // (production shape: /etc/mischief-sanction).
 const DefaultMarkerPath = "/etc/mischief-sanction"
+
+// HomeMarkerSuggestion is the sanctioned-run recipe for an L1 container:
+// /etc is not writable there, so the marker's reason-bearing file lives at
+// $HOME and MISCHIEF_SANCTION_FILE points the gate at it. This is exactly
+// what the test plane provisions (scripts/bunker-plane.sh) and what
+// docs/TEST-PLANE.md documents; it is a SUGGESTION (rendered in doctor
+// hints and prose), not a second default — DefaultMarkerPath stays the
+// gate's real default so the fail-closed semantics never move.
+const HomeMarkerSuggestion = "$HOME/mischief-sanction"
 
 // Options carries the check's inputs; the zero value checks the real host
 // (os.LookupEnv, os.Hostname, one marker read). Tests inject the seams —
@@ -151,12 +163,52 @@ func InspectWith(opts Options) Inspect {
 	return Inspect{EnvSanctioned: envSanctioned, MarkerPath: path, MarkerFound: found, Reason: reason}
 }
 
+// Details wraps a sanction refusal with the placement evidence the check
+// gathered. The extra fields are placement information for the doctor verb
+// (and any other diagnostic consumer): they report WHERE the check probed
+// and WHAT it found, without asking the consumer to re-parse the refusal
+// text. Check's return type stays error, so every existing caller and test
+// is untouched; consumers that want the evidence assert with
+// errors.As(err, &d). The wrapped refusal stays reachable through Unwrap,
+// so the rails taxonomy helpers (IsRefusal, MapExit) behave identically on
+// both shapes.
+type Details struct {
+	// err is the underlying *rails.Refusal this evidence rode in on.
+	err error
+	// Inspect is the evidence the refusal was built from (env state,
+	// marker path probed, found-ness, reason line).
+	Inspect Inspect
+	// ReadOnlyDir is true when the check PROBED a default /etc marker
+	// (no MISCHIEF_SANCTION_FILE override), the probe failed, and the
+	// marker's parent directory is not writable by this user — the L1
+	// container shape. It is placement evidence only: it never changes
+	// the refusal (SPEC-13 fails closed regardless of writability).
+	ReadOnlyDir bool
+}
+
+// Error renders the underlying refusal text verbatim (Details IS the
+// refusal error; the evidence fields ride alongside).
+func (d *Details) Error() string { return d.err.Error() }
+
+// Unwrap exposes the underlying refusal for errors.Is/As over the rails
+// taxonomy (the *rails.Refusal stays reachable).
+func (d *Details) Unwrap() error { return d.err }
+
+// NewDetails wraps a sanction refusal with its placement evidence — the
+// constructor Check uses for the read-only-etc shape and tests use to pin
+// the doctor verb's hint arm.
+func NewDetails(err error, in Inspect, readOnlyDir bool) *Details {
+	return &Details{err: err, Inspect: in, ReadOnlyDir: readOnlyDir}
+}
+
 // Check is the first rail: refuse an unsanctioned host before anything
 // else runs. It returns nil when the host is sanctioned and a
-// *rails.Refusal (Reason rails.ReasonSanction, exit 2) otherwise. The
-// refusal text names the hostname and BOTH marker routes — the missing
-// file path (with its env override name) and the env variable — so the
-// operator can see exactly which act is missing and on which host.
+// *rails.Refusal (Reason rails.ReasonSanction, exit 2) otherwise — wrapped
+// in *Details when the placement evidence is worth surfacing (see
+// Details.ReadOnlyDir). The refusal text names the hostname and BOTH
+// marker routes — the missing file path (with its env override name) and
+// the env variable — so the operator can see exactly which act is missing
+// and on which host.
 func Check(opts ...Options) error {
 	o := Options{}
 	if len(opts) > 0 {
@@ -166,7 +218,44 @@ func Check(opts ...Options) error {
 	if in.Sanctioned() {
 		return nil
 	}
-	return sanctionRefusal(o.hostname(), in)
+	ref := sanctionRefusal(o.hostname(), in)
+	if defaultEtcMarkerUnwritable(o, in) {
+		return NewDetails(ref, in, true)
+	}
+	return ref
+}
+
+// defaultEtcMarkerUnwritable reports the L1 placement shape: no env
+// override in play (the check probed the default /etc marker), the marker
+// did not probe, and the marker's parent directory is not writable by
+// this user — the shape where the sanctioned-run recipe belongs at
+// $HOME/mischief-sanction + MISCHIEF_SANCTION_FILE instead. An explicit
+// override (even empty) means the operator already chose a path, so the
+// hint has nothing to add there.
+func defaultEtcMarkerUnwritable(o Options, in Inspect) bool {
+	if _, overridden := o.envLookup()(EnvSanctionFile); overridden {
+		return false
+	}
+	if in.MarkerFound || in.MarkerPath != DefaultMarkerPath {
+		return false
+	}
+	// The hint fires when the marker's directory is NOT writable by this
+	// user (probeDirWritable answers "writable"); an unwritable-but-present
+	// directory (or an absent one) is the L1 placement shape.
+	return !probeDirWritable(filepath.Dir(in.MarkerPath))
+}
+
+// probeDirWritable is the writability probe seam: production resolves the
+// directory's write permission FOR THIS USER (unix.Access, not the mode
+// bits — root passes where 0755 mode bits say otherwise). Package-level so
+// tests pin both arms deterministically on any host; the check itself
+// stays read-only (a stat + an access syscall, no write).
+var probeDirWritable = func(dir string) bool {
+	info, err := os.Stat(dir)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	return unix.Access(dir, unix.W_OK) == nil
 }
 
 // sanctionRefusal builds the typed refusal: the rails taxonomy member, the

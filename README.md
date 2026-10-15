@@ -110,6 +110,29 @@ explicit sanction override for `F-009`, and their YAML headers say why — read
 them before adapting any of them. And per SPEC-13 the sanctioned host for a
 *real* run is an ephemeral scratch instance, never your daily driver.
 
+#### First sanctioned run (the L1 container recipe)
+
+The marker recipe above assumes the host's `/etc` is writable — on an L1
+container (a bunker agent, any unprivileged sandbox) it is not, and writing
+the marker there fails. The working recipe on such a host puts the
+reason-bearing marker in your home directory and points the gate at it with
+`MISCHIEF_SANCTION_FILE` (this is exactly what the test plane provisions —
+see `docs/TEST-PLANE.md`, and `mischief doctor --self-check` names this
+route itself when it finds `/etc` unwritable):
+
+```sh
+printf "%s\n" "sanctioned: ephemeral L1 container for mischief selftest" > "$HOME/mischief-sanction"
+export MISCHIEF_SANCTION_FILE="$HOME/mischief-sanction"
+export MISCHIEF_SANCTION=1
+
+mischief selftest --all          # exit 0 = every primitive green-or-skip
+```
+
+The marker file must carry a reason line (an empty or comment-only file is
+still a refusal — SPEC-13 fails closed), and `MISCHIEF_SANCTION_FILE` must
+be exported in every shell that runs a fault-landing verb, not just the
+first one.
+
 **About the shim `.so` — where mischief actually looks.**** The tarball ships a prebuilt
 `libfault-anchored.so`, but mischief does NOT load it from beside the binary. When it
 arms a shim fault it checks exactly one prebuilt location:
@@ -146,7 +169,9 @@ make bin           # → bin/mischief, CGO_ENABLED=0, version stamped with the g
 Prove the primitives on your host before using it: `bin/mischief selftest --all`.
 On a sanctioned host (SPEC-13 marker present) the contract is exit 0 =
 green-or-skip; on an unsanctioned host selftest refuses fail-closed with
-`host_not_sanctioned` and exit 2 — nothing lands (see the Safety section / SPEC-13).
+`host_not_sanctioned` and exit 2 — nothing lands (see the Safety section / SPEC-13;
+on an L1 container where `/etc` is not writable, use the "First sanctioned run"
+recipe above).
 
 ## The loop
 
@@ -198,7 +223,10 @@ Isolation contract (SPEC-13): mischief's own runs — development, selftest, bat
 require an explicit **sanction marker** (file + env) and execute on an **ephemeral
 sanctioned host** (a bunker instance), never on the fleet's main host. An unsanctioned
 host, including the main fleet host, refuses fail-closed at target resolution (see the
-PRD, "Where mischief ITSELF is allowed to run").
+PRD, "Where mischief ITSELF is allowed to run"). On an L1 container `/etc` is not
+writable — the sanctioned-run recipe there is a reason-bearing marker at
+`$HOME/mischief-sanction` plus `MISCHIEF_SANCTION_FILE` pointing at it (see the
+"First sanctioned run" subsection under Install).
 
 ## License
 
