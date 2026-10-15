@@ -6,11 +6,14 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // Row is one primitive's doctor line.
@@ -151,7 +154,20 @@ func RunRailsSelfChecks(rep *Report, cat *catalog.Catalog) {
 	// the seam var is package-level so tests can pin both arms without
 	// touching the host's real sanction state.
 	if err := SanctionCheck(); err != nil {
-		rep.Rails = append(rep.Rails, RailsRow{Check: "sanction_marker", OK: false, Detail: err.Error()})
+		detail := err.Error()
+		var sd *sanction.Details
+		if errors.As(err, &sd) && sd.ReadOnlyDir {
+			// L1 placement hint (MISCHIEF-DF-13): the default /etc
+			// marker is unreachable because its directory is not
+			// writable on this host — name the route that works
+			// here instead of leaving the operator with a refusal
+			// that cannot be satisfied as written.
+			detail += fmt.Sprintf(
+				"; the marker's directory %q is not writable on this host — the sanctioned-run recipe for an L1 container is a reason-bearing marker at %s plus %s=%s pointing at it",
+				filepath.Dir(sd.Inspect.MarkerPath), sanction.HomeMarkerSuggestion, sanction.EnvSanctionFile,
+				"$HOME/mischief-sanction")
+		}
+		rep.Rails = append(rep.Rails, RailsRow{Check: "sanction_marker", OK: false, Detail: detail})
 	} else {
 		rep.Rails = append(rep.Rails, RailsRow{Check: "sanction_marker", OK: true,
 			Detail: "sanction marker present; host admitted for fault injection"})

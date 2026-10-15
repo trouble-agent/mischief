@@ -67,9 +67,9 @@ func TestSanctionRefusalTable(t *testing.T) {
 				t.Fatalf("Check(): err=%v, wantAdmit=%v", err, tc.wantAdm)
 			}
 			if !tc.wantAdm {
-				ref, ok := err.(*rails.Refusal)
+				ref, ok := refusalOf(err)
 				if !ok {
-					t.Fatalf("refusal is %T, want *rails.Refusal", err)
+					t.Fatalf("refusal is %T, want a chain-reachable *rails.Refusal", err)
 				}
 				if ref.Reason != rails.ReasonSanction {
 					t.Fatalf("Reason=%q, want %q", ref.Reason, rails.ReasonSanction)
@@ -226,7 +226,8 @@ func TestSanctionFirstRailOrder(t *testing.T) {
 	// arm 1: the sanction refusal wins over every downstream refusal shape
 	// — the error the host sees is the SANCTION one, not target/scope text.
 	err := Check(unsanctioned.opts(t))
-	if err == nil || err.(*rails.Refusal).Reason != rails.ReasonSanction {
+	ref, isRef := refusalOf(err)
+	if err == nil || !isRef || ref.Reason != rails.ReasonSanction {
 		t.Fatalf("unsanctioned host: err=%v, want the sanction refusal first", err)
 	}
 	// the downstream shapes that WOULD have refused are all still refusals
@@ -271,4 +272,158 @@ func TestEnvVarMatrixIsolation(t *testing.T) {
 	if v, _ := os.LookupEnv(EnvSanction); v != EnvSanctionValue {
 		t.Fatalf("t.Setenv failed to inject: %q", v)
 	}
+}
+
+// refusalOf extracts the *rails.Refusal from an error chain — the
+// chain-aware twin of a bare type assertion, needed now that Check may
+// wrap the refusal in *Details (the placement-evidence carrier): the
+// wrapped shape must satisfy every contract the bare shape did.
+func refusalOf(err error) (*rails.Refusal, bool) {
+	for err != nil {
+		if r, ok := err.(*rails.Refusal); ok {
+			return r, true
+		}
+		u, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return nil, false
+		}
+		err = u.Unwrap()
+	}
+	return nil, false
+}
+
+// TestCheckHintsReadOnlyEtcDetails: the L1 placement shape — default /etc
+// marker probed and unreadable, no env override, marker directory not
+// writable — wraps the unchanged refusal in *Details with ReadOnlyDir=true
+// and the Inspect evidence, WITHOUT changing the contract: same refusal
+// text (Error renders it verbatim), same rails taxonomy reach, same exit
+// mapping (SPEC-13 fails closed regardless of writability).
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestCheckHintsReadOnlyEtcDetails evidence=internal/sanction/sanction.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestCheckHintsReadOnlyEtcDetails(t *testing.T) {
+	restore := pinProbeDirWritable(t, false)
+	defer restore()
+
+	opts := scenario{markerErr: os.ErrNotExist}.opts(t)
+	err := Check(opts)
+	if err == nil {
+		t.Fatal("unsanctioned host admitted; want the refusal")
+	}
+	var d *Details
+	if !errors.As(err, &d) {
+		t.Fatalf("read-only-etc shape did not produce *Details: %T (%v)", err, err)
+	}
+	if !d.ReadOnlyDir {
+		t.Fatal("Details.ReadOnlyDir=false on the unwritable-/etc shape")
+	}
+	if d.Inspect.MarkerPath != DefaultMarkerPath || d.Inspect.MarkerFound {
+		t.Fatalf("Details.Inspect does not reflect the probe: %+v", d.Inspect)
+	}
+	if d.Error() == "" {
+		t.Fatal("Details renders an empty refusal text")
+	}
+	// the wrapped contract: the plain refusal's tests keep passing on the
+	// wrapped shape — taxonomy reach and exit mapping included
+	ref, ok := refusalOf(err)
+	if !ok || ref.Reason != rails.ReasonSanction || ref.Verdict != rails.VerdictAborted {
+		t.Fatalf("wrapped refusal lost the rails contract: ref=%+v ok=%v", ref, ok)
+	}
+	if got := rails.MapExit(err); got != rails.ExitCode {
+		t.Fatalf("MapExit(wrapped refusal)=%d, want %d", got, rails.ExitCode)
+	}
+	if !rails.IsRefusal(err) {
+		t.Fatal("IsRefusal(wrapped refusal)=false; the wrapper must be taxonomy-transparent")
+	}
+}
+
+// TestCheckNoDetailsWhenEtcWritable: the same unsanctioned host with a
+// WRITABLE /etc returns the bare *rails.Refusal — the hint is placement
+// evidence for the doctor, not a new refusal shape, and a host that could
+// provision the documented marker gets none.
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestCheckNoDetailsWhenEtcWritable evidence=internal/sanction/sanction.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestCheckNoDetailsWhenEtcWritable(t *testing.T) {
+	restore := pinProbeDirWritable(t, true)
+	defer restore()
+
+	opts := scenario{markerErr: os.ErrNotExist}.opts(t)
+	err := Check(opts)
+	if err == nil {
+		t.Fatal("unsanctioned host admitted; want the refusal")
+	}
+	var d *Details
+	if errors.As(err, &d) {
+		t.Fatalf("writable /etc must not wrap the refusal in Details: %+v", d)
+	}
+	if _, ok := err.(*rails.Refusal); !ok {
+		t.Fatalf("writable-etc refusal is %T, want the bare *rails.Refusal", err)
+	}
+}
+
+// TestCheckNoDetailsUnderEnvOverride: an explicit MISCHIEF_SANCTION_FILE
+// means the operator already chose the marker path — no placement hint
+// even when that path's directory is unwritable (the hint would second-
+// guess a deliberate act).
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestCheckNoDetailsUnderEnvOverride evidence=internal/sanction/sanction.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestCheckNoDetailsUnderEnvOverride(t *testing.T) {
+	restore := pinProbeDirWritable(t, false)
+	defer restore()
+
+	sc := scenario{markerErr: os.ErrNotExist}
+	opts := sc.opts(t)
+	// the scenario's env view returns not-found for everything; layer the
+	// override on top so ONLY EnvSanctionFile resolves
+	base := opts.EnvLookup
+	opts.EnvLookup = func(key string) (string, bool) {
+		if key == EnvSanctionFile {
+			return "/home/agent/mischief-sanction", true
+		}
+		return base(key)
+	}
+	err := Check(opts)
+	if err == nil {
+		t.Fatal("unsanctioned host admitted; want the refusal")
+	}
+	var d *Details
+	if errors.As(err, &d) {
+		t.Fatalf("explicit override must not wrap the refusal in Details: %+v", d)
+	}
+}
+
+// TestProbeDirWritableRealArms: the production probe answers a temp dir
+// this user CAN write (writable) and a mode-0500 dir it cannot — the
+// real unix.Access path, exercised once so the seam's production shape is
+// never left untested. (Skipped when the process runs as root: root's
+// access(2) succeeds on the 0500 dir and the negative arm cannot exist.)
+//
+// ch:trace row=MISCHIEF-DF-13 spec=docs/TEST-PLANE.md (L1 sanctioned-run recipe) test=TestProbeDirWritableRealArms evidence=internal/sanction/sanction.go witness=none:no-sanctioned-host-run-possible-in-worktree
+func TestProbeDirWritableRealArms(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: access(2) succeeds on 0500 dirs, negative arm impossible")
+	}
+	if probeDirWritable(t.TempDir()) != true {
+		t.Fatal("probe says a writable temp dir is unwritable")
+	}
+	ro := t.TempDir() + "/ro"
+	if err := os.Mkdir(ro, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(ro, 0o700) })
+	if probeDirWritable(ro) != false {
+		t.Fatal("probe says a 0500 dir is writable")
+	}
+	if probeDirWritable(t.TempDir() + "/absent") != false {
+		t.Fatal("probe says an absent dir is writable")
+	}
+}
+
+// pinProbeDirWritable pins the writability seam and restores production on
+// cleanup (the same discipline pinSanction/pinLoad use in the doctor
+// package).
+func pinProbeDirWritable(t *testing.T, writable bool) func() {
+	t.Helper()
+	old := probeDirWritable
+	probeDirWritable = func(string) bool { return writable }
+	return func() { probeDirWritable = old }
 }
