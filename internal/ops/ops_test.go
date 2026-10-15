@@ -143,6 +143,106 @@ func tempRoot(t *testing.T) {
 	t.Cleanup(func() { Root = prev })
 }
 
+// ── audit install-condition classification (MISCHIEF-DF-16) ─────────────────
+
+// TestAuditConditionNotInstalledIsHealthy: a survey over an empty host
+// classifies the drop-in as not_installed — never drift — and carries the
+// healthy pre-install note (no remediation aimed at drift).
+func TestAuditConditionNotInstalledIsHealthy(t *testing.T) {
+	tempRoot(t)
+	a, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Condition != ConditionUninstalled {
+		t.Fatalf("uninstalled host condition: %q, want %q", a.Condition, ConditionUninstalled)
+	}
+	if a.DropInMatches {
+		t.Fatal("absent drop-in reported as matching")
+	}
+	for _, n := range a.Notes {
+		if strings.Contains(n, "run `mischief install`") {
+			t.Fatalf("healthy pre-install note carries a drift remediation: %q", n)
+		}
+	}
+	if !strings.Contains(string(RenderAuditJSON(a)), `"condition": "`+ConditionUninstalled+`"`) {
+		t.Fatal("audit JSON does not carry the not_installed condition token")
+	}
+}
+
+// TestAuditConditionOKAfterInstall: a fresh install classifies as ok.
+func TestAuditConditionOKAfterInstall(t *testing.T) {
+	tempRoot(t)
+	p, err := PlanInstall(InstallOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Condition != ConditionOK {
+		t.Fatalf("fresh-install condition: %q, want %q (diff=%s)", a.Condition, ConditionOK, a.DropInDiff)
+	}
+	if !a.DropInInstalled || !a.DropInMatches || !a.HelperManifestInstalled {
+		t.Fatalf("fresh-install posture inconsistent: %+v", a)
+	}
+}
+
+// TestAuditConditionDriftAndUnreadable: present-but-divergent grades as
+// drift; present-but-unmeasurable grades as unreadable. Both are the
+// exit-1 findings the audit reserves its failure grade for.
+func TestAuditConditionDriftAndUnreadable(t *testing.T) {
+	tempRoot(t)
+	p, err := PlanInstall(InstallOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	// drift: unlink+create with an extra grant line (0440 → editor path)
+	hand := resolve(DefaultDropInPath)
+	raw, err := os.ReadFile(hand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(hand); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hand, append(raw, []byte("%operators ALL=(ALL) ALL\n")...), 0o440); err != nil {
+		t.Fatal(err)
+	}
+	a, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Condition != ConditionDrift {
+		t.Fatalf("hand-edited drop-in condition: %q, want %q", a.Condition, ConditionDrift)
+	}
+	if a.DropInMatches || !a.DropInInstalled {
+		t.Fatalf("drift posture inconsistent: %+v", a)
+	}
+	// unreadable: a directory AT the drop-in path exists but cannot be
+	// read as a file (measured, unmeasurable)
+	if err := os.Remove(hand); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(hand, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	a2, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a2.Condition != ConditionUnreadable {
+		t.Fatalf("unreadable drop-in condition: %q, want %q", a2.Condition, ConditionUnreadable)
+	}
+}
+
 func TestInstallPlanOrderAndModes(t *testing.T) {
 	tempRoot(t)
 	opts := InstallOpts{Prefix: "/var/lib/mischief"}

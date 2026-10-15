@@ -54,20 +54,29 @@ func RunAudit(opts AuditOpts) (*Audit, error) {
 	}
 	_ = manifest
 
-	// 1. drop-in: installed? matches?
+	// 1. drop-in: installed? matches? — and the MISCHIEF-DF-16 install
+	// condition: the drop-in is the graded artefact, so its state is
+	// classified right here (the helper manifest is advisory context).
+	// Absent = healthy pre-install, NEVER drift; drift and unreadable
+	// are the present-but-divergent grades.
 	raw, err := os.ReadFile(resolve(a.DropInPath))
 	switch {
 	case err == nil:
 		a.DropInInstalled = true
 		a.DropInMatches = string(raw) == string(expected)
-		if !a.DropInMatches {
+		if a.DropInMatches {
+			a.Condition = ConditionOK
+		} else {
+			a.Condition = ConditionDrift
 			a.DropInDiff = diffLines(string(expected), string(raw))
 		}
 	case os.IsNotExist(err):
 		a.DropInInstalled = false
+		a.Condition = ConditionUninstalled
 		a.DropInDiff = "drop-in not installed (expected at " + a.DropInPath + ")"
 	default:
 		a.DropInInstalled = false
+		a.Condition = ConditionUnreadable
 		a.DropInDiff = fmt.Sprintf("drop-in unreadable: %v", err)
 	}
 
@@ -131,10 +140,32 @@ func RunAudit(opts AuditOpts) (*Audit, error) {
 		a.Notes = append(a.Notes, fmt.Sprintf("drop-in mode %s (sudoers requires 0440)", fileModeString(a.DropInPath)))
 	}
 	if !a.HelperManifestInstalled {
-		a.Notes = append(a.Notes, "helper manifest absent — the manifest-only milestone installed nothing under the prefix (run `mischief install`)")
+		note := "helper manifest absent at " + a.HelperManifestPath
+		if a.Condition == ConditionUninstalled {
+			// MISCHIEF-DF-16: nothing is installed — a healthy
+			// pre-install state. State the fact; a remediation
+			// aimed at drift ("run mischief install") would
+			// misreport healthy absence as something to fix.
+			note += " (nothing installed — healthy pre-install state)"
+		} else {
+			note += " (run `mischief install` to complete the install)"
+		}
+		a.Notes = append(a.Notes, note)
 	}
 	return a, nil
 }
+
+// Drop-in install-condition tokens (MISCHIEF-DF-16). Exported: the cmd
+// layer's exit grade keys off them. The audit's grade: NotInstalled is a
+// healthy state (exit 0); Drift and Unreadable are present-but-divergent
+// findings (exit 1); OK is the fully-installed clean state (exit 0).
+// The JSON renders the lowercase token values.
+const (
+	ConditionUninstalled = "not_installed"
+	ConditionOK          = "ok"
+	ConditionDrift       = "drift"
+	ConditionUnreadable  = "unreadable"
+)
 
 // RenderAuditJSON renders the audit as indented JSON for an operator diff.
 func RenderAuditJSON(a *Audit) []byte {
