@@ -134,23 +134,30 @@ func verbParseExit(err error) int {
 	return 2
 }
 
+// usage prints the top-level help. The verb list mirrors README.md's
+// `cmd/mischief/` docs row: core fault-loop verbs first (plan · status ·
+// arm · revert · doctor · selftest · serve), then the v0.1 helper/ops
+// verbs, then the evidence verbs. selftest is the M1 exit criterion
+// (README: "exit 0 only green-or-skip") — it must stay discoverable here
+// (MISCHIEF-DF-20: the README advertised it, the usage text did not).
 func usage(w *os.File) {
 	fmt.Fprint(w, `mischief — fault injection for a fleet of Linux daemons (M1 chassis)
 
 Usage:
-  mischief plan    -f <exp.yaml> [--json] [--scratch-dir D]
-  mischief status  [--dir D]
-  mischief revert  (--all | --hold <id>) [--dir D]
-  mischief doctor  [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
-  mischief battery [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
-  mischief chaos   matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
-  mischief sim     --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
-  mischief arm     --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
-  mischief serve   --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
-  mischief install    [--user U] [--prefix P] [--dry-run] [--no-drop-in]
-  mischief uninstall  [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
-  mischief audit      [--prefix P] [--json]
-  mischief retention  [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
+  mischief plan      -f <exp.yaml> [--json] [--scratch-dir D]
+  mischief status    [--dir D]
+  mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
+  mischief revert    (--all | --hold <id>) [--dir D]
+  mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
+  mischief selftest  (--all | --primitive <id>) [--dir D] [--catalog-dir D]  (exit 0 only when green-or-skip — the M1 exit criterion)
+  mischief serve     --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
+  mischief install   [--user U] [--prefix P] [--dry-run] [--no-drop-in]
+  mischief uninstall [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
+  mischief audit     [--prefix P] [--json]
+  mischief retention [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
+  mischief battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
+  mischief chaos     matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
+  mischief sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
   mischief plane     parse-agent-id | record | selftest-verdict | fold   (bunker test-plane evidence CLI)
   mischief version
 

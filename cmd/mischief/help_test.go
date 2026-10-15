@@ -88,6 +88,39 @@ func TestHelpDoesNotMaskUsageErrors(t *testing.T) {
 	})
 }
 
+// TestTopLevelHelpListsSelftest (MISCHIEF-DF-20): the README's
+// `cmd/mischief/` docs row advertises `selftest --all | --primitive <id>`
+// as the M1 exit criterion, but the top-level usage text never mentioned
+// the verb — a new user following the README could not discover it. Both
+// usage surfaces must list selftest with both documented selection forms:
+// `mischief --help` (exit 0, usage on stdout) and bare `mischief`
+// (usage-error exit 2, the SAME usage text on stderr).
+func TestTopLevelHelpListsSelftest(t *testing.T) {
+	wantRows := []string{"mischief selftest", "--all | --primitive <id>"}
+	t.Run("--help exit 0 stdout", func(t *testing.T) {
+		code, out := captureStdout(t, func() int { return run([]string{"--help"}) })
+		if code != 0 {
+			t.Fatalf("mischief --help: exit %d, want 0", code)
+		}
+		for _, want := range wantRows {
+			if !strings.Contains(out, want) {
+				t.Fatalf("mischief --help: usage text lacks %q (README docs row not mirrored)\nfull output:\n%s", want, out)
+			}
+		}
+	})
+	t.Run("bare invocation exit 2 stderr", func(t *testing.T) {
+		code, errOut := captureStderr(t, func() int { return run(nil) })
+		if code != 2 {
+			t.Fatalf("bare mischief: exit %d, want 2", code)
+		}
+		for _, want := range wantRows {
+			if !strings.Contains(errOut, want) {
+				t.Fatalf("bare mischief: usage text lacks %q\nfull output:\n%s", want, errOut)
+			}
+		}
+	})
+}
+
 // captureBoth swaps os.Stdout AND os.Stderr for pipes around fn, so one
 // run's output can be asserted on both streams (leaf FlagSets print their
 // usage to the stream each verb chose — stderr — while dispatcher-level
