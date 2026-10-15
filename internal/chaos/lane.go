@@ -26,6 +26,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,6 +43,11 @@ const Schema = "mischief.chaos.lane/v1"
 
 // MatrixSchema is the generated matrix artifact's schema tag.
 const MatrixSchema = "mischief.chaos.matrix/v1"
+
+// MatrixFile is the generated matrix artifact file in the lane workdir
+// (written by `chaos matrix --out <laneDir>`): the artifact the check
+// verb validates against the lane when it is present.
+const MatrixFile = "matrix.json"
 
 // ScopeProject is the only sanctioned matrix scope: the matrix is scoped
 // to THAT project (the row's guard: never a fleet-wide artifact generated
@@ -220,6 +226,49 @@ func ValidateMatrixConf(scope string, tierMax int) error {
 	}
 	if tierMax < 0 || tierMax > 5 {
 		return fmt.Errorf("chaos matrix: tier_max %d outside L0..L5", tierMax)
+	}
+	return nil
+}
+
+// ValidateMatrixArtifact validates a generated matrix artifact (the
+// matrix.json a lane consumes) against the lane it will run under — the
+// check verb's missing half before MISCHIEF-DF-19: it verified the lane's
+// DECLARATION but never the ARTIFACT, so a matrix generated at tier-max 3
+// validated green under an L1 lane and the tick body ran tier-3 faults on
+// an L1-scoped lane. Every refusal names the offending field.
+//
+// The artifact checks mirror the declaration checks, field for field:
+// schema stamp, project scope, the scope guard, the catalog version the
+// cells were derived from, and — the row's core — tier_max against the
+// lane's declared ceiling. A missing file is not an error (nothing to
+// run yet); a PRESENT artifact that disagrees with the lane is.
+func ValidateMatrixArtifact(l *Lane, dir string) error {
+	path := filepath.Join(dir, MatrixFile)
+	b, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil // no artifact yet — nothing for the lane to consume
+	}
+	if err != nil {
+		return fmt.Errorf("chaos lane %s: %s unreadable: %w", l.Lane, path, err)
+	}
+	var m MatrixArtifact
+	if err := json.Unmarshal(b, &m); err != nil {
+		return fmt.Errorf("chaos lane %s: %s is not a valid matrix artifact: %v", l.Lane, path, err)
+	}
+	if m.Schema != MatrixSchema {
+		return fmt.Errorf("chaos lane %s: %s schema %q, want %q", l.Lane, path, m.Schema, MatrixSchema)
+	}
+	if m.Project != l.Project {
+		return fmt.Errorf("chaos lane %s: %s project %q, want the lane's project %q", l.Lane, path, m.Project, l.Project)
+	}
+	if m.Scope != ScopeProject {
+		return fmt.Errorf("chaos lane %s: %s scope %q is not %q (the artifact is scoped to THAT project)", l.Lane, path, m.Scope, ScopeProject)
+	}
+	if strings.TrimSpace(m.CatalogVersion) == "" {
+		return fmt.Errorf("chaos lane %s: %s catalog_version missing — the cells name no catalog they were derived from", l.Lane, path)
+	}
+	if m.TierMax > l.Matrix.TierMax {
+		return fmt.Errorf("chaos lane %s: %s tier_max %d exceeds the lane's declared ceiling %d — regenerate the artifact at the lane's tier_max (chaos matrix --tier-max %d), never run an above-ceiling matrix on this lane (MISCHIEF-DF-19)", l.Lane, path, m.TierMax, l.Matrix.TierMax, l.Matrix.TierMax)
 	}
 	return nil
 }
