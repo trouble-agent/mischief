@@ -1,0 +1,45 @@
+{
+  "tick_id": "mischief-foreman-2026-10-15-00-23-19",
+  "created_at": "2026-10-15T00:23:19Z",
+  "budget": 8,
+  "dispatched": 6,
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-19",
+      "worktree": "/home/kara/worktrees/mischief-DF-19",
+      "branch": "wt/DF-19",
+      "complexity": 2
+    },
+    {
+      "id": "MISCHIEF-DF-23",
+      "worktree": "/home/kara/worktrees/mischief-DF-23",
+      "branch": "wt/DF-23",
+      "complexity": 3
+    },
+    {
+      "id": "MISCHIEF-DF-16",
+      "worktree": "/home/kara/worktrees/mischief-DF-16",
+      "branch": "wt/DF-16",
+      "complexity": 1
+    },
+    {
+      "id": "MISCHIEF-DF-20",
+      "worktree": "/home/kara/worktrees/mischief-DF-20",
+      "branch": "wt/DF-20",
+      "complexity": 1
+    },
+    {
+      "id": "MISCHIEF-DF-21",
+      "worktree": "/home/kara/worktrees/mischief-DF-21",
+      "branch": "wt/DF-21",
+      "complexity": 1
+    },
+    {
+      "id": "MISCHIEF-DF-13",
+      "worktree": "/home/kara/worktrees/mischief-DF-13",
+      "branch": "wt/DF-13",
+      "complexity": 1
+    }
+  ],
+  "finished_at": "2026-10-15T11:40:00Z"
+}
