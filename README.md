@@ -148,6 +148,42 @@ On a sanctioned host (SPEC-13 marker present) the contract is exit 0 =
 green-or-skip; on an unsanctioned host selftest refuses fail-closed with
 `host_not_sanctioned` and exit 2 — nothing lands (see the Safety section / SPEC-13).
 
+### The privileged surface: `mischief install`, `mischief audit`, `mischief uninstall`
+
+The binary install above puts the CLI on your PATH; the privileged surface is a
+separate, explicit step. `mischief install` writes the helper manifest under the
+prefix (default `/var/lib/mischief`) and a sudoers drop-in at
+`/etc/sudoers.d/mischief`, rendered from the canonical verb table, validated with
+`visudo` before it lands, and never granting anything beyond that table. It never
+elevates itself: an unprivileged caller plans the install (`--dry-run`, or
+`--no-drop-in` for the manifest-only plan) but the drop-in write itself needs
+root. `mischief uninstall` removes what install wrote (artefacts by default,
+run-dir rotation via `--keep-count` / `--keep-days`); both verbs accept
+`--dry-run` and print the exact plan before touching anything.
+
+```sh
+sudo mischief install            # manifest + visudo-validated drop-in
+sudo mischief install --dry-run  # the exact plan; touches nothing
+mischief audit                   # survey the live privileged surface
+sudo mischief uninstall --dry-run
+```
+
+`mischief audit` grades the host's install condition, and its exit code is a
+contract:
+
+| exit | `condition` | meaning |
+|---|---|---|
+| 0 | `not_installed` | drop-in simply absent — a healthy pre-install state, not drift |
+| 0 | `ok` | installed and byte-identical to the canonical verb table |
+| 1 | `drift` | present but divergent (hand-edited or stale) — regenerate with `mischief install` |
+| 1 | `unreadable` | present but unmeasurable — investigate access/permissions |
+
+A setuid binary under the prefix is reported as a finding at any condition (the
+design ships none) and also exits 1. `audit --json` carries the same facts —
+including `condition` — for an operator diff; an uninstalled host is a normal
+`not_installed` result, so tooling can distinguish "nothing here yet" (exit 0)
+from "someone changed what is here" (exit 1).
+
 ## The loop
 
 ```

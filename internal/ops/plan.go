@@ -159,6 +159,13 @@ type Audit struct {
 	// DropInDiff carries the operator-readable difference (expected line
 	// vs found line) when DropInMatches is false.
 	DropInDiff string `json:"drop_in_diff,omitempty"`
+	// Condition classifies the drop-in's state for the audit's exit
+	// grade (MISCHIEF-DF-16): "not_installed" (absent — a healthy
+	// pre-install state, NEVER drift), "ok" (present, byte-identical),
+	// "drift" (present, divergent from the canonical render), or
+	// "unreadable" (present but unmeasurable — the one absence-shaped
+	// state that IS a finding). Empty only when unset by older callers.
+	Condition string `json:"condition,omitempty"`
 	// HelperManifestPath is where the manifest is expected.
 	HelperManifestPath string `json:"helper_manifest_path"`
 	// HelperManifestInstalled: the manifest file exists and is readable.

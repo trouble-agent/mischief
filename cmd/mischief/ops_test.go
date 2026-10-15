@@ -65,8 +65,9 @@ func TestInstallPlanOnlyOnForeignFile(t *testing.T) {
 }
 
 // TestAuditJSONRunsOnTempRoot: `mischief audit --json` on a temp root
-// (nothing installed) parses and reports drop_in_matches=false, no setuid —
-// exit 1 (the audit's diff said NO).
+// (nothing installed) parses and reports drop_in_matches=false, no setuid.
+// MISCHIEF-DF-16: an uninstalled host is a HEALTHY pre-install state —
+// exit 0 with the explicit not_installed condition, never graded as drift.
 func TestAuditJSONRunsOnTempRoot(t *testing.T) {
 	root := t.TempDir()
 	saved := ops.Root
@@ -74,11 +75,86 @@ func TestAuditJSONRunsOnTempRoot(t *testing.T) {
 	t.Cleanup(func() { ops.Root = saved })
 
 	code, out := captureStdout(t, func() int { return run([]string{"audit", "--json"}) })
-	if code != 1 {
-		t.Fatalf("audit on an uninstalled host: exit %d, want 1 (nothing matches)", code)
+	if code != 0 {
+		t.Fatalf("audit on an uninstalled host: exit %d, want 0 (healthy pre-install)", code)
 	}
 	if !strings.Contains(out, `"drop_in_matches": false`) || !strings.Contains(out, `"setuid_binaries": []`) {
 		t.Fatalf("audit JSON shape wrong: %s", out)
+	}
+	if !strings.Contains(out, `"condition": "not_installed"`) {
+		t.Fatalf("audit JSON does not carry the not_installed condition: %s", out)
+	}
+	// the healthy-absence note states the fact without a drift remediation
+	if strings.Contains(out, "run `mischief install`") {
+		t.Fatalf("not_installed state carries a drift remediation: %s", out)
+	}
+}
+
+// TestAuditUninstalledTextExitsZero: the text form carries the same grade
+// (MISCHIEF-DF-16) — `condition: not_installed`, exit 0 on a fresh host.
+func TestAuditUninstalledTextExitsZero(t *testing.T) {
+	root := t.TempDir()
+	saved := ops.Root
+	ops.Root = root
+	t.Cleanup(func() { ops.Root = saved })
+
+	code, out := captureStdout(t, func() int { return run([]string{"audit"}) })
+	if code != 0 {
+		t.Fatalf("audit on an uninstalled host: exit %d, want 0 (healthy pre-install)", code)
+	}
+	if !strings.Contains(out, "condition: not_installed") {
+		t.Fatalf("text audit does not name the not_installed condition: %s", out)
+	}
+	if strings.Contains(out, "run `mischief install`") {
+		t.Fatalf("not_installed text audit carries a drift remediation: %s", out)
+	}
+}
+
+// TestAuditDriftExitsOneNamesCondition: install, then hand-edit the
+// drop-in — present-but-divergent IS drift: exit 1, condition named.
+// (MISCHIEF-DF-16 reserves exit 1 for this arm.)
+func TestAuditDriftExitsOneNamesCondition(t *testing.T) {
+	root := t.TempDir()
+	saved := ops.Root
+	ops.Root = root
+	t.Cleanup(func() { ops.Root = saved })
+
+	p, err := ops.PlanInstall(ops.InstallOpts{Prefix: ops.DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	// drift: unlink+create with an extra line (the 0440 file has no write
+	// bit — the edit path any editor takes). The real path under the temp
+	// root is resolve()'s shape: filepath.Join(Root, logical).
+	hand := filepath.Join(root, ops.DefaultDropInPath)
+	raw, err := os.ReadFile(hand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(hand); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hand, append(raw, []byte("%operators ALL=(ALL) ALL\n")...), 0o440); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out := captureStdout(t, func() int { return run([]string{"audit"}) })
+	if code != 1 {
+		t.Fatalf("audit on a drifted host: exit %d, want 1 (present-but-divergent)", code)
+	}
+	if !strings.Contains(out, "condition: drift") {
+		t.Fatalf("drift audit does not name the condition: %s", out)
+	}
+	// same grade on the JSON surface
+	code, out = captureStdout(t, func() int { return run([]string{"audit", "--json"}) })
+	if code != 1 {
+		t.Fatalf("drift JSON audit exit: %d, want 1", code)
+	}
+	if !strings.Contains(out, `"condition": "drift"`) {
+		t.Fatalf("drift JSON audit does not name the condition: %s", out)
 	}
 }
 

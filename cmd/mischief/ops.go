@@ -138,11 +138,15 @@ func cmdAudit(args []string) int {
 		fmt.Fprintln(os.Stderr, "audit:", err)
 		return 1
 	}
-	// Exit: drift or a setuid finding is a non-zero audit result (1) —
-	// the operator's diff said NO. Both output forms carry the same
-	// verdict (the JSON is a surface, not a separate policy).
+	// Exit grade (MISCHIEF-DF-16): 1 is reserved for PRESENT-but-divergent
+	// — drift (drop-in diverges from the canonical render), a drop-in that
+	// exists but cannot be measured, and setuid binaries in the prefix.
+	// A simply-absent drop-in is a healthy pre-install state: the audit
+	// reports it as `condition: not_installed` and exits 0. Both output
+	// forms carry the same verdict (the JSON is a surface, not a separate
+	// policy).
 	verdict := 0
-	if !a.DropInMatches || len(a.SetuidBinaries) > 0 {
+	if a.Condition == ops.ConditionDrift || a.Condition == ops.ConditionUnreadable || len(a.SetuidBinaries) > 0 {
 		verdict = 1
 	}
 	if *asJSON {
@@ -151,6 +155,7 @@ func cmdAudit(args []string) int {
 	}
 	// text form: the same facts, operator-readable
 	fmt.Printf("drop-in: %s installed=%v matches_verb_table=%v\n", a.DropInPath, a.DropInInstalled, a.DropInMatches)
+	fmt.Printf("condition: %s\n", a.Condition)
 	if a.DropInDiff != "" {
 		fmt.Println(a.DropInDiff)
 	}
