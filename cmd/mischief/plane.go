@@ -210,7 +210,24 @@ func cmdPlaneFold(args []string) int {
 	}
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		reason = "all stages green (agent obtained, selftest exit 0, evidence pulled, agent destroyed)"
+		// MISCHIEF-DF-21: the old default handed EVERY empty-final-detail
+		// row the full pipeline slogan — a spawn-only evidence file graded
+		// PASS claiming "agent obtained, selftest exit 0, evidence pulled,
+		// agent destroyed" about a run that never reached ship. The full
+		// claim is now EARNED: a pass whose file covers the whole
+		// documented pipeline (every vocabulary stage recorded, nothing
+		// but passes). Everything else gets a minimal reason naming only
+		// what the file actually records, so an incomplete run can never
+		// masquerade as a complete one and a FAIL row can never wear the
+		// green claim.
+		if status == plane.StatusPass && planeCompletePipeline(steps) {
+			reason = "all stages green (agent obtained, selftest exit 0, evidence pulled, agent destroyed)"
+		} else if status == plane.StatusPass {
+			reason = fmt.Sprintf("run incomplete (recorded: %s) — final %s row has no detail; full-pipeline claim withheld",
+				planeRecordedStages(steps), stage)
+		} else {
+			reason = fmt.Sprintf("empty final-row detail on %s — no reason recorded for the %s", stage, status)
+		}
 	}
 	if stage == "" {
 		fmt.Printf("PLANE %s: %s\n", status, reason)
@@ -225,6 +242,50 @@ func cmdPlaneFold(args []string) int {
 	default:
 		return 1
 	}
+}
+
+// planeCompletePipeline reports whether the recorded evidence covers the
+// plane's whole documented pipeline: every StageVocabulary stage present
+// exactly once, every row a pass. Fold uses it to decide whether the
+// full-pipeline claim is EARNED (MISCHIEF-DF-21): a final empty-detail pass
+// row over a complete file keeps the "all stages green" reason; a pass over
+// a partial file (spawn-only, kept-agent runs, mid-pipeline deaths) gets the
+// minimal incomplete-run reason instead — the claim is never asserted about
+// stages that never recorded.
+func planeCompletePipeline(steps []plane.Step) bool {
+	if len(steps) != len(plane.StageVocabulary) {
+		return false
+	}
+	seen := make(map[string]bool, len(steps))
+	for _, s := range steps {
+		if s.Status != plane.StatusPass {
+			return false
+		}
+		if seen[s.Step] {
+			return false
+		}
+		seen[s.Step] = true
+	}
+	return len(seen) == len(plane.StageVocabulary)
+}
+
+// planeRecordedStages renders the evidence file's recorded stage list for a
+// reason string — vocabulary order, one mention per stage, deduplicated so
+// a retried stage cannot imply coverage it does not have. The count rides
+// the text (e.g. "1/7 stages recorded") so the reader sees the gap, not a
+// bare list.
+func planeRecordedStages(steps []plane.Step) string {
+	seen := make(map[string]bool, len(steps))
+	var names []string
+	for _, vocab := range plane.StageVocabulary {
+		for _, s := range steps {
+			if s.Step == vocab && !seen[vocab] {
+				seen[vocab] = true
+				names = append(names, vocab)
+			}
+		}
+	}
+	return fmt.Sprintf("%d/%d stages recorded (%s)", len(names), len(plane.StageVocabulary), strings.Join(names, ","))
 }
 
 // mustJSON marshals a plane.Step; the type carries no exotic values, so an

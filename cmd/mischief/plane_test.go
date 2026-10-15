@@ -239,6 +239,107 @@ func TestPlaneFoldSubcommand(t *testing.T) {
 // followed by `fold` printing "PLANE pass at nonsense".
 // ═════════════════════════════════════════════════════════════════════════════
 
+// ═════════════════════════════════════════════════════════════════════════════
+// MISCHIEF-DF-21 regression tests: the fold's default (empty-final-detail)
+// reason must name only what the evidence file actually records. The old
+// behavior substituted "all stages green (agent obtained, selftest exit 0,
+// evidence pulled, agent destroyed)" for ANY empty-detail final row — a
+// spawn-only evidence file graded PASS with a claim about a selftest, a
+// collect and a destroy that never ran, indistinguishable from a complete
+// run; an empty-detail FAIL row was handed the same green claim.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// TestPlaneFoldSpawnOnlyEmptyDetailPassNoOverclaim: a spawn-only evidence
+// file (one pass row, no detail — exactly what `record --step spawn
+// --status pass` appends) still folds PASS exit 0, but the reason must name
+// the recorded stage and mark the pipeline incomplete — never the full
+// "all stages green" claim.
+func TestPlaneFoldSpawnOnlyEmptyDetailPassNoOverclaim(t *testing.T) {
+	dir := t.TempDir()
+	ev := filepath.Join(dir, "spawn-only.jsonl")
+	code, _, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "record", "--file", ev, "--step", "spawn", "--status", "pass"})
+	})
+	if code != 0 {
+		t.Fatalf("spawn-only record exit %d", code)
+	}
+	code, out, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "fold", "--file", ev})
+	})
+	if code != 0 || !strings.Contains(out, "PLANE pass") {
+		t.Fatalf("spawn-only fold = (%d, %q), want exit 0 PLANE pass", code, out)
+	}
+	if strings.Contains(out, "all stages green") {
+		t.Fatalf("spawn-only evidence file overclaims the full pipeline: %q", out)
+	}
+	if !strings.Contains(out, "spawn") {
+		t.Fatalf("minimal reason %q must name the recorded stage", out)
+	}
+	if !strings.Contains(out, "incomplete") {
+		t.Fatalf("minimal reason %q must mark the run incomplete (AC: incomplete distinguishable from complete)", out)
+	}
+}
+
+// TestPlaneFoldCompletePipelineEmptyFinalDetailKeepsFullClaim: a genuinely
+// complete evidence file (every vocabulary stage recorded pass, the final
+// destroy row carrying no detail) keeps the full pipeline claim — the
+// default reason is earned there and only there, so an incomplete run's
+// minimal reason stays distinguishable from it.
+func TestPlaneFoldCompletePipelineEmptyFinalDetailKeepsFullClaim(t *testing.T) {
+	dir := t.TempDir()
+	ev := filepath.Join(dir, "full.jsonl")
+	var code int
+	for _, stage := range plane.StageVocabulary[:len(plane.StageVocabulary)-1] {
+		code, _, _ = capturePlaneOutput(t, func() int {
+			return run([]string{"plane", "record", "--file", ev, "--step", stage, "--status", "pass", "--detail", "stage recorded"})
+		})
+		if code != 0 {
+			t.Fatalf("record %s exit %d", stage, code)
+		}
+	}
+	code, _, _ = capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "record", "--file", ev, "--step", "destroy", "--status", "pass"})
+	})
+	if code != 0 {
+		t.Fatalf("final detail-less destroy record exit %d", code)
+	}
+	code, out, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "fold", "--file", ev})
+	})
+	if code != 0 || !strings.Contains(out, "PLANE pass at destroy") {
+		t.Fatalf("complete-pipeline fold = (%d, %q), want exit 0 pass at destroy", code, out)
+	}
+	if !strings.Contains(out, "all stages green (agent obtained, selftest exit 0, evidence pulled, agent destroyed)") {
+		t.Fatalf("complete pipeline lost the full claim: %q", out)
+	}
+}
+
+// TestPlaneFoldEmptyDetailFailNeverClaimsGreen: the default-reason arm must
+// never hand the green claim to a FAIL row — the old line overclaimed on
+// fail rows too ("PLANE fail at ship: all stages green (…)").
+func TestPlaneFoldEmptyDetailFailNeverClaimsGreen(t *testing.T) {
+	dir := t.TempDir()
+	ev := filepath.Join(dir, "fail.jsonl")
+	code, _, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "record", "--file", ev, "--step", "ship", "--status", "fail"})
+	})
+	if code != 0 {
+		t.Fatalf("fail record exit %d", code)
+	}
+	code, out, _ := capturePlaneOutput(t, func() int {
+		return run([]string{"plane", "fold", "--file", ev})
+	})
+	if code != 1 || !strings.Contains(out, "PLANE fail") {
+		t.Fatalf("empty-detail fail fold = (%d, %q), want exit 1 PLANE fail", code, out)
+	}
+	if strings.Contains(out, "all stages green") {
+		t.Fatalf("fail row handed the green claim: %q", out)
+	}
+	if !strings.Contains(out, "ship") {
+		t.Fatalf("minimal reason %q must name the recorded stage", out)
+	}
+}
+
 // TestPlaneRecordRefusesUnknownStep: the record verb's refusal names the
 // offending stage and the allowed set, exits 2 (usage), and appends
 // NOTHING to the evidence file.
