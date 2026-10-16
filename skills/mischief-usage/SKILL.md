@@ -173,3 +173,32 @@ sudo ip netns del mc-probe-ns                      # revert proven
   Detach) reverts at TTL") is NOT reachable from any verb: `Lifecycle.Detach` and
   the `__owner` entry exist but no flag/subcommand calls them (MISCHIEF-DF-31).
   Do not count on it as a second containment path.
+
+## Privileged lifecycle verbs (`install`, `uninstall`, `retention`) — apply-leg contract
+
+Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-DF-33/34/35):
+
+- `--dry-run` prints the exact plan the apply executes (install: 2 actions planned
+  == 2 applied; uninstall: 3 planned, present artefacts removed). Use it for
+  change review — but it is NOT evidence that the apply works. The rotation half
+  of `uninstall` failed on every real run dir on the same day its `--dry-run`
+  read clean.
+- Rotate run history with `mischief retention --runs-dir D --keep-count N --apply`
+  (works: non-empty dirs removed, rc=0). Do NOT use `uninstall`'s integrated
+  rotation until DF-33 closes: `uninstall --runs-dir D --keep-count/--keep-days`
+  dies `remove <dir>: directory not empty` (rc=1) on any run dir containing a
+  journal file, rotates nothing, and by then has already deleted the helper
+  manifest (DF-34). The one shape that passes is an EMPTY fixture dir — never
+  test rotation with empty dirs.
+- No keep bounds at all -> `--runs-dir` is silently ignored (artefacts removed,
+  rotation skipped, rc=0). `--keep-count 0` is read as UNSET and refuses rc=2
+  ("both keep-count and keep-age are unset"): express "keep none" as
+  `--keep-count 1` plus a delete, never 0.
+- Unprivileged `install` WITHOUT `--no-drop-in` prints the `/etc/sudoers.d`
+  ADVISORY and then attempts that write anyway (rc=1 `permission denied`),
+  leaving the freshly `mkdir`ed prefix dir behind. `--no-drop-in` is the
+  unprivileged path and it really does install the manifest (the README calls it
+  a "manifest-only plan" — it is not one).
+- After a manifest-only install, `audit` still reports `condition: not_installed`
+  while its own output says the manifest is installed and matching (DF-35): do
+  not key a script on that condition, and expect `audit` to be exit 0 either way.
