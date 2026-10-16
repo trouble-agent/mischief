@@ -59,6 +59,10 @@ MISCHIEF_SANCTION=1 MISCHIEF_SANCTION_FILE=/tmp/mc-scratch/marker bin/mischief a
 bin/mischief status --dir /tmp/mc-scratch/runs    # armed + ttl_remaining
 # LAND the fault yourself (arm writes the hold only; printf FAULTED > file, etc.)
 bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: reverts at TTL, health.json
+# ORDER MATTERS: arm BEFORE serve. A hold armed while serve is ALREADY running is
+# invisible to that daemon (MISCHIEF-DF-30): it is never reverted at TTL, the fault
+# stays landed, and health.json keeps reporting ok:true. Restart serve after arming
+# (boot reconcile folds the journal) or use the kill switch.
 bin/mischief revert --all --dir /tmp/mc-scratch/runs   # kill switch (AC-6, ms-scale)
 ```
 
@@ -156,4 +160,16 @@ sudo ip netns del mc-probe-ns                      # revert proven
   grades `revert_failed` at expiry.
 - `serve`'s `boot_id` is the REVERTER's id (from the run dir's `boot.json`), not
   the host's `/proc/sys/kernel/random/boot_id` — an arm record stamped with the
-  host id grades false-stuck on the same boot.
+  host id grades false-stuck on the same boot. The reverter id is itself
+  HOST-BOOT-scoped: it is reused across daemon restarts (identical in health.json
+  for three different `pid`s), so `daemon_boot` identifies the host generation,
+  not the daemon process — use `pid`/`started_at`/`generated_at` for freshness
+  (MISCHIEF-DF-32).
+- A long-running `serve` folds only the holds it loaded at boot (MISCHIEF-DF-30):
+  its revert loop and `health.json` never re-read the journal. Trust `status` and
+  `revert --all` (both fold fresh) over `health.json` when asking "is anything
+  armed past its TTL?".
+- The detached-owner route `arm` names in its write-ahead line ("serve (or
+  Detach) reverts at TTL") is NOT reachable from any verb: `Lifecycle.Detach` and
+  the `__owner` entry exist but no flag/subcommand calls them (MISCHIEF-DF-31).
+  Do not count on it as a second containment path.
