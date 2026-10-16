@@ -449,6 +449,39 @@ func (l *Lifecycle) Status() Status {
 	return out
 }
 
+// StatusSnapshot folds the CURRENT in-memory state without touching the
+// journal — the degraded read for a caller whose re-fold just failed
+// (MISCHIEF-DF-30's health leg): it must not re-derive from a journal that
+// just refused to fold, and it must not return a zero Status when the
+// in-memory fold is populated. nil maps (a Store that never folded) read
+// as empty, not as a panic or a fabricated state.
+func (l *Lifecycle) StatusSnapshot() Status {
+	s := l.store
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := Status{BootID: s.BootID}
+	ids := make([]string, 0, len(s.holds))
+	for id := range s.holds {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		st := s.holds[id]
+		out.Holds = append(out.Holds, HoldStatusEntry{
+			HoldID:  id,
+			FaultID: st.Arm.FaultID,
+			Target:  st.Arm.Target,
+			Status:  st.Status,
+			Expiry:  st.Expiry,
+			StuckAt: st.StuckAt,
+			LandPID: st.LandPID,
+			OwnPID:  st.OwnPID,
+		})
+	}
+	out.History = append([]Proof(nil), s.history...)
+	return out
+}
+
 // OwnerMain is the DETACHED owner's entry point (AC-5): it blocks until the
 // hold's expiry, then reverts with the owner role. It is re-exec'd by
 // Detach (setsid shape) or run under systemd-run's RuntimeMaxSec scope; the

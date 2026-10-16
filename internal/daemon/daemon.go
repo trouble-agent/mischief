@@ -68,6 +68,10 @@ type Health struct {
 	// RevertFailed is the count of holds whose measured revert FAILED
 	// (the fault may still be live — the one state that flips OK false).
 	RevertFailed int `json:"revert_failed"`
+	// RefoldError is non-empty when the tick's journal re-fold failed
+	// (corruption): the document then carries the LAST KNOWN fold and
+	// ok=false — never a silent stale view (MISCHIEF-DF-30).
+	RefoldError string `json:"refold_error,omitempty"`
 }
 
 // HealthHold is one hold's health row.
@@ -134,6 +138,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 func (d *Daemon) revertExpired() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	// Re-fold from the journal first (MISCHIEF-DF-30): holds armed by
+	// other processes AFTER this daemon booted are durable in the journal
+	// but absent from the boot fold — the boot-time snapshot must not own
+	// the TTLs of holds it never saw. Corruption fails the tick loudly
+	// (a store over a corrupt journal reverts nothing silently).
+	if err := d.store.Refold(); err != nil {
+		return fmt.Errorf("daemon: refold: %w", err)
+	}
 	now := d.Now()
 	for _, h := range d.lf.Status().Holds {
 		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
@@ -174,8 +186,18 @@ func (d *Daemon) writeHealth() error {
 }
 
 // render folds the current state into a Health document. Caller holds d.mu.
+// It re-folds the journal first (MISCHIEF-DF-30): health.json must report
+// holds armed after boot, not freeze at the boot snapshot. A refold error
+// renders the LAST KNOWN fold — health never goes dark — with ok=false
+// naming the defect (the one condition that is not a hold state).
 func (d *Daemon) render() Health {
 	now := d.Now()
+	if err := d.store.Refold(); err != nil {
+		h := d.staleRender(now)
+		h.OK = false
+		h.RefoldError = err.Error()
+		return h
+	}
 	st := d.lf.Status()
 	h := Health{
 		OK:          true,
@@ -207,6 +229,48 @@ func (d *Daemon) render() Health {
 		case reverter.StatusRevertFailed:
 			h.RevertFailed++
 			h.OK = false // a live un-reverted fault is NOT ok
+		}
+		h.Holds = append(h.Holds, row)
+	}
+	return h
+}
+
+// staleRender renders the last-known fold WITHOUT re-reading the journal
+// (the degraded leg of render: the journal is unreadable, so re-folding
+// it inside Status would panic — the Store's maps are nil after a failed
+// boot-less fold). It is the honest frozen view, never a green one.
+func (d *Daemon) staleRender(now time.Time) Health {
+	st := d.lf.StatusSnapshot()
+	h := Health{
+		OK:          true,
+		DaemonBoot:  st.BootID,
+		PID:         os.Getpid(),
+		RunDir:      d.Dir,
+		StartedAt:   d.started.Unix(),
+		GeneratedAt: now.Unix(),
+	}
+	for _, hold := range st.Holds {
+		row := HealthHold{
+			HoldID:  hold.HoldID,
+			FaultID: hold.FaultID,
+			Target:  hold.Target,
+			Status:  string(hold.Status),
+		}
+		switch hold.Status {
+		case reverter.StatusArmed:
+			if !hold.Expiry.IsZero() {
+				row.TTLRemainingSec = hold.Expiry.Sub(now).Seconds()
+			}
+		case reverter.StatusStuck:
+			h.Stuck++
+			if !hold.StuckAt.IsZero() {
+				row.StuckAt = hold.StuckAt.Unix()
+			}
+		case reverter.StatusReverted:
+			h.Reverted++
+		case reverter.StatusRevertFailed:
+			h.RevertFailed++
+			h.OK = false
 		}
 		h.Holds = append(h.Holds, row)
 	}

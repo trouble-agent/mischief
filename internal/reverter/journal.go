@@ -320,6 +320,15 @@ func (s *Store) fold() error {
 	return sc.Err()
 }
 
+// Refold is the public re-fold (MISCHIEF-DF-30): a long-lived consumer of
+// the store (the serve daemon) whose ticks must see holds armed AFTER its
+// boot calls this instead of building a second Store — one fold identity,
+// no double lock handle on the same journal. It runs the same fold() boot
+// does and fails closed on journal corruption, exactly like Open.
+func (s *Store) Refold() error {
+	return s.fold()
+}
+
 // foldLine applies one journal line to the in-memory fold. Read-side
 // validation fails loudly on an unknown type/outcome (the vocabulary is
 // closed; a corrupted or foreign line must not be silently skipped).
