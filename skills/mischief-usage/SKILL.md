@@ -202,3 +202,27 @@ Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-
 - After a manifest-only install, `audit` still reports `condition: not_installed`
   while its own output says the manifest is installed and matching (DF-35): do
   not key a script on that condition, and expect `audit` to be exit 0 either way.
+
+## Driving the RELEASED artifact (README Option A) — verified on a fresh agent 2026-10-16
+
+The tarball path (no Go toolchain) is real and honest — but three frictions cost
+a fresh consumer three stopped moments (MISCHIEF-DF-36/37/38, all README-side):
+
+- `install -m 0755 mischief ~/.local/bin/` fails rc=1 if `~/.local/bin` does
+  not exist (a bare Debian user has none). Rescue: `mkdir -p ~/.local/bin`
+  first, or use `install -Dm 0755` (GNU -D creates the dir).
+- `plan` and catalog-backed verbs need the `catalog/` tree from a checkout
+  (or `--catalog-dir`); the tarball ships none and the README mentions this
+  only as a `doctor` caveat.
+- Matching a newer catalog to the older release binary turns `selftest --all`
+  red with `unknown primitive "F-008": not in the selftest corpus` and NO
+  version-skew hint. With the tag's own catalog (`git archive v0.1.0 catalog`
+  — 10 fault files, not HEAD's 11) the SAME binary passes rc=0. When selftest
+  fails with that message, check catalog vintage before suspecting the product.
+- `plan -json` on the release prints PascalCase keys (`RunID`, `TTLRaw`,
+  `ExperimentID`, no `scratch_dir`); HEAD prints snake_case with
+  `scratch_dir` (the DF-26 contract). Scripts against released tarballs must
+  parse the PascalCase shape until the v0.1.1 cut.
+- Raw download→verify→unpack→smoke timings on bare agents: 0.5-3s each step,
+  plan 0.01s, selftest 0.53-0.65s cold — the mechanical path is fast; the only
+  stalls are the three README gaps above.

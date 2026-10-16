@@ -108,3 +108,44 @@ surfaces only as a later `revert_failed` (MISCHIEF-DF-29) — the doc comment in
 arm.go promises arm-time refusal that the code does not implement. Until that
 closes, treat arm's kind flags as the reverter's closed vocabulary and never
 invent kinds: the verb will accept them and the watchdog will refuse them.
+
+### 2026-10-16b arc — the release consumer: what the tarball path really costs
+
+Run 16b (lane mischief-chaos-dogfood) drove the artifact a non-Go user actually
+gets: the released v0.1.0 tarball through README Option A, verbatim, on a bare
+fresh agent. What the mechanical path proves (all held): download + the
+arm64-grep sha256 discipline, the four documented archive files, `version`
+stamping v0.1.0 (tag-stamped, unlike `make bin`'s sha stamp), `status` folding
+from a cold run dir, `doctor` failing with exactly the message the README
+warns about, and plan's full preview (0.01 s). The friction is all in the
+connecting tissue the README under-specifies, and each one cost a real stall:
+
+1. `install -m 0755 mischief ~/.local/bin/` assumes `~/.local/bin` exists;
+   on a bare Debian user it does not, so the quickstart dies rc=1 and the
+   three PATH smoke verbs die command-not-found until a `mkdir` rescue
+   (MISCHIEF-DF-36). Dev-host coverage could never see this: the dir always
+   pre-exists there.
+2. The Option A walkthrough says "plan creates a run dir and journal entry";
+   plan journals nothing — by construction, per its own doc comment
+   (internal/plan/plan.go:13), and per the sibling README line ("zero side
+   effects, AC-1"). The README contains both truths; the walkthrough clause
+   is the false one (MISCHIEF-DF-37). Lesson for readers: grep the run dir
+   after a plan run, trust the run_id on stdout, and do not conclude records
+   were lost.
+3. Catalog vintage is version-gated in selftest: the released binary's
+   selftest corpus is the tag's 10 fault files; a HEAD catalog (11 files,
+   F-008 added after the Oct 7 tag) fails the L0 leg with `unknown primitive
+   "F-008": not in the selftest corpus` (MISCHIEF-DF-38). The remedy the
+   README itself suggests ("run from a checkout") is exactly what builds
+   that mismatch — the proven pairing on the agent was release binary +
+   `git archive v0.1.0 catalog` → rc=0. The failure direction is correct
+   (fail-closed on an unproven primitive); what is missing is a version-skew
+   hint in the message.
+
+Right way to dogfood the release artifact on a fresh box (works verbatim):
+download tarball + checksums.txt, `sha256sum -c` via the arch-specific grep,
+untar, `mkdir -p ~/.local/bin` then `install -m 0755`, put the shipped
+`libfault-anchored.so` at `/tmp/mischief-shim/` (the README's one prebuilt
+location), for catalog verbs stage the matching TAG's catalog tree, and run
+the L1 sanction recipe with a reason-bearing marker file. Timings on a bare
+agent: download 0.53 s + 0.45 s, selftest cold 0.53-0.65 s, plan 0.01 s.
