@@ -89,3 +89,22 @@ is reachable only from Go tests. Everything above was driven by hand-writing
 one arm record per the fold contract (see 2026-10-10-serve-integration.md for
 the exact format). Until an `arm` verb ships, that report is the only working
 "how to start a hold" documentation.
+
+### 2026-10-16 arc closure — the arm verb shipped and the CLI door is real
+
+The DF-05 gap above closed on 2026-10-14: commit 8137f85 shipped `mischief arm`
+(cmd/mischief/arm.go), the CLI write-ahead surface, and the README gained a
+dedicated "Arming a hold" section. The 2026-10-16 dogfood run 15 drove it as a
+real consumer end-to-end — sanctioned arm → status → hand-landed fault →
+`serve` TTL revert (`check: same`, byte-restored target) → `revert --all`
+kill switch (remove-file inverse, `check: absent`, 4 ms wall) → boot reconcile
+grading an expired hold it never saw armed. The hand-written-record recipe in
+2026-10-10-serve-integration.md is now obsolete for everyday use: `arm` writes
+the same journal shape (verified byte-level — the record carries fault_id,
+target, both decls, ttl in ns, boot_id, arm_pid) and refuses malformed params
+with the offending pair named. What the CLI door did NOT fix: `Hold.Validate`
+checks structure only, so an unknown inverse/check KIND still journals fine and
+surfaces only as a later `revert_failed` (MISCHIEF-DF-29) — the doc comment in
+arm.go promises arm-time refusal that the code does not implement. Until that
+closes, treat arm's kind flags as the reverter's closed vocabulary and never
+invent kinds: the verb will accept them and the watchdog will refuse them.
