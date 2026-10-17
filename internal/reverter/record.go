@@ -124,11 +124,38 @@ func (d Decl) declText() string {
 	return canonicalJoin(parts...)
 }
 
-// Validate checks a Decl's invariants: a kind, and no empty param keys or
-// values (an empty path is how a "restore" that touches nothing would pass).
+// inverseKinds and checkKinds are the closed vocabulary declared in the README
+// and enforced by the exec path. Decl.Validate enforces the same set at arm
+// time so a write-ahead record cannot be booked whose undo can only grade
+// revert_failed (SPEC-04, DF-29).
+var (
+	InverseKinds = map[string]struct{}{
+		"restore-file": {},
+		"remove-file":  {},
+	}
+	CheckKinds = map[string]struct{}{
+		"file-matches-backup": {},
+		"file-absent":         {},
+	}
+)
+
+// Validate checks a Decl's invariants: a kind (against the closed vocabulary),
+// and no empty param keys or values (an empty path is how a "restore" that
+// touches nothing would pass). An unknown kind fails closed: the arm path
+// refuses immediately rather than booking a hold whose undo can only grade
+// revert_failed at TTL (DF-29).
 func (d Decl) Validate() error {
 	if d.Kind == "" {
 		return fmt.Errorf("kind: missing")
+	}
+	// Is this an inverse kind?
+	if _, inv := InverseKinds[d.Kind]; inv {
+		// valid inverse
+	} else if _, chk := CheckKinds[d.Kind]; chk {
+		// valid check
+	} else {
+		// unknown kind — refuse at arm time, fail closed
+		return fmt.Errorf("inverse kind %q: unknown (refusing to execute)", d.Kind)
 	}
 	for k, v := range d.Params {
 		if k == "" {
