@@ -170,9 +170,14 @@ func (d *Daemon) setRefoldErr(err error) {
 // clean — recovery is explicit: the very next document says ok:true again
 // with the corruption gone (MISCHIEF-DF-39 AC3).
 func (d *Daemon) clearRefoldErr() {
-	d.mu.Lock()
 	d.refoldErr = nil
-	d.mu.Unlock()
+}
+
+// clearRefoldErrMu drops the held re-fold failure under d.mu (caller must
+// hold the lock — this is the variant called from within locked contexts).
+// Deprecated: use clearRefoldErr directly.
+func (d *Daemon) clearRefoldErrMu() {
+	d.refoldErr = nil
 }
 
 // revertExpired reverts every armed hold whose TTL has passed, with the
@@ -189,7 +194,7 @@ func (d *Daemon) revertExpired() error {
 	if err := d.store.Refold(); err != nil {
 		return fmt.Errorf("daemon: refold: %w", err)
 	}
-	d.clearRefoldErr() // a clean fold drops any held defect: next render is ok:true
+	d.refoldErr = nil // a clean fold drops any held defect: next render is ok:true
 	now := d.Now()
 	for _, h := range d.lf.Status().Holds {
 		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
