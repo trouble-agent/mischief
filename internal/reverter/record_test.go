@@ -199,3 +199,42 @@ func TestProofFromRecord(t *testing.T) {
 		t.Fatalf("measured detail lost: %q", p.Detail)
 	}
 }
+
+// TestDeclValidateRefusesUnknownKinds: MISCHIEF-DF-29 regression. Decl.Validate
+// must refuse kinds not in the closed vocabulary (inverse: restore-file,
+// remove-file; check: file-matches-backup, file-absent). An unknown inverse
+// must fail at Arm time, not only at TTL revert (where it would grade
+// revert_failed). The arm path's doc comment promises unknown kinds are
+// refused here.
+func TestDeclValidateRefusesUnknownKinds(t *testing.T) {
+	// Known kinds must still pass
+	for _, kind := range []string{"restore-file", "remove-file", "file-matches-backup", "file-absent"} {
+		d := Decl{Kind: kind, Params: map[string]string{"path": "x"}}
+		if err := d.Validate(); err != nil {
+			t.Errorf("expected known kind %q to pass: %v", kind, err)
+		}
+	}
+
+	// Unknown kinds must fail closed at arm time
+	unknownInverse := Decl{Kind: "delete-everything", Params: map[string]string{"path": "x"}}
+	if err := unknownInverse.Validate(); err == nil {
+		t.Fatal("expected unknown inverse kind to be refused at arm time")
+	} else if !strings.Contains(err.Error(), "unknown") {
+		t.Fatalf("expected 'unknown' in error, got: %v", err)
+	}
+
+	unknownCheck := Decl{Kind: "checksum-match", Params: map[string]string{"path": "x", "backup": "y"}}
+	if err := unknownCheck.Validate(); err == nil {
+		t.Fatal("expected unknown check kind to be refused at arm time")
+	} else if !strings.Contains(err.Error(), "unknown") {
+		t.Fatalf("expected 'unknown' in error, got: %v", err)
+	}
+
+	// Missing kind must still fail with "missing"
+	missing := Decl{Kind: "", Params: map[string]string{"path": "x"}}
+	if err := missing.Validate(); err == nil {
+		t.Fatal("expected empty kind to be refused")
+	} else if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("expected 'missing' in error, got: %v", err)
+	}
+}
