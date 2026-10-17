@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -95,6 +96,11 @@ type Daemon struct {
 	lf      *reverter.Lifecycle
 	store   *reverter.Store
 	started time.Time
+	// refoldErr is the tick's re-fold failure (corruption), held for the
+	// render to report (MISCHIEF-DF-39): the loop must NOT exit on it — a
+	// daemon that dies on a torn journal line leaves health.json frozen at
+	// the last good beat, ok:true, with the fault in the dark.
+	refoldErr error
 }
 
 // New builds a daemon over dir.
@@ -123,6 +129,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-tick.C:
 			if err := d.revertExpired(); err != nil {
+				// A re-fold failure is DEGRADED, not fatal (MISCHIEF-DF-39):
+				// hold it for the render, skip the sweep (the fold may be
+				// mid-torn-line), and keep beating so writeHealth renders
+				// the stale leg with ok:false + refold_error — the operator
+				// sees the corruption and the process survives it. Any
+				// other error still exits: only the re-fold is survivable.
+				if isRefoldErr(err) {
+					d.setRefoldErr(err)
+					continue
+				}
 				return err
 			}
 			if err := d.writeHealth(); err != nil {
@@ -130,6 +146,33 @@ func (d *Daemon) Run(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// isRefoldErr classifies a revertExpired error as the tick's re-fold
+// failure (the ONLY survivable one): the wrap chain is
+// `daemon: refold: reverter: …`, so the prefix test is exact. Anything
+// else (a proof write failed, the check binary vanished) still kills the
+// daemon — the journal evidence contract must not fail silently.
+func isRefoldErr(err error) bool {
+	return strings.Contains(err.Error(), "daemon: refold: reverter:")
+}
+
+// setRefoldErr records the held re-fold failure (caller = Run's loop, the
+// single writer); clearRefoldErr drops it on a beat that folded clean.
+// The render reads both under d.mu (MISCHIEF-DF-39).
+func (d *Daemon) setRefoldErr(err error) {
+	d.mu.Lock()
+	d.refoldErr = err
+	d.mu.Unlock()
+}
+
+// clearRefoldErr drops the held re-fold failure on a beat that folded
+// clean — recovery is explicit: the very next document says ok:true again
+// with the corruption gone (MISCHIEF-DF-39 AC3).
+func (d *Daemon) clearRefoldErr() {
+	d.mu.Lock()
+	d.refoldErr = nil
+	d.mu.Unlock()
 }
 
 // revertExpired reverts every armed hold whose TTL has passed, with the
@@ -146,6 +189,7 @@ func (d *Daemon) revertExpired() error {
 	if err := d.store.Refold(); err != nil {
 		return fmt.Errorf("daemon: refold: %w", err)
 	}
+	d.clearRefoldErr() // a clean fold drops any held defect: next render is ok:true
 	now := d.Now()
 	for _, h := range d.lf.Status().Holds {
 		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
@@ -193,11 +237,17 @@ func (d *Daemon) writeHealth() error {
 func (d *Daemon) render() Health {
 	now := d.Now()
 	if err := d.store.Refold(); err != nil {
+		// The journal is unreadable RIGHT NOW (the tick's held failure or
+		// a fresh one): render the LAST KNOWN fold with ok:false naming
+		// the defect, and hold the error on the daemon so a later
+		// writeHealth (e.g. the ctx-cancel final beat) degrades too.
+		d.setRefoldErr(err)
 		h := d.staleRender(now)
 		h.OK = false
 		h.RefoldError = err.Error()
 		return h
 	}
+	d.clearRefoldErr() // the document must never out-stale the fold it just read
 	st := d.lf.Status()
 	h := Health{
 		OK:          true,
