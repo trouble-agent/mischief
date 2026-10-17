@@ -226,3 +226,31 @@ a fresh consumer three stopped moments (MISCHIEF-DF-36/37/38, all README-side):
 - Raw download→verify→unpack→smoke timings on bare agents: 0.5-3s each step,
   plan 0.01s, selftest 0.53-0.65s cold — the mechanical path is fast; the only
   stalls are the three README gaps above.
+
+## When the reverter journal is corrupt — three failure modes (verified 2026-10-17)
+
+`serve` is the TTL owner, so the one state it must handle honestly is a damaged
+`<run>/reverter.jsonl`. As of HEAD c28800d the DF-39 crash is gone but the
+degraded leg is split three ways — full ladder in
+`docs/dogfood/2026-10-17-torn-journal-ladder.md`:
+
+- Torn line appended WHILE the daemon runs (MISCHIEF-DF-39-R2): the daemon stays
+  up but the tick loop `continue`s before `writeHealth` (daemon.go:148-160), so
+  `health.json` keeps the last good document — `ok:true`, TTLs decaying, no
+  `refold_error` — and no TTL revert is attempted while the corruption is there
+  (target stays FAULTED past its TTL, zero proofs). Repairing the journal makes
+  the SAME daemon fold clean on its next beat and revert normally: no restart
+  needed. Treat `ok:true` as unproven whenever you cannot explain the health
+  file's `generated_at`; `mischief status --dir <run>` is the cross-check (a
+  separate process, failing closed rc=1 with `journal fold: ... unexpected EOF`).
+- Torn line present BEFORE the daemon starts (MISCHIEF-DF-40): `serve` panics on
+  a nil `*reverter.Store` (`reverter.Open` returns nil on a fold error,
+  journal.go:246-248; `New` keeps it, daemon.go:118) and `health.json` is never
+  created — there is nothing to read at all. Repair the journal first.
+- Torn journal + a stop request (MISCHIEF-DF-41): SIGTERM/SIGINT self-deadlock
+  in the ctx-cancel final beat (`render` re-locks `d.mu` at daemon.go:277 while
+  `writeHealth` holds it). The process ignores the signal — use `kill -9` and
+  repair the journal; do not wait for a clean exit.
+- The sanction variable is `MISCHIEF_SANCTION` (no "F"): a transposed
+  `MISFCHIEF_SANCTION=1` produces the same `host_not_sanctioned` refusal rc=2 as
+  setting nothing at all, so read the refusal text before blaming the host.
