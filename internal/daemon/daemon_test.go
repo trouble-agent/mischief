@@ -263,19 +263,113 @@ func TestDaemonRefoldArmsAfterBootTTL(t *testing.T) {
 	go func() { done <- d1.Run(ctx) }()
 	defer cancel()
 
+	// POST-BOOT arm through a SECOND store (the CLI-process shape: its own
+	// journal handle, its land, the fault corrupted after the arm): the
+	// daemon must pick this up from the journal bytes, not congenially
+	// never see it.
+	store2, err := reverter.Open(dir)
+	if err != nil {
+		cancel()
+		<-done
+		t.Fatalf("open post-boot store: %v", err)
+	}
+	id2, err := reverter.New(store2).Arm(testHold(live, backup, HeartbeatInterval*2))
+	if err != nil {
+		cancel()
+		<-done
+		t.Fatalf("arm post-boot hold: %v", err)
+	}
+	if err := os.WriteFile(live, []byte("FAULTED\n"), 0o644); err != nil {
+		cancel()
+		<-done
+		t.Fatal(err)
+	}
+	if err := reverter.New(store2).Land(id2); err != nil {
+		cancel()
+		<-done
+		t.Fatalf("land post-boot hold: %v", err)
+	}
+	store2.Close()
+
+	// AC1: the SAME, never-restarted daemon reverts it at TTL — poll the
+	// measured file (the daemon owns the timing; the test asserts outcome)
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		b, _ := os.ReadFile(live)
+		if string(b) == "GOOD\n" {
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			<-done
+			t.Fatalf("post-boot hold never reverted in-daemon: live=%q", b)
+		}
+		time.Sleep(HeartbeatInterval / 2)
+	}
+	cancel()
+	if err := <-done; err != nil && err != context.Canceled {
+		t.Fatalf("daemon run: %v", err)
+	}
+
+	// the proof is in the journal with the DAEMON's pid (the poem lives on
+	// disk, not in a nice test-local fold)
+	store3, err := reverter.Open(dir)
+	if err != nil {
+		t.Fatalf("open proof store: %v", err)
+	}
+	defer store3.Close()
+	proofs := 0
+	for _, pr := range reverter.New(store3).Status().History {
+		if pr.HoldID == id2 && pr.Outcome == reverter.OutcomeReverted && pr.Reason == "ttl_expiry" {
+			proofs++
+		}
+	}
+	if proofs != 1 {
+		t.Fatalf("journal rotations for %s reverts: %d, want 1", id2, proofs)
+	}
+
+	// AC2: health.json shows the post-boot hold (reverted, mine now) AND
+	// the boot-time hold still armed — the document reports the journal,
+	// not the boot snapshot.
+	bh, err := os.ReadFile(filepath.Join(dir, HealthFileName))
+	if err != nil {
+		t.Fatalf("health.json: %v", err)
+	}
+	var h Health
+	if err := json.Unmarshal(bh, &h); err != nil {
+		t.Fatalf("health parse: %v", err)
+	}
+	byHold := map[string]HealthHold{}
+	for _, row := range h.Holds {
+		byHold[row.HoldID] = row
+	}
+	if row, ok := byHold[id2]; !ok {
+		t.Fatalf("health lost the post-boot hold: %+v", h.Holds)
+	} else if row.Status != string(reverter.StatusReverted) {
+		t.Fatalf("post-boot hold health status %q, want reverted", row.Status)
+	}
+	if row, ok := byHold[id1]; !ok || row.Status != string(reverter.StatusArmed) {
+		t.Fatalf("boot-time hold smeared by refold: row=%+v ok=%v", row, ok)
+	}
+	if !h.OK || h.Reverted != 1 || h.RevertFailed != 0 || h.Stuck != 0 {
+		t.Fatalf("health totals after post-boot revert: %+v", h)
+	}
+}
+
 // TestDaemon_SurvivesRefoldError verifies MISCHIEF-DF-39: when the journal
 // has a torn line, Refold() returns an error but the daemon does NOT exit —
 // it continues beating, renders health.json with ok:false + refold_error,
 // and recovers to ok:true once the journal is repaired.
 func TestDaemon_SurvivesRefoldError(t *testing.T) {
-	dir := t.TempDir()
-	
-	// Create an empty journal file — Refold() expects it to exist
+	dir := localTempDir(t)
+
+	// Create journal with a torn line (incomplete JSON record)
 	journalPath := filepath.Join(dir, "journal.jsonl")
-	if err := os.WriteFile(journalPath, []byte{}, 0644); err != nil {
-		t.Fatalf("create journal: %v", err)
+	tornLine := `{"seq":1,"hold_id":"test-hold","op":"arm","expires":"` + time.Now().Add(time.Hour).Format(time.RFC3339Nano) + `","proof":"abc123` + "\n"
+	if err := os.WriteFile(journalPath, []byte(tornLine), 0644); err != nil {
+		t.Fatalf("create torn journal: %v", err)
 	}
-	
+
 	d, err := New(dir)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -287,84 +381,46 @@ func TestDaemon_SurvivesRefoldError(t *testing.T) {
 	errCh := make(chan error, 1)
 	go func() { errCh <- d.Run(ctx) }()
 
-	// Wait for first healthy beat — poll until health.json appears and is ok:true
+	// Wait for first degraded beat — poll until health.json appears and is ok:false with refold_error
 	var health Health
 	for i := 0; i < 20; i++ {
 		time.Sleep(100 * time.Millisecond)
 		if b, err := os.ReadFile(filepath.Join(dir, "health.json")); err == nil {
-			if err := json.Unmarshal(b, &health); err == nil && health.OK {
-				break
+			if err := json.Unmarshal(b, &health); err == nil {
+				if !health.OK && health.RefoldError != "" {
+					break
+				}
+			}
+		}
+	}
+	if health.OK {
+		t.Fatalf("expected ok:false on torn journal, got ok:true")
+	}
+	if health.RefoldError == "" {
+		t.Fatalf("expected refold_error set, got empty")
+	}
+
+	// Repair the journal by truncating it (remove torn line)
+	if err := os.WriteFile(journalPath, []byte{}, 0644); err != nil {
+		t.Fatalf("repair journal: %v", err)
+	}
+
+	// Wait for recovery — poll until ok:true and refold_error cleared
+	for i := 0; i < 20; i++ {
+		time.Sleep(100 * time.Millisecond)
+		if b, err := os.ReadFile(filepath.Join(dir, "health.json")); err == nil {
+			if err := json.Unmarshal(b, &health); err == nil {
+				if health.OK && health.RefoldError == "" {
+					break
+				}
 			}
 		}
 	}
 	if !health.OK {
-		t.Fatalf("expected ok:true on first beat, got ok:false (refold_error=%s)", health.RefoldErr)
+		t.Fatalf("expected ok:true after repair, got ok:false")
 	}
-
-	// Corrupt the journal with a torn line (incomplete JSON)
-	f, err := os.OpenFile(journalPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatalf("open journal: %v", err)
-	}
-	_, err = f.WriteString(`{"seq":99,"payload":"torn-line-no-closing-brace`)
-	if err != nil {
-		t.Fatalf("write torn line: %v", err)
-	}
-	f.Close()
-
-	// Wait for the next beat — daemon should survive and render degraded
-	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
-		health = readHealth(t, dir)
-		if !health.OK && health.RefoldErr != "" {
-			break
-		}
-	}
-	if health.OK {
-		t.Fatalf("expected ok:false after torn line, got ok:true")
-	}
-	if health.RefoldErr == "" {
-		t.Fatalf("expected refold_error field, got empty")
-	}
-	if !strings.Contains(health.RefoldErr, "refold") {
-		t.Fatalf("refold_error should mention refold, got: %s", health.RefoldErr)
-	}
-
-	// Verify daemon is still alive (did not exit)
-	select {
-	case err := <-errCh:
-		t.Fatalf("daemon exited prematurely: %v", err)
-	default:
-		// good — still running
-	}
-
-	// Repair the journal by truncating the torn line
-	content, err := os.ReadFile(journalPath)
-	if err != nil {
-		t.Fatalf("read journal: %v", err)
-	}
-	// Find the last complete line (before the torn one)
-	lastNewline := strings.LastIndex(string(content), "\n")
-	if lastNewline > 0 {
-		err = os.WriteFile(journalPath, content[:lastNewline+1], 0644)
-		if err != nil {
-			t.Fatalf("truncate journal: %v", err)
-		}
-	}
-
-	// Wait for recovery — next successful Refold should clear refoldErr
-	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
-		health = readHealth(t, dir)
-		if health.OK && health.RefoldErr == "" {
-			break
-		}
-	}
-	if !health.OK {
-		t.Fatalf("expected ok:true after repair, got ok:false (refold_error=%s)", health.RefoldErr)
-	}
-	if health.RefoldErr != "" {
-		t.Fatalf("expected refold_error cleared after repair, got: %s", health.RefoldErr)
+	if health.RefoldError != "" {
+		t.Fatalf("expected refold_error cleared after repair, got: %s", health.RefoldError)
 	}
 
 	cancel()
@@ -376,129 +432,4 @@ func TestDaemon_SurvivesRefoldError(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("daemon did not exit after cancel")
 	}
-}
-		t.Fatalf("expected ok:true after repair, got ok:false (refold_error=%s)", health.RefoldErr)
-	}
-	if health.RefoldErr != "" {
-		t.Fatalf("expected refold_error cleared after repair, got: %s", health.RefoldErr)
-	}
-
-	cancel()
-	select {
-	case err := <-errCh:
-		if err != nil && err != context.Canceled {
-			t.Fatalf("unexpected exit error: %v", err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("daemon did not exit after cancel")
-	}
-}
-	case <-time.After(2 * time.Second):
-		t.Fatal("daemon did not exit after cancel")
-	}
-}
-// TestDaemon_SurvivesRefoldError verifies MISCHIEF-DF-39: when the journal
-// has a torn line, Refold() returns an error but the daemon does NOT exit —
-// it continues beating, renders health.json with ok:false + refold_error,
-// and recovers to ok:true once the journal is repaired.
-func TestDaemon_SurvivesRefoldError(t *testing.T) {
-	dir := t.TempDir()
-	d, err := New(dir)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-
-	// Start the daemon in a goroutine
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	errCh := make(chan error, 1)
-	go func() { errCh <- d.Run(ctx) }()
-
-	// Wait for first healthy beat
-	time.Sleep(150 * time.Millisecond)
-	health := readHealth(t, dir)
-	if !health.OK {
-		t.Fatalf("expected ok:true on first beat, got ok:false")
-	}
-
-	// Corrupt the journal with a torn line (incomplete JSON)
-	journalPath := filepath.Join(dir, "journal.jsonl")
-	f, err := os.OpenFile(journalPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatalf("open journal: %v", err)
-	}
-	_, err = f.WriteString(`{"seq":99,"payload":"torn-line-no-closing-brace`)
-	if err != nil {
-		t.Fatalf("write torn line: %v", err)
-	}
-	f.Close()
-
-	// Wait for the next beat — daemon should survive and render degraded
-	time.Sleep(150 * time.Millisecond)
-	health = readHealth(t, dir)
-	if health.OK {
-		t.Fatalf("expected ok:false after torn line, got ok:true")
-	}
-	if health.RefoldErr == "" {
-		t.Fatalf("expected refold_error field, got empty")
-	}
-	if !strings.Contains(health.RefoldErr, "refold") {
-		t.Fatalf("refold_error should mention refold, got: %s", health.RefoldErr)
-	}
-
-	// Verify daemon is still alive (did not exit)
-	select {
-	case err := <-errCh:
-		t.Fatalf("daemon exited prematurely: %v", err)
-	default:
-		// good — still running
-	}
-
-	// Repair the journal by truncating the torn line
-	lines, err := os.ReadFile(journalPath)
-	if err != nil {
-		t.Fatalf("read journal: %v", err)
-	}
-	// Find the last complete line (before the torn one)
-	content := string(lines)
-	lastNewline := strings.LastIndex(content[:len(content)-1], "\n")
-	if lastNewline > 0 {
-		err = os.WriteFile(journalPath, []byte(content[:lastNewline+1]), 0644)
-		if err != nil {
-			t.Fatalf("truncate journal: %v", err)
-		}
-	}
-
-	// Wait for recovery — next successful Refold should clear refoldErr
-	time.Sleep(150 * time.Millisecond)
-	health = readHealth(t, dir)
-	if !health.OK {
-		t.Fatalf("expected ok:true after repair, got ok:false (refold_error=%s)", health.RefoldErr)
-	}
-	if health.RefoldErr != "" {
-		t.Fatalf("expected refold_error cleared after repair, got: %s", health.RefoldErr)
-	}
-
-	cancel()
-	select {
-	case err := <-errCh:
-		if err != nil && err != context.Canceled {
-			t.Fatalf("unexpected exit error: %v", err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("daemon did not exit after cancel")
-	}
-}
-
-func readHealth(t *testing.T, dir string) Health {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join(dir, "health.json"))
-	if err != nil {
-		t.Fatalf("read health.json: %v", err)
-	}
-	var h Health
-	if err := json.Unmarshal(b, &h); err != nil {
-		t.Fatalf("unmarshal health: %v", err)
-	}
-	return h
 }
