@@ -184,3 +184,25 @@ func TestArmToServeRevertAtTTL(t *testing.T) {
 		t.Fatalf("inverse did not restore the file: %q err=%v", b, err)
 	}
 }
+
+// TestArmOutputNamesOnlySupportedRevertRoute (MISCHIEF-DF-31): arm's
+// write-ahead line is the user-facing contract for WHERE the hold reverts.
+// It must name only a supported route — the serve verb's TTL sweep. The
+// reverter's Lifecycle.Detach has no non-test caller and no CLI verb, so
+// advertising "(or Detach)" pointed users at an unreachable path; this pins
+// the message to the shipped surface (regression: fails on the old text,
+// which contained "or Detach").
+func TestArmOutputNamesOnlySupportedRevertRoute(t *testing.T) {
+	writeSanctionMarker(t)
+	dir := t.TempDir()
+	code, out := captureStdout(t, func() int { return run(armTestArgs(t, dir)) })
+	if code != 0 {
+		t.Fatalf("arm exit: %d, want 0", code)
+	}
+	if !strings.Contains(out, "serve reverts at TTL") {
+		t.Fatalf("arm output does not name the supported serve/TTL route: %q", out)
+	}
+	if strings.Contains(out, "Detach") {
+		t.Fatalf("arm output advertises the unreachable Detach path: %q", out)
+	}
+}

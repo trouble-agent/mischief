@@ -105,7 +105,7 @@ func cmdArm(args []string) int {
 		return 1
 	}
 	fmt.Printf("armed %s fault=%s target=%s ttl=%s dir=%s\n", id, *fault, *target, *ttl, *dir)
-	fmt.Printf("write-ahead: inverse + check durable in the journal (SPEC-04); serve (or Detach) reverts at TTL\n")
+	fmt.Printf("write-ahead: inverse + check durable in the journal (SPEC-04); serve reverts at TTL\n")
 	return 0
 }
 
