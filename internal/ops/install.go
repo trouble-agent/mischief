@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // This file owns install/uninstall (SPEC-11): plan construction from the
@@ -37,7 +38,10 @@ func resolve(logical string) string {
 // InstallOpts carries install's inputs.
 type InstallOpts struct {
 	// SudoersUser is the account the drop-in grants (default: the
-	// mischief service account).
+	// mischief service account). Validated by ValidateSudoersUser before
+	// interpolation (MISCHIEF-DF-50): the grantee lands verbatim in the
+	// drop-in's final grant line, so a crafted value is a privilege
+	// escalation, and the visudo guard is a SYNTAX check that accepts it.
 	SudoersUser string
 	// Prefix is mischief's state prefix (default /var/lib/mischief).
 	Prefix string
@@ -64,6 +68,65 @@ func (o *InstallOpts) defaults() {
 	if o.Prefix == "" {
 		o.Prefix = DefaultPrefix
 	}
+}
+
+// ch:trace row=MISCHIEF-DF-50 spec=internal/ops/install.go#user-validation test=go-test-internal-ops evidence=internal/ops/install_test.go witness=cmd:go-test
+// ValidateSudoersUser gates the one value install interpolates into the
+// privileged drop-in (MISCHIEF-DF-50). RenderDropIn writes the grantee
+// verbatim into the final grant line, so a crafted --user value is a
+// sudoers injection: `install --user "mischief ALL=(root) NOPASSWD:
+// MISCHIEF_CMNDS\nkara ALL=(root) NOPASSWD: ALL #"` renders a second
+// grant line (full passwordless root for kara) with the trailing template
+// text neutralized by the embedded '#', and visudo answers "parsed OK" —
+// the documented guard checks SYNTAX, not intent. Fail closed on:
+//   - empty values (an unvalidated grantee must never reach the render);
+//   - "ALL" and any other sudoers KEYWORD (ALL, NOPASSWD, PASSWD, the
+//     Alias keywords — case-insensitive, the canonical matching is) as a
+//     full token: host-wide grants and alias trickery are policy, not a
+//     username;
+//   - newlines, carriage returns, or shell/sudoers metacharacters
+//     (;/|&$`()<>) that could terminate or reshape the grant line;
+//   - any whitespace beyond a single space between characters (a value
+//     with spaces is never an account name).
+//
+// The accepted shape is a plain account name: [A-Za-z0-9_-], 1–32 chars
+// (getconf LOGIN_NAME_MAX-ish conservative bound). Template is untouched —
+// the render stays canonical; only the input is gated.
+func ValidateSudoersUser(u string) error {
+	const grantee = DefaultDropInPath
+	if u == "" {
+		return &InstallError{Path: grantee, Reason: "empty --user: the sudoers grantee must be an explicit account name (default: " + defaultSudoersUser + ")"}
+	}
+	if strings.EqualFold(u, "ALL") {
+		return &InstallError{Path: grantee, Reason: "--user ALL is a host-wide grant, not an account — install refuses it"}
+	}
+	for _, kw := range []string{"ALL", "NOPASSWD", "PASSWD", "Cmnd_Alias", "User_Alias", "Host_Alias", "Runas_Alias"} {
+		if strings.EqualFold(u, kw) {
+			return &InstallError{Path: grantee, Reason: "--user carries the sudoers keyword " + u + " — policy is set by the verb table, never by the flag"}
+		}
+	}
+	for _, r := range u {
+		switch {
+		case r == '\n' || r == '\r':
+			return &InstallError{Path: grantee, Reason: "--user carries a line break — a second grant line in the drop-in is sudoers injection"}
+		case strings.ContainsRune(";|&$`()<>", r):
+			return &InstallError{Path: grantee, Reason: fmt.Sprintf("--user carries the metacharacter %q — refuse, never interpolate", string(r))}
+		case r == ' ':
+			return &InstallError{Path: grantee, Reason: "--user carries whitespace — the grantee is one account name, not a grant spec"}
+		case unicode.IsSpace(r):
+			return &InstallError{Path: grantee, Reason: "--user carries whitespace (tab/other) — the grantee is one account name"}
+		}
+	}
+	if len(u) > 32 {
+		return &InstallError{Path: grantee, Reason: fmt.Sprintf("--user is %d characters (max 32) — not a plausible account name", len(u))}
+	}
+	for _, r := range u {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
+			continue
+		}
+		return &InstallError{Path: grantee, Reason: fmt.Sprintf("--user carries %q — the grantee must be [A-Za-z0-9_-] only", string(r))}
+	}
+	return nil
 }
 
 // dropInPath returns the drop-in path (fixed: /etc/sudoers.d/mischief —
@@ -114,6 +177,12 @@ func (o *InstallOpts) manifestPath() string {
 // install never clobbers a file it did not generate.
 func PlanInstall(opts InstallOpts) (*Plan, error) {
 	opts.defaults()
+	// MISCHIEF-DF-50: validate the grantee BEFORE interpolation. The
+	// drop-in body is rendered from this value verbatim; the visudo
+	// guard downstream is a syntax check and accepts crafted grants.
+	if err := ValidateSudoersUser(opts.SudoersUser); err != nil {
+		return nil, err
+	}
 	body := RenderDropIn(opts.SudoersUser)
 	manifest := RenderHelperManifest()
 
