@@ -213,3 +213,9 @@
 {"id":149,"task_id":"MISCHIEF-DF-49","event_type":"task_completed","timestamp":"2026-10-19T05:18:42Z","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\"}"}
 {"id":150,"task_id":"INT-CI-7","event_type":"task_completed","timestamp":"2026-10-19T05:18:57Z","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\"}"}
 {"id":151,"task_id":"MISCHIEF-DF-50","event_type":"task_completed","timestamp":"2026-10-19T15:15:00-05:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\",\"commit\":\"6d4b9a8\",\"verdict\":\"752eb2ab\",\"ci\":\"GREEN\",\"guard\":\"PASS\"}"}
+{"id":152,"task_id":"MISCHIEF-DF-31","event_type":"task_updated","timestamp":"2026-10-19T22:21:51+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"in_progress\"}"}
+{"id":153,"task_id":"MISCHIEF-DF-43","event_type":"task_updated","timestamp":"2026-10-19T22:21:51+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"in_progress\"}"}
+{"id":154,"task_id":"MISCHIEF-DF-47","event_type":"task_updated","timestamp":"2026-10-19T22:21:51+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"in_progress\"}"}
+{"id":155,"task_id":"MISCHIEF-DF-31","event_type":"task_completed","timestamp":"2026-10-19T23:02:35+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\"}"}
+{"id":156,"task_id":"MISCHIEF-DF-43","event_type":"task_completed","timestamp":"2026-10-19T23:02:35+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\"}"}
+{"id":157,"task_id":"MISCHIEF-DF-47","event_type":"task_completed","timestamp":"2026-10-19T23:02:36+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"status\":\"complete\"}"}

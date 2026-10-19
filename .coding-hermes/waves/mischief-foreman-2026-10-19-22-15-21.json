@@ -1,0 +1,28 @@
+{
+  "tick": "mischief-foreman-2026-10-19-22-15-21",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "60ce19646c8b113af3f2dcd530a8ad9b222679a1",
+  "wave_budget": 3,
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-31",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-31",
+      "branch": "wt/MISCHIEF-DF-31",
+      "scope": ["cmd/mischief/arm.go", "internal/reverter/lifecycle.go", "internal/reverter/owner.go", "cmd/mischief/main.go"]
+    },
+    {
+      "id": "MISCHIEF-DF-43",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-43",
+      "branch": "wt/MISCHIEF-DF-43",
+      "scope": ["internal/battery/runner.go", "internal/battery/artefact.go", "internal/battery/*_test.go", "internal/chaos/lane.go", "internal/chaos/*_test.go"]
+    },
+    {
+      "id": "MISCHIEF-DF-47",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-47",
+      "branch": "wt/MISCHIEF-DF-47",
+      "scope": ["internal/backend_sim/refusal.go", "internal/rails/scope.go", "cmd/mischief/sim.go", "catalog/*", "docs/*", "*_test.go"]
+    }
+  ],
+  "created_before_dispatch": true
+}
