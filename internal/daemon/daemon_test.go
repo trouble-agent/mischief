@@ -363,8 +363,11 @@ func TestDaemonRefoldArmsAfterBootTTL(t *testing.T) {
 func TestDaemon_SurvivesRefoldError(t *testing.T) {
 	dir := localTempDir(t)
 
-	// Create journal with a torn line (incomplete JSON record)
-	journalPath := filepath.Join(dir, "journal.jsonl")
+	// Create journal with a torn line (incomplete JSON record). MISCHIEF-DF-49:
+	// the store's journal is <dir>/reverter.jsonl (journal.go:19) — a fixture
+	// written under any other name is never read, so the test would guard
+	// nothing and could not pass on a clean HEAD.
+	journalPath := filepath.Join(dir, "reverter.jsonl")
 	tornLine := `{"seq":1,"hold_id":"test-hold","op":"arm","expires":"` + time.Now().Add(time.Hour).Format(time.RFC3339Nano) + `","proof":"abc123` + "\n"
 	if err := os.WriteFile(journalPath, []byte(tornLine), 0644); err != nil {
 		t.Fatalf("create torn journal: %v", err)
@@ -383,10 +386,16 @@ func TestDaemon_SurvivesRefoldError(t *testing.T) {
 
 	// Wait for first degraded beat — poll until health.json appears and is ok:false with refold_error
 	var health Health
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 80; i++ {
 		time.Sleep(100 * time.Millisecond)
+		var got Health
 		if b, err := os.ReadFile(filepath.Join(dir, "health.json")); err == nil {
-			if err := json.Unmarshal(b, &health); err == nil {
+			if err := json.Unmarshal(b, &got); err == nil {
+				// Decode into a FRESH value: refold_error is omitempty, so
+				// unmarshalling straight into a reused struct would let an
+				// earlier degraded read's field carry over into a healthy
+				// document and the recovery check below could never pass.
+				health = got
 				if !health.OK && health.RefoldError != "" {
 					break
 				}
@@ -405,11 +414,16 @@ func TestDaemon_SurvivesRefoldError(t *testing.T) {
 		t.Fatalf("repair journal: %v", err)
 	}
 
-	// Wait for recovery — poll until ok:true and refold_error cleared
-	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
+	// Wait for recovery — poll until ok:true and refold_error cleared. The
+	// window must exceed HeartbeatInterval (5s): the daemon beats on its
+	// ticker, so the post-repair beat is up to a full interval after the
+	// repair write.
+	for i := 0; i < 60; i++ {
+		time.Sleep(250 * time.Millisecond)
+		var got Health
 		if b, err := os.ReadFile(filepath.Join(dir, "health.json")); err == nil {
-			if err := json.Unmarshal(b, &health); err == nil {
+			if err := json.Unmarshal(b, &got); err == nil {
+				health = got // fresh value (see the degraded-beat loop above)
 				if health.OK && health.RefoldError == "" {
 					break
 				}
@@ -421,6 +435,74 @@ func TestDaemon_SurvivesRefoldError(t *testing.T) {
 	}
 	if health.RefoldError != "" {
 		t.Fatalf("expected refold_error cleared after repair, got: %s", health.RefoldError)
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil && err != context.Canceled {
+			t.Fatalf("unexpected exit error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("daemon did not exit after cancel")
+	}
+}
+
+// waitForHealth polls <dir>/health.json until pred accepts a FRESH document or
+// the window (3 heartbeats) expires. Each read decodes into a NEW value: the
+// document's omitempty fields must never carry over from an earlier read.
+func waitForHealth(t *testing.T, dir string, pred func(Health) bool) bool {
+	t.Helper()
+	deadline := time.Now().Add(3 * HeartbeatInterval)
+	for time.Now().Before(deadline) {
+		var h Health
+		if b, err := os.ReadFile(filepath.Join(dir, HealthFileName)); err == nil {
+			if err := json.Unmarshal(b, &h); err == nil && pred(h) {
+				return true
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}
+
+// TestDaemon_TornAppendDegradesTheNextBeat verifies MISCHIEF-DF-39-R2: a torn
+// line appended to the journal WHILE the daemon runs must flip the next beat to
+// ok:false + refold_error. The tick loop holds the re-fold failure and skips
+// the TTL sweep (the fold may be mid-torn-line), but it must still PUBLISH:
+// skipping writeHealth leaves the last good document (ok:true, frozen TTLs, no
+// refold_error) standing over a corrupted journal — a false green exactly when
+// containment is suspended.
+func TestDaemon_TornAppendDegradesTheNextBeat(t *testing.T) {
+	dir := localTempDir(t)
+	d, err := New(dir)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errCh := make(chan error, 1)
+	go func() { errCh <- d.Run(ctx) }()
+
+	// the first beat is healthy (the journal is empty, not torn)
+	if !waitForHealth(t, dir, func(h Health) bool { return h.OK }) {
+		t.Fatal("no healthy first beat within the window")
+	}
+
+	// append a torn line mid-run: what a crash mid-append leaves behind
+	f, err := os.OpenFile(filepath.Join(dir, "reverter.jsonl"), os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatalf("open journal: %v", err)
+	}
+	if _, err := f.WriteString(`{"seq":2,"hold_id":"h2","op":"lan`); err != nil {
+		t.Fatalf("append torn line: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close journal: %v", err)
+	}
+
+	if !waitForHealth(t, dir, func(h Health) bool { return !h.OK && h.RefoldError != "" }) {
+		t.Fatal("a torn append left health.json green: the tick beat skipped writeHealth (DF-39-R2)")
 	}
 
 	cancel()

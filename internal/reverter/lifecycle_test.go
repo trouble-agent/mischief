@@ -159,6 +159,11 @@ func TestArmRefusesUnreadableRestoreBackup(t *testing.T) {
 	})
 
 	t.Run("non-restore-file inverse outside the probe", func(t *testing.T) {
+		// DF-23's probe only grades restore-file inverses; it must not claim
+		// an unknown kind as "unreadable backup". DF-29 later closed the
+		// vocabulary AT ARM, so this hold is refused at arm with the
+		// unknown-kind error — never with ErrInverseUnreadable (that would be
+		// the probe over-reaching and mislabelling the refusal).
 		_, lf := newTestStore(t)
 		hold := Hold{
 			FaultID: "P-DF23-OTHERKIND",
@@ -167,8 +172,15 @@ func TestArmRefusesUnreadableRestoreBackup(t *testing.T) {
 			Check:   Decl{Kind: "file-absent", Params: map[string]string{"path": "/tmp/x"}},
 			TTL:     time.Second,
 		}
-		if _, err := lf.Arm(hold); err != nil {
-			t.Fatalf("arm with unknown inverse kind: %v (the probe must not over-reach; the kind grades at revert)", err)
+		_, err := lf.Arm(hold)
+		if err == nil {
+			t.Fatal("arm with unknown inverse kind: want refusal (DF-29 fails closed at arm)")
+		}
+		if errorIs(err, ErrInverseUnreadable) {
+			t.Fatalf("the DF-23 probe over-reached: an unknown kind is not an unreadable restore-file: %v", err)
+		}
+		if !strings.Contains(err.Error(), "unknown") {
+			t.Fatalf("want an unknown-kind refusal, got: %v", err)
 		}
 	})
 }
@@ -251,23 +263,9 @@ func TestRevertMeasuredNotAsserted(t *testing.T) {
 			wantOutcome:   OutcomeRevertFailed,
 			wantDetailSub: "inverse failed",
 		},
-		{
-			name: "unknown check kind is revert_failed (fail closed)",
-			mutate: func(h *Hold) {
-				h.Check = Decl{Kind: "telepathy", Params: map[string]string{"path": h.Inverse.Params["path"]}}
-			},
-			wantOutcome:   OutcomeRevertFailed,
-			wantDetailSub: "unknown",
-		},
-		{
-			name: "unknown inverse kind is revert_failed (fail closed)",
-			mutate: func(h *Hold) {
-				h.Inverse = Decl{Kind: "unexist", Params: map[string]string{"path": h.Inverse.Params["path"]}}
-				h.Check = Decl{Kind: "file-absent", Params: map[string]string{"path": h.Inverse.Params["path"]}}
-			},
-			wantOutcome:   OutcomeRevertFailed,
-			wantDetailSub: "unknown",
-		},
+		// DF-29: unknown kinds are refused at Arm time (fail closed earlier).
+		// Those cases are tested in record_test.go (TestDeclValidate), not here,
+		// because this test measures revert outcomes for valid holds.
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

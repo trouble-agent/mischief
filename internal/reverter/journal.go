@@ -231,12 +231,21 @@ func Open(dir string) (*Store, error) {
 		expiries: map[string]time.Time{},
 	}
 	if err := s.fold(); err != nil {
-		f.Close()
-		return nil, err
+		// MISCHIEF-DF-40: a torn journal at boot must NOT yield a nil
+		// *Store. The store is already initialised (maps allocated, journal
+		// handle open) and usable; the fold error travels WITH it so the
+		// caller decides: every CLI verb stays fail-closed (err != nil, it
+		// refuses and exits 1) while the serve daemon boots DEGRADED and
+		// renders health.json (ok:false + refold_error) on its first beat —
+		// a serve that dies here leaves the operator with no health surface
+		// at all. The handle stays open: a caller that accepts the degraded
+		// store must still be able to append (the repair path).
+		return s, err
 	}
 	if err := s.reconcile(); err != nil {
-		f.Close()
-		return nil, err
+		// Same contract as the fold: the store is usable, the error travels
+		// with it, and the caller decides between refusing and degrading.
+		return s, err
 	}
 	return s, nil
 }

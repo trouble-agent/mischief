@@ -103,13 +103,22 @@ type Daemon struct {
 	refoldErr error
 }
 
-// New builds a daemon over dir.
+// New builds a daemon over dir. A torn journal at boot is DEGRADED, not
+// fatal (MISCHIEF-DF-40): the store is opened, the fold error is HELD, and
+// the daemon still starts so its first beat can render health.json with
+// ok:false + refold_error. A serve that exits here leaves the operator with
+// no health surface at all (a missing file is not a health document). Only
+// a failure that yields no store at all is an error.
 func New(dir string) (*Daemon, error) {
 	store, err := reverter.Open(dir)
-	if err != nil {
+	if store == nil {
 		return nil, err
 	}
-	return &Daemon{Dir: dir, Now: time.Now, lf: reverter.New(store), store: store, started: time.Now()}, nil
+	d := &Daemon{Dir: dir, Now: time.Now, lf: reverter.New(store), store: store, started: time.Now()}
+	if err != nil {
+		d.refoldErr = err
+	}
+	return d, nil
 }
 
 // Run blocks until ctx is cancelled: heartbeat health.json, revert expired
@@ -137,6 +146,15 @@ func (d *Daemon) Run(ctx context.Context) error {
 				// other error still exits: only the re-fold is survivable.
 				if isRefoldErr(err) {
 					d.setRefoldErr(err)
+					// MISCHIEF-DF-39-R2: the beat must still PUBLISH. Skipping
+					// writeHealth here leaves the last good document standing
+					// (ok:true, frozen TTLs, no refold_error) over a corrupted
+					// journal — a false green exactly when containment is
+					// suspended. render() re-reads the journal itself, so this
+					// beat renders the corruption.
+					if herr := d.writeHealth(); herr != nil {
+						return herr
+					}
 					continue
 				}
 				return err
@@ -162,8 +180,16 @@ func isRefoldErr(err error) bool {
 // The render reads both under d.mu (MISCHIEF-DF-39).
 func (d *Daemon) setRefoldErr(err error) {
 	d.mu.Lock()
-	d.refoldErr = err
+	d.setRefoldErrLocked(err)
 	d.mu.Unlock()
+}
+
+// setRefoldErrLocked is the render's variant: render runs UNDER writeHealth's
+// d.mu and sync.Mutex is not reentrant, so a rendering beat that re-locked
+// would self-deadlock (MISCHIEF-DF-41) — the process hangs on the very path
+// that must report the corruption, and only SIGKILL ends it.
+func (d *Daemon) setRefoldErrLocked(err error) {
+	d.refoldErr = err
 }
 
 // clearRefoldErr drops the held re-fold failure on a beat that folded
@@ -246,7 +272,11 @@ func (d *Daemon) render() Health {
 		// a fresh one): render the LAST KNOWN fold with ok:false naming
 		// the defect, and hold the error on the daemon so a later
 		// writeHealth (e.g. the ctx-cancel final beat) degrades too.
-		d.setRefoldErr(err)
+		//
+		// MISCHIEF-DF-41: render is called WITH d.mu already held (writeHealth),
+		// so it must use the non-locking setter — the locking one would
+		// self-deadlock and the corruption report itself would hang.
+		d.setRefoldErrLocked(err)
 		h := d.staleRender(now)
 		h.OK = false
 		h.RefoldError = err.Error()
