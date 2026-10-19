@@ -233,7 +233,7 @@ func (r *RunResult) deriveFindings() {
 			continue
 		}
 		r.Findings = append(r.Findings, Finding{
-			ID: fmt.Sprintf("MSF-BAT-%s", c.Cell.ID),
+			ID: BatteryFindingID(c.Cell.Target.Project, c.Cell.ID),
 			// RunID is the run id stamped later by FileFindings (the
 			// id is derived after the run; the filer renders at emit
 			// time when it is known) — AC-9's correlation key.

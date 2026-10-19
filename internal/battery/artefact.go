@@ -198,7 +198,7 @@ func truncate(s string, n int) string {
 // id, status, title, priority, depends_on — plus the battery's reasoning
 // fields the AC requires (the journal path rides in `reasoning`).
 type Finding struct {
-	// ID is the board row id (MSF-BAT-<cell>).
+	// ID is the board row id (BatteryFindingID(project, cell)).
 	ID string `json:"id"`
 	// Status is the board's status vocabulary ("pending").
 	Status string `json:"status"`
@@ -292,7 +292,10 @@ func WriteFindings(dir string, r *RunResult, runID, journalPath string) (string,
 
 // ValidateRows is the `boardctl validate`-style self-check (AC-18): every
 // line must be a JSON object carrying the mischief board's row fields —
-// id (non-empty), status (in the board's status vocabulary), title
+// id (non-empty AND matching the fleet board id format, ValidBoardID: the
+// ids this package's emitters mint are exactly the ids boardctl
+// create/update accept, MISCHIEF-DF-43), status (in the board's status
+// vocabulary), title
 // (non-empty), priority (P0..P3), depends_on (a list) — the optional
 // verdict must be empty or one of PRD §6.4's closed verdict values (the
 // same vocabulary the journal grades and `chaos finding --verdict`
@@ -323,6 +326,8 @@ func ValidateRows(jsonl []byte) error {
 		switch {
 		case row.ID == "":
 			return fmt.Errorf("row %d: id: missing", i+1)
+		case !ValidBoardID(row.ID):
+			return fmt.Errorf("row %d: id: %q does not match the fleet board id format %s", i+1, row.ID, BoardIDRegex)
 		case !findingStatuses[row.Status]:
 			return fmt.Errorf("row %d: status: %q not in the board vocabulary", i+1, row.Status)
 		case row.Title == "":

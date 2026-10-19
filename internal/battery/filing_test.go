@@ -70,9 +70,11 @@ func TestFileFindingsBoardVocabulary(t *testing.T) {
 }
 
 // TestValidateRowsRefusals: the validator refuses each malformation by
-// name — this is the self-check AC-18 is judged on.
+// name — this is the self-check AC-18 is judged on. Row ids use the fleet
+// board format the emitters mint (MISCHIEF-DF-43); the validator refuses
+// the old slash/lowercase id shapes by name too.
 func TestValidateRowsRefusals(t *testing.T) {
-	good := `{"id":"MSF-BAT-x","status":"pending","title":"t","priority":"P1","depends_on":[]}` + "\n"
+	good := `{"id":"MSF-BAT-MISCHIEF-F-009-057852623DE7","status":"pending","title":"t","priority":"P1","depends_on":[]}` + "\n"
 	cases := []struct {
 		name string
 		in   string
@@ -80,10 +82,12 @@ func TestValidateRowsRefusals(t *testing.T) {
 	}{
 		{"not json", "hello\n", "not a JSON object"},
 		{"missing id", `{"status":"pending","title":"t","priority":"P1","depends_on":[]}` + "\n", "id: missing"},
-		{"bad status", `{"id":"x","status":"done-ish","title":"t","priority":"P1","depends_on":[]}` + "\n", "status: \"done-ish\" not in the board vocabulary"},
-		{"missing title", `{"id":"x","status":"pending","priority":"P1","depends_on":[]}` + "\n", "title: missing"},
-		{"bad priority", `{"id":"x","status":"pending","title":"t","priority":"urgent","depends_on":[]}` + "\n", "priority: \"urgent\" not in the board vocabulary"},
-		{"bad verdict", `{"id":"x","status":"pending","title":"t","priority":"P1","verdict":"banana","depends_on":[]}` + "\n", "verdict: \"banana\" not in the closed verdict vocabulary"},
+		{"old slash id (the observed MSF-BAT-mischief/F-009)", `{"id":"MSF-BAT-mischief/F-009","status":"pending","title":"t","priority":"P1","depends_on":[]}` + "\n", "does not match the fleet board id format"},
+		{"old lowercase hex chaos id", `{"id":"MSF-CHAOS-2dfb1056d701","status":"pending","title":"t","priority":"P1","depends_on":[]}` + "\n", "does not match the fleet board id format"},
+		{"bad status", `{"id":"MSF-BAT-SCRATCH-Q7-64185AAA7620","status":"done-ish","title":"t","priority":"P1","depends_on":[]}` + "\n", "status: \"done-ish\" not in the board vocabulary"},
+		{"missing title", `{"id":"MSF-BAT-SCRATCH-Q7-64185AAA7620","status":"pending","priority":"P1","depends_on":[]}` + "\n", "title: missing"},
+		{"bad priority", `{"id":"MSF-BAT-SCRATCH-Q7-64185AAA7620","status":"pending","title":"t","priority":"urgent","depends_on":[]}` + "\n", "priority: \"urgent\" not in the board vocabulary"},
+		{"bad verdict", `{"id":"MSF-BAT-SCRATCH-Q7-64185AAA7620","status":"pending","title":"t","priority":"P1","verdict":"banana","depends_on":[]}` + "\n", "verdict: \"banana\" not in the closed verdict vocabulary"},
 		{"duplicate id", good + good, "duplicate id"},
 		{"empty line mid-file", good + "\n" + good, "empty line"},
 	}
@@ -108,7 +112,7 @@ func TestValidateRowsRefusals(t *testing.T) {
 // optional; a finding may not carry a verdict at all).
 func TestValidateRowsVerdictVocabulary(t *testing.T) {
 	verdictRow := func(v string) []byte {
-		line := `{"id":"MSF-CHAOS-abc123","status":"pending","title":"t","priority":"P1","depends_on":[]`
+		line := `{"id":"MSF-CHAOS-MISCHIEF-08EA0B3BCBB5","status":"pending","title":"t","priority":"P1","depends_on":[]`
 		if v != "" {
 			line += `,"verdict":"` + v + `"`
 		}
