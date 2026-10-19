@@ -451,9 +451,9 @@ func TestHttptestCompatibility(t *testing.T) {
 
 // TestStubErrorIsSentinel: the v0.2 stub refusal is matchable.
 func TestStubErrorIsSentinel(t *testing.T) {
-	stub := &RealStub{Allowlist: Allowlist{Tags: []string{"aws:sandbox"}}, MaxSpendUSD: 5.0}
+	stub := &RealStub{Allowlist: Allowlist{Tags: []string{"aws:sandbox-lab"}}, MaxSpendUSD: 5.0}
 	err := stub.Apply("I-003", Shape{Kind: ShapeRateLimit},
-		RealGate{AllowReal: true, ResourceTag: "aws:sandbox", SpendCapUSD: 5, Provider: "aws"})
+		RealGate{AllowReal: true, ResourceTag: "aws:sandbox-lab", SpendCapUSD: 5, Provider: "aws"})
 	if err == nil {
 		t.Fatal("stub must refuse even with a full gate")
 	}

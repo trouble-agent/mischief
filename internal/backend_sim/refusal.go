@@ -3,6 +3,8 @@ package backend_sim
 import (
 	"fmt"
 	"strings"
+
+	"github.com/trouble-agent/mischief/internal/cloudallow"
 )
 
 // refusal.go — the AC-17 wiring: any primitive targeting real cloud
@@ -26,8 +28,10 @@ import (
 type RealGate struct {
 	// AllowReal is the explicit --allow-real opt-in.
 	AllowReal bool
-	// ResourceTag is the allowlisted provider/resource tag (e.g.
-	// "aws: sandbox-lab"); empty refuses.
+	// ResourceTag is the provider/resource tag; it is admitted only when
+	// it is an exact entry of the ONE authoritative AC-17 allowlist
+	// (internal/cloudallow — currently exactly "aws:sandbox-lab").
+	// Blank/whitespace, "*" and every unlisted value refuse.
 	ResourceTag string
 	// SpendCapUSD is the spend cap; <= 0 refuses.
 	SpendCapUSD float64
@@ -64,8 +68,12 @@ func (g RealGate) Decide(destroyClass string) (Decision, string) {
 	if !g.AllowReal {
 		missing = append(missing, "the explicit --allow-real opt-in")
 	}
-	if g.ResourceTag == "" {
-		missing = append(missing, "an allowlisted resource tag")
+	// The allowlist leg consults the ONE authoritative source
+	// (internal/cloudallow), the same membership the rails L5 gate
+	// applies: blank/whitespace, "*" and unlisted tags refuse, and the
+	// refusal names the offending tag (MISCHIEF-DF-47).
+	if reason := cloudallow.CheckReason(g.ResourceTag); reason != "" {
+		missing = append(missing, reason)
 	}
 	if g.SpendCapUSD <= 0 {
 		missing = append(missing, "a spend cap above zero")

@@ -2,6 +2,7 @@ package backend_sim
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -51,7 +52,7 @@ func TestAC17RefusalLandsInSimulatorWithLogProof(t *testing.T) {
 		},
 		{
 			name:       "tag+cap but no allow-real",
-			gate:       RealGate{ResourceTag: "aws:sandbox", SpendCapUSD: 5, Provider: "aws"},
+			gate:       RealGate{ResourceTag: "aws:sandbox-lab", SpendCapUSD: 5, Provider: "aws"},
 			shape:      Shape{Kind: ShapeAPI5xx, Status: 503, Burst: 1},
 			path:       "/v1/ac17/c",
 			wantStatus: 503,
@@ -95,12 +96,12 @@ func TestAC17RefusalLandsInSimulatorWithLogProof(t *testing.T) {
 // TestAC17FullGateIsRealButStubRefuses: the full triad admits "real" — and
 // the v0.2 stub is then the honest refusal (never a real call).
 func TestAC17FullGateIsRealButStubRefuses(t *testing.T) {
-	gate := RealGate{AllowReal: true, ResourceTag: "aws:sandbox", SpendCapUSD: 5, Provider: "aws"}
+	gate := RealGate{AllowReal: true, ResourceTag: "aws:sandbox-lab", SpendCapUSD: 5, Provider: "aws"}
 	d, detail := gate.Decide("")
 	if d != DecideReal || detail != "" {
 		t.Fatalf("full gate must admit real: %s %q", d, detail)
 	}
-	stub := &RealStub{Allowlist: Allowlist{Tags: []string{"aws:sandbox"}}, MaxSpendUSD: 5}
+	stub := &RealStub{Allowlist: Allowlist{Tags: []string{"aws:sandbox-lab"}}, MaxSpendUSD: 5}
 	err := stub.Apply("I-005", Shape{Kind: ShapeEventualLag}, gate)
 	if !errors.Is(err, ErrStub) {
 		t.Fatalf("stub refusal: %v", err)
@@ -109,7 +110,7 @@ func TestAC17FullGateIsRealButStubRefuses(t *testing.T) {
 	if !errors.As(err, &se) {
 		t.Fatal("errors.As StubError failed")
 	}
-	for _, want := range []string{"v0.2 stub", "aws:sandbox", "nothing contacts aws"} {
+	for _, want := range []string{"v0.2 stub", "aws:sandbox-lab", "nothing contacts aws"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("stub error lacks %q: %s", want, err)
 		}
@@ -120,7 +121,7 @@ func TestAC17FullGateIsRealButStubRefuses(t *testing.T) {
 // outright — even with the full triad, even in the simulator (the
 // companion-faults doctrine, v0.1).
 func TestPermanentDestroyRefusedEverywhere(t *testing.T) {
-	gate := RealGate{AllowReal: true, ResourceTag: "aws:sandbox", SpendCapUSD: 5, Provider: "aws"}
+	gate := RealGate{AllowReal: true, ResourceTag: "aws:sandbox-lab", SpendCapUSD: 5, Provider: "aws"}
 	d, detail := gate.Decide("permanent")
 	if d != DecideRefused {
 		t.Fatalf("permanent destroy decision = %s, want refused", d)
@@ -144,6 +145,57 @@ func TestPermanentDestroyRefusedEverywhere(t *testing.T) {
 		t.Fatalf("decide(permanent) = %s", d2)
 	}
 	_ = detail2
+}
+
+// TestAC17GateAllowlistMembership: the gate's allowlist leg applies the
+// ONE authoritative membership source (internal/cloudallow) — the same
+// rule the rails L5 gate applies. Before MISCHIEF-DF-47 Decide admitted
+// ANY non-empty tag; these exact tags (aws:prod-db, prod-fleet-main-host,
+// "*", whitespace) are the red proof: each now refuses with the offending
+// tag named, and only the documented sandbox tag admits "real".
+func TestAC17GateAllowlistMembership(t *testing.T) {
+	full := func(tag string) RealGate {
+		return RealGate{AllowReal: true, ResourceTag: tag, SpendCapUSD: 5, Provider: "aws"}
+	}
+	refused := []string{"aws:prod-db", "prod-fleet-main-host", "*", "  ", "\t", " aws:sandbox-lab", "AWS:SANDBOX-LAB"}
+	for _, tag := range refused {
+		d, detail := full(tag).Decide("reversible")
+		if d != DecideSim {
+			t.Fatalf("tag %q: decision %s, want simulator (fail-closed allowlist)", tag, d)
+		}
+		if !strings.Contains(detail, "allowlist") {
+			t.Fatalf("tag %q: refusal must name the allowlist: %s", tag, detail)
+		}
+		if !strings.Contains(detail, strconv.Quote(tag)) {
+			t.Fatalf("tag %q: refusal must name the offending tag: %s", tag, detail)
+		}
+		// satisfied legs stay unnamed
+		if strings.Contains(detail, "--allow-real") || strings.Contains(detail, "spend cap") {
+			t.Fatalf("tag %q: refusal names a satisfied leg: %s", tag, detail)
+		}
+	}
+	// the documented sandbox tag admits the real decision
+	d, detail := full("aws:sandbox-lab").Decide("reversible")
+	if d != DecideReal || detail != "" {
+		t.Fatalf("documented tag must admit real: %s %q", d, detail)
+	}
+	// spend-cap and allow-real checks are PRESERVED alongside the new leg
+	noCap := RealGate{AllowReal: true, ResourceTag: "aws:sandbox-lab"}
+	if d2, _ := noCap.Decide(""); d2 != DecideSim {
+		t.Fatalf("triad without the spend cap must still refuse: %s", d2)
+	}
+	noOptIn := RealGate{ResourceTag: "aws:sandbox-lab", SpendCapUSD: 5}
+	if d3, _ := noOptIn.Decide(""); d3 != DecideSim {
+		t.Fatalf("triad without --allow-real must still refuse: %s", d3)
+	}
+	empty := RealGate{}
+	d4, detail4 := empty.Decide("")
+	if d4 != DecideSim ||
+		!strings.Contains(detail4, "the explicit --allow-real opt-in") ||
+		!strings.Contains(detail4, "an allowlisted resource tag") ||
+		!strings.Contains(detail4, "a spend cap above zero") {
+		t.Fatalf("empty gate must name all three legs: %s %q", d4, detail4)
+	}
 }
 
 // TestRefusalTextShape: the operator-facing line carries primitive,
@@ -180,11 +232,11 @@ func TestRefusalTextRealDecisionHasNoTrailingEmptyDetail(t *testing.T) {
 // TestAllowlistSemantics: nil allowlist allows nothing; tags match exactly.
 func TestAllowlistSemantics(t *testing.T) {
 	var empty Allowlist
-	if empty.Allows("aws:sandbox") {
+	if empty.Allows("aws:sandbox-lab") {
 		t.Fatal("nil allowlist must allow nothing")
 	}
-	a := Allowlist{Tags: []string{"aws:sandbox", "gcp:lab"}}
-	if !a.Allows("aws:sandbox") || !a.Allows("gcp:lab") {
+	a := Allowlist{Tags: []string{"aws:sandbox-lab", "gcp:lab"}}
+	if !a.Allows("aws:sandbox-lab") || !a.Allows("gcp:lab") {
 		t.Fatal("declared tags must match exactly")
 	}
 	if a.Allows("aws:prod") || a.Allows("") {

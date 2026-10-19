@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
+	"github.com/trouble-agent/mischief/internal/cloudallow"
 )
 
 // Scope is the resolved scope a run asks to execute at: the ladder level
@@ -120,8 +121,13 @@ func checkL5Gate(d *catalog.Descriptor, s Scope) error {
 	if !s.AllowReal {
 		missing = append(missing, "the explicit --allow-real opt-in")
 	}
-	if s.Allowlisted == "" {
-		missing = append(missing, "an allowlisted provider/resource tag")
+	// The allowlist leg consults the ONE authoritative source
+	// (internal/cloudallow) — the same membership rule the simulator's
+	// AC-17 gate applies, so the ladder cannot admit a tag the sim
+	// refuses: blank/whitespace, "*" and unlisted tags refuse, and the
+	// refusal names the offending tag (MISCHIEF-DF-47).
+	if reason := cloudallow.CheckReason(s.Allowlisted); reason != "" {
+		missing = append(missing, reason)
 	}
 	if s.SpendCapUSD <= 0 {
 		missing = append(missing, "a spend cap above zero")
