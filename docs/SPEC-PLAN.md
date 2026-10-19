@@ -112,7 +112,7 @@ does not ship (PRD §7).
 | L1 rootless | the ephemeral sanctioned host: a bunker agent (uid ≠ 0, no passwordless sudo) | yes — this is the marker's production home |
 | L2/L3 host & node | a sanctioned **non-fleet** box or container with NET_ADMIN (netns, dm/loop, freezer, fsfreeze, docker API) | yes |
 | L4 simulator | the simulator process on a sanctioned (L1-shaped) host; no real provider contact | yes |
-| L5 real cloud | opt-in only: `--allow-real` + allowlist + spend cap, on an operator-sanctioned environment | yes |
+| L5 real cloud | opt-in only: `--allow-real` + allowlist + spend cap, on an operator-sanctioned environment; the allowlist is the authoritative source `internal/cloudallow` (v0.1 admits exactly `aws:sandbox-lab`; membership is an exact string match — blank/whitespace, `*` and unlisted tags refuse, both the sim gate and this ladder consult the SAME source) | yes |
 
 **L0/L1-only primitives in v0.1.** The bunker is unprivileged — measured:
 `unshare -rn` fails at the `uid_map` write, no passwordless `sudo` — so the

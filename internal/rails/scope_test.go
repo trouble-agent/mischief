@@ -7,6 +7,7 @@
 package rails
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -159,16 +160,56 @@ func TestCheckScopeL5Gate(t *testing.T) {
 		t.Fatalf("refusal %q names --allow-real though it was given", err.Error())
 	}
 
-	// all three: passes
-	ok := Scope{Level: 5, AllowReal: true, Allowlisted: "sim:hel1", SpendCapUSD: 5}
+	// all three: passes (the allowlist leg uses the documented tag —
+	// an unlisted value refuses with the tag named, see the L5
+	// membership cases below)
+	ok := Scope{Level: 5, AllowReal: true, Allowlisted: "aws:sandbox-lab", SpendCapUSD: 5}
 	if err := CheckScope(d, ok); err != nil {
 		t.Fatalf("L5 with the full gate: %v", err)
 	}
 
 	// zero spend cap is not a cap
-	err = CheckScope(d, Scope{Level: 5, AllowReal: true, Allowlisted: "sim:hel1"})
+	err = CheckScope(d, Scope{Level: 5, AllowReal: true, Allowlisted: "aws:sandbox-lab"})
 	if err == nil || !strings.Contains(err.Error(), "spend cap") {
 		t.Fatalf("L5 without a spend cap: err=%v, want the spend-cap naming", err)
+	}
+}
+
+// TestCheckScopeL5GateAllowlistMembership: the L5 allowlist leg applies
+// the ONE authoritative membership source (internal/cloudallow) — the
+// same rule the simulator's AC-17 gate applies. Before MISCHIEF-DF-47
+// any non-empty tag (aws:prod-db, "*", whitespace) was admitted; now
+// every unlisted value refuses with the tag named, and only the
+// documented sandbox tag passes. Proven RED against the old check by
+// these exact tags passing the old non-empty gate.
+func TestCheckScopeL5GateAllowlistMembership(t *testing.T) {
+	d := desc("P-004", 0, catalog.SelftestGreen)
+	refused := []string{"aws:prod-db", "prod-fleet-main-host", "*", "  ", "	", " aws:sandbox-lab"}
+	for _, tag := range refused {
+		err := CheckScope(d, Scope{Level: 5, AllowReal: true, Allowlisted: tag, SpendCapUSD: 5})
+		if err == nil {
+			t.Fatalf("L5 with unlisted tag %q succeeded, want the allowlist refusal (fail-closed)", tag)
+		}
+		ref := err.(*Refusal)
+		if ref.Reason != ReasonL5Gate {
+			t.Fatalf("tag %q: Reason=%q, want %q", tag, ref.Reason, ReasonL5Gate)
+		}
+		if !strings.Contains(err.Error(), "allowlist") {
+			t.Fatalf("refusal for tag %q must name the allowlist: %v", tag, err)
+		}
+		// the refusal names the offending tag (quoted, so blank/
+		// whitespace values are visible)
+		if !strings.Contains(err.Error(), strconv.Quote(tag)) {
+			t.Fatalf("refusal for tag %q must name the offending tag: %v", tag, err)
+		}
+		// the present legs (opt-in, cap) are NOT named
+		if strings.Contains(err.Error(), "--allow-real") || strings.Contains(err.Error(), "spend cap above zero") {
+			t.Fatalf("refusal for tag %q names a satisfied leg: %v", tag, err)
+		}
+	}
+	// the documented tag passes the same gate
+	if err := CheckScope(d, Scope{Level: 5, AllowReal: true, Allowlisted: "aws:sandbox-lab", SpendCapUSD: 5}); err != nil {
+		t.Fatalf("documented sandbox tag must pass the L5 gate: %v", err)
 	}
 }
 

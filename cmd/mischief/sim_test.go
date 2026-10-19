@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -130,6 +131,84 @@ func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
 	}
 	if strings.Contains(out, "is a v0.1 documented stub") {
 		t.Fatalf("partial triad must not print the stub-admission line:\n%s", out)
+	}
+}
+
+// TestSimVerbResourceTagAllowlist is the MISCHIEF-DF-47 command-level
+// contract: with the full triad, ONLY the documented allowlisted tag
+// (aws:sandbox-lab) reaches the real decision; aws:prod-db,
+// prod-fleet-main-host, whitespace and "*" each refuse, the output names
+// the offending tag AND the allowlist, and the run still lands in the
+// simulator (exit 0, faulted log entry — AC-17). Before this change the
+// gate admitted any non-empty tag; these refusals are the red proof at
+// the operator surface.
+func TestSimVerbResourceTagAllowlist(t *testing.T) {
+	admitted := []string{"aws:sandbox-lab"}
+	refused := []string{"aws:prod-db", "prod-fleet-main-host", "*", "   "}
+	for _, tag := range admitted {
+		log := filepath.Join(t.TempDir(), "sim-requests.log")
+		rc, out := captureStdout(t, func() int {
+			return cmdSim([]string{"--shape", "I-003", "--log", log,
+				"--allow-real", "--resource", tag, "--spend-cap", "5"})
+		})
+		if rc != 0 {
+			t.Fatalf("admitted tag %q: exit %d, want 0", tag, rc)
+		}
+		if !strings.Contains(out, "backend_sim: I-003: real") {
+			t.Fatalf("admitted tag %q lacks the real decision line:\n%s", tag, out)
+		}
+		if !strings.Contains(out, "ac17: real adapter is a v0.1 documented stub") {
+			t.Fatalf("admitted tag %q lacks the stub-admission line:\n%s", tag, out)
+		}
+		if strings.Contains(out, "not on the AC-17 allowlist") {
+			t.Fatalf("admitted tag %q must not be refused by the allowlist:\n%s", tag, out)
+		}
+	}
+	for _, tag := range refused {
+		log := filepath.Join(t.TempDir(), "sim-requests.log")
+		rc, out := captureStdout(t, func() int {
+			return cmdSim([]string{"--shape", "I-003", "--log", log,
+				"--allow-real", "--resource", tag, "--spend-cap", "5"})
+		})
+		if rc != 0 {
+			t.Fatalf("tag %q: exit %d, want 0 (the refusal lands in the sim)", tag, rc)
+		}
+		if !strings.Contains(out, "backend_sim: I-003: simulator:") {
+			t.Fatalf("tag %q lacks the simulator-decision refusal line:\n%s", tag, out)
+		}
+		// each branch of the allowlist source names itself: unlisted
+		// tags get "not on the AC-17 allowlist", blank/whitespace gets
+		// the blank-refusal phrasing — both name the allowlist and the
+		// offending value
+		wantReason := "not on the AC-17 allowlist"
+		if strings.TrimSpace(tag) == "" {
+			wantReason = "blank/whitespace is never allowlisted"
+		}
+		if !strings.Contains(out, wantReason) {
+			t.Fatalf("tag %q refusal must name the allowlist reason %q:\n%s", tag, wantReason, out)
+		}
+		// the refusal names the offending tag (quoted, so whitespace
+		// values are visible in operator output)
+		if !strings.Contains(out, strconv.Quote(tag)) {
+			t.Fatalf("tag %q refusal must name the offending tag:\n%s", tag, out)
+		}
+		if strings.Contains(out, "backend_sim: I-003: real") {
+			t.Fatalf("tag %q must not reach the real decision:\n%s", tag, out)
+		}
+		// the refusal STILL lands in the simulator with a faulted entry
+		entries, err := backend_sim.ReadRequestLog(log)
+		if err != nil {
+			t.Fatalf("tag %q: log read: %v", tag, err)
+		}
+		faulted := false
+		for _, e := range entries {
+			if e.Faulted {
+				faulted = true
+			}
+		}
+		if !faulted {
+			t.Fatalf("tag %q: refusal did not land in the sim (log %s has no faulted entry)", tag, log)
+		}
 	}
 }
 
