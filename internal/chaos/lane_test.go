@@ -394,7 +394,7 @@ func TestVerifyAgainstMismatch(t *testing.T) {
 func TestAppendRowsFilesAndReadsBack(t *testing.T) {
 	board := t.TempDir()
 	row := battery.Finding{
-		ID: "MSF-CHAOS-deadbeef", Status: "pending", Title: "t",
+		ID: "MSF-CHAOS-MISCHIEF-08EA0B3BCBB5", Status: "pending", Title: "t",
 		Priority: "P2", DependsOn: []string{}, Project: "mischief",
 		Reasoning: "filed by mischief-chaos",
 	}
@@ -412,7 +412,7 @@ func TestAppendRowsFilesAndReadsBack(t *testing.T) {
 	if err := battery.ValidateRows(b); err != nil {
 		t.Fatalf("board bytes do not validate: %v", err)
 	}
-	if !strings.Contains(string(b), "MSF-CHAOS-deadbeef") {
+	if !strings.Contains(string(b), "MSF-CHAOS-MISCHIEF-08EA0B3BCBB5") {
 		t.Errorf("row id missing from %s", path)
 	}
 }
@@ -422,7 +422,7 @@ func TestAppendRowsFilesAndReadsBack(t *testing.T) {
 func TestAppendRowsRefusesDuplicateID(t *testing.T) {
 	board := t.TempDir()
 	row := battery.Finding{
-		ID: "MSF-CHAOS-deadbeef", Status: "pending", Title: "t",
+		ID: "MSF-CHAOS-MISCHIEF-08EA0B3BCBB5", Status: "pending", Title: "t",
 		Priority: "P2", DependsOn: []string{}, Project: "mischief",
 	}
 	if _, _, err := AppendRows(board, []battery.Finding{row}); err != nil {
@@ -446,7 +446,7 @@ func TestAppendRowsRefusesDuplicateID(t *testing.T) {
 func TestAppendRowsRefusesBadVocabulary(t *testing.T) {
 	board := t.TempDir()
 	row := battery.Finding{
-		ID: "MSF-CHAOS-cafe", Status: "bogus", Title: "t",
+		ID: "MSF-CHAOS-MISCHIEF-D3CD17514917", Status: "bogus", Title: "t",
 		Priority: "P2", DependsOn: []string{}, Project: "mischief",
 	}
 	if _, n, err := AppendRows(board, []battery.Finding{row}); err == nil {
@@ -469,8 +469,20 @@ func TestNewFindingIDIsContentDerivedAndStable(t *testing.T) {
 	if a == c {
 		t.Error("different content, same id")
 	}
-	if !strings.HasPrefix(a, "MSF-CHAOS-") {
-		t.Errorf("id %q lacks the MSF-CHAOS- prefix", a)
+	// MISCHIEF-DF-43: the id must match the fleet board id regex
+	// (^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$) — uppercase throughout, no
+	// lowercase hex tail. Golden pinned byte-exact: the project is the
+	// readable token, title+reason ride the uppercase content hash.
+	const want = "MSF-CHAOS-MISCHIEF-08EA0B3BCBB5"
+	if a != want {
+		t.Errorf("NewFindingID = %q, want %q (format drift = board refusal)", a, want)
+	}
+	if !battery.ValidBoardID(a) {
+		t.Errorf("id %q fails the fleet board regex battery.ValidBoardID enforces", a)
+	}
+	// the pre-fix shape (lowercase hex, no project token) is refused
+	if battery.ValidBoardID("MSF-CHAOS-2dfb1056d701") {
+		t.Error("the old lowercase-hex chaos id shape passed the fleet regex")
 	}
 }
 

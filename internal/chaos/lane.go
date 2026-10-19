@@ -23,8 +23,6 @@
 package chaos
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -405,12 +403,24 @@ func VerifyAgainst(l *Lane, ev *BoardSymlink) error {
 // ── findings as rows (the no-operator filing path) ──────────────────────────
 
 // NewFindingID derives a content-addressed board row id for a chaos
-// finding: MSF-CHAOS-<hex(sha256(project\x1ftitle\x1treason))[:12]>. Same
-// finding content ⇒ same id, so a re-filed duplicate is caught by the
-// duplicate-id guard instead of duplicating.
+// finding, on the battery package's ONE id-format seam (the shared
+// NormalizeIDTokens / ContentHash primitives and the fleet-regex
+// self-check): MSF-CHAOS-<PROJECT>-<HEXTAIL(sha256(project\x1ftitle\x1f
+// reason))[:12]>, uppercase throughout. The project is the readable
+// token; title and reason ride the content hash (a whole title must not
+// become a token run). Same finding content ⇒ same id, so a re-filed
+// duplicate is caught by the duplicate-id guard instead of duplicating.
+// MISCHIEF-DF-43: the hex tail is uppercase and the project token is
+// normalized in, both required by the fleet board id regex
+// ^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$ that boardctl create/update enforce.
 func NewFindingID(project, title, reason string) string {
-	h := sha256.Sum256([]byte(project + "\x1f" + title + "\x1f" + reason))
-	return "MSF-CHAOS-" + hex.EncodeToString(h[:])[:12]
+	id := "MSF-CHAOS-" + battery.NormalizeIDTokens(project) + "-" + battery.ContentHash(project, title, reason)
+	if !battery.ValidBoardID(id) {
+		// Unreachable for non-empty inputs (the composition's shape is
+		// structurally valid); failed loudly rather than filed.
+		panic(fmt.Sprintf("chaos finding id %q fails the fleet board id format", id))
+	}
+	return id
 }
 
 // NewFinding builds one chaos finding as a board-vocabulary row (the

@@ -381,7 +381,7 @@ func TestFindingIDsAndProjects(t *testing.T) {
 		t.Fatalf("findings %d, want 1", len(res.Findings))
 	}
 	f := res.Findings[0]
-	if f.ID != "MSF-BAT-q7" || f.Project != "scratch" || f.LegacyCell != "chaos-shutdown" {
+	if f.ID != "MSF-BAT-SCRATCH-Q7-64185AAA7620" || f.Project != "scratch" || f.LegacyCell != "chaos-shutdown" {
 		t.Errorf("finding = %+v", f)
 	}
 }
