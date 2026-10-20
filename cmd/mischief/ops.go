@@ -71,8 +71,15 @@ func cmdInstall(args []string) int {
 	if plan.DryRun {
 		return 0
 	}
-	sums, err := plan.Execute()
+	sums, landed, err := plan.Execute()
 	if err != nil {
+		// MISCHIEF-DF-34: install aborts mid-list without rolling back —
+		// report what already landed (dirs created, files written,
+		// previous renders replaced) on the same stream the success
+		// lines use, then the failing step's error on stderr.
+		for _, line := range landed {
+			fmt.Println(line)
+		}
 		fmt.Fprintln(os.Stderr, "install:", err)
 		return 1
 	}
@@ -114,6 +121,13 @@ func cmdUninstall(args []string) int {
 	}
 	removed, err := plan.ExecuteUninstall()
 	if err != nil {
+		// MISCHIEF-DF-34: the partial removals are already on disk —
+		// report them (the same `removed <path>` lines the success path
+		// prints) before the failing step's error, so the half-state is
+		// visible.
+		for _, p := range removed {
+			fmt.Printf("removed %s\n", p)
+		}
 		fmt.Fprintln(os.Stderr, "uninstall:", err)
 		return 1
 	}

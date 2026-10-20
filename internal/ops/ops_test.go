@@ -177,7 +177,7 @@ func TestAuditConditionOKAfterInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	a, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
@@ -201,7 +201,7 @@ func TestAuditConditionDriftAndUnreadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	// drift: unlink+create with an extra grant line (0440 → editor path)
@@ -282,7 +282,7 @@ func TestInstallExecuteTempRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlanInstall: %v", err)
 	}
-	sums, err := p.Execute()
+	sums, _, err := p.Execute()
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestInstallExecuteTempRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-install plan: %v", err)
 	}
-	if _, err := p2.Execute(); err != nil {
+	if _, _, err := p2.Execute(); err != nil {
 		t.Fatalf("idempotent re-install: %v", err)
 	}
 	// uninstall removes everything, idempotently
@@ -379,7 +379,7 @@ func TestUninstallRefusesResiduePrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	// drop residue in the prefix
@@ -410,7 +410,7 @@ func TestAuditFreshInstallClean(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	a, err := RunAudit(AuditOpts{Prefix: "/var/lib/mischief"})
@@ -444,7 +444,7 @@ func TestAuditFreshInstallClean(t *testing.T) {
 func TestAuditDetectsDriftAndSetuid(t *testing.T) {
 	tempRoot(t)
 	p, _ := PlanInstall(InstallOpts{Prefix: "/var/lib/mischief"})
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	// drift: hand-edit the drop-in (remove-then-write: the 0440 file has
@@ -515,7 +515,7 @@ func TestPostureAbsentNamesMissingPiece(t *testing.T) {
 	}
 	// drift upgrades the reason
 	p, _ := PlanInstall(InstallOpts{})
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	hand := resolve(DefaultDropInPath)

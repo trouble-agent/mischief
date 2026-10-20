@@ -123,7 +123,7 @@ func TestAuditDriftExitsOneNamesCondition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	// drift: unlink+create with an extra line (the 0440 file has no write

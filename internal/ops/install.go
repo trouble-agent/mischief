@@ -345,57 +345,118 @@ func (e *InstallError) Error() string {
 	return fmt.Sprintf("install: %s: %s", e.Path, e.Reason)
 }
 
-// Execute applies the plan (unless DryRun) and returns the verification
-// snapshot: for every write, the sha256 of what is NOW on disk. A failed
-// action aborts the remaining list (order matters) and names the path.
-func (p *Plan) Execute() (map[string]string, error) {
+// Execute applies the plan (unless DryRun). It returns the verification
+// snapshot — for every write, the sha256 of what is NOW on disk — plus
+// landed, the per-step report: one line per artefact the run ACTUALLY
+// created, replaced, or removed, in execution order. Install is not
+// transactional: a failing action aborts the remaining list (order
+// matters) and names the path, and everything before it stays on disk —
+// landed is the operator-readable half-state (MISCHIEF-DF-34), the
+// answer to "what exists on disk right now because of this command?":
+//
+//	created <dir>   a directory this run made (the plan's mkdir actions
+//	                and the parent dir of a write; the named path is the
+//	                deepest one created — any missing ancestors above it
+//	                came into being too and are its path prefixes; a
+//	                pre-existing dir is never reported, so idempotent
+//	                re-installs report only what actually landed)
+//	removed <path>  a previous file this run took off disk (the
+//	                replace path: remove-then-write over a 0440
+//	                artefact — the old bytes are gone)
+//	wrote <path>    a file this run wrote
+//
+// Lines are greppable and share the verbs' vocabulary with uninstall's
+// success output (`removed <path>`).
+func (p *Plan) Execute() (map[string]string, []string, error) {
 	sums := map[string]string{}
+	var landed []string
 	if p.DryRun {
-		return sums, nil
+		return sums, nil, nil
 	}
 	for _, a := range p.Actions {
 		switch a.Kind {
 		case OpWriteDir:
-			if err := os.MkdirAll(resolve(a.Path), 0o755); err != nil {
-				return sums, fmt.Errorf("install: mkdir %s: %w", a.Path, err)
+			created, err := mkdirNew(resolve(a.Path))
+			if err != nil {
+				return sums, landed, fmt.Errorf("install: mkdir %s: %w", a.Path, err)
+			}
+			if created {
+				landed = append(landed, "created "+a.Path)
 			}
 		case OpWriteFile:
 			m, err := parseMode(a.Mode)
 			if err != nil {
-				return sums, err
+				return sums, landed, err
 			}
 			real := resolve(a.Path)
 			// The parent must exist for production too — on a real host,
 			// /etc/sudoers.d exists; on a bare root it does not. Install
 			// creates the parent (0755) so a plan carries no implicit
-			// ordering constraint on directories it did not name.
+			// ordering constraint on directories it did not name. A
+			// parent this run actually creates is part of the landed
+			// report (MISCHIEF-DF-34) exactly like a planned mkdir.
 			if dir := filepath.Dir(real); dir != "." && dir != "/" {
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					return sums, fmt.Errorf("install: mkdir %s: %w", dir, err)
+				created, err := mkdirNew(dir)
+				if err != nil {
+					return sums, landed, fmt.Errorf("install: mkdir %s: %w", dir, err)
+				}
+				if created {
+					landed = append(landed, "created "+filepath.Dir(a.Path))
 				}
 			}
 			// An existing file with no write bit (a 0440 drop-in from a
 			// previous install) cannot be truncated by os.WriteFile —
 			// os.Remove then write, atomically-shaped: the window is one
 			// unlink+create, identical to what visudo-driven editors do.
+			// The removal is reported: the operator must know the old
+			// bytes are gone even when the write that follows fails.
 			if _, statErr := os.Lstat(real); statErr == nil {
 				if err := os.Remove(real); err != nil {
-					return sums, fmt.Errorf("install: replace %s: %w", a.Path, err)
+					return sums, landed, fmt.Errorf("install: replace %s: %w", a.Path, err)
 				}
+				landed = append(landed, "removed "+a.Path)
 			} else if !os.IsNotExist(statErr) {
-				return sums, fmt.Errorf("install: stat %s: %w", a.Path, statErr)
+				return sums, landed, fmt.Errorf("install: stat %s: %w", a.Path, statErr)
 			}
 			if err := os.WriteFile(real, a.Bytes, m); err != nil {
-				return sums, fmt.Errorf("install: write %s: %w", a.Path, err)
+				return sums, landed, fmt.Errorf("install: write %s: %w", a.Path, err)
 			}
+			landed = append(landed, "wrote "+a.Path)
 			sums[a.Path] = sha256hex(a.Bytes)
 		case OpRemove, OpRemoveDir:
-			return sums, fmt.Errorf("install: plan carries a removal action — execute via uninstall/retention, not install")
+			return sums, landed, fmt.Errorf("install: plan carries a removal action — execute via uninstall/retention, not install")
 		default:
-			return sums, fmt.Errorf("install: unknown action kind %q", a.Kind)
+			return sums, landed, fmt.Errorf("install: unknown action kind %q", a.Kind)
 		}
 	}
-	return sums, nil
+	return sums, landed, nil
+}
+
+// mkdirNew runs MkdirAll and reports whether it created anything — the
+// fact the landed report carries. It walks the missing ancestors first so
+// an entirely pre-existing dir is never reported as created; a missing
+// ancestor (any depth) or an outright failure is exactly what MkdirAll
+// itself would act on. A non-dir sitting at an ancestor path fails the
+// walk (Lstat succeeds, MkdirAll refuses) — the error is the caller's.
+func mkdirNew(real string) (bool, error) {
+	missing := 0
+	for dir := real; ; {
+		if _, err := os.Lstat(dir); err == nil {
+			break
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+		missing++
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		return false, err
+	}
+	return missing > 0, nil
 }
 
 // PlanUninstall renders the uninstall plan: EVERY artefact install may

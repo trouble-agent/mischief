@@ -95,7 +95,7 @@ func TestInstallPlanAdvisoryNonRoot(t *testing.T) {
 		t.Fatalf("actions: %d, want 3", len(p.Actions))
 	}
 	// advisory does not block a writable-root execute
-	if _, err := p.Execute(); err != nil {
+	if _, _, err := p.Execute(); err != nil {
 		t.Fatalf("real-mode execute under a writable root: %v", err)
 	}
 }
