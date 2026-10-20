@@ -254,15 +254,23 @@ func protectedMatch(t Target) ProtectedKind {
 }
 
 // selectorNames reports whether the selector's canonical form or any
-// component equals name. Components are split on ":" and "/"; a name is
-// never matched inside a longer word (so "gateway-test" is NOT the gateway).
+// component names name. Components are split on ":" and "/"; a component
+// names the protected plane when the plane name is a substring of it, or
+// the component is a prefix of the plane name, so the fleet's real
+// control-plane names resolve to their plane ("hermes-gateway" → gateway,
+// "schedulerd" → scheduler, "hermes-memory-daemon" → memory-daemon)
+// instead of planning clean on an exact-token miss. The match deliberately
+// over-refuses on shared prefixes ("gateway-test" names the gateway too):
+// the rail's failure mode must be a named refusal, not a planned run on a
+// control plane — the explicit operator override (AC-7) is the release
+// valve.
 func selectorNames(sel, name string) bool {
 	if sel == "protected:"+name || sel == "protected="+name {
 		return true
 	}
 	fields := strings.FieldsFunc(sel, func(r rune) bool { return r == ':' || r == '/' })
 	for _, f := range fields {
-		if f == name {
+		if strings.Contains(f, name) || strings.HasPrefix(name, f) {
 			return true
 		}
 	}
