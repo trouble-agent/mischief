@@ -61,11 +61,17 @@ MISCHIEF_SANCTION=1 MISCHIEF_SANCTION_FILE=/tmp/mc-scratch/marker bin/mischief a
   --dir /tmp/mc-scratch/runs          # marker file must carry a reason line
 bin/mischief status --dir /tmp/mc-scratch/runs    # armed + ttl_remaining
 # LAND the fault yourself (arm writes the hold only; printf FAULTED > file, etc.)
-bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: reverts at TTL, health.json
-# ORDER MATTERS: arm BEFORE serve. A hold armed while serve is ALREADY running is
-# invisible to that daemon (MISCHIEF-DF-30): it is never reverted at TTL, the fault
-# stays landed, and health.json keeps reporting ok:true. Restart serve after arming
-# (boot reconcile folds the journal) or use the kill switch.
+bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: TTL fold + boot reconcile + health.json
+# ORDER NO LONGER MATTERS (MISCHIEF-DF-30 fixed; re-proven live 2026-10-20 on 337ebe5):
+# a hold armed while serve is ALREADY running IS folded and reverted at TTL — an arm
+# issued ~0.8s after serve start was reverted on the next fold tick. Do not restart serve
+# around every arm.
+# THE FOLD IS A ~5s TICK (measured; MISCHIEF-DF-59): the revert lands at declared-TTL + up
+# to one tick (+4.2s measured on BOTH a 5s and a 10s TTL) and can land ~0.7s EARLY (the
+# expiry clock truncates the arm timestamp to whole seconds). Never conclude "the watchdog
+# never reverted" from a window shorter than ttl + 5s — the product was right and the
+# window was wrong. `status` keeps showing the hold as `armed` with a NEGATIVE
+# ttl_remaining until the tick fires.
 bin/mischief revert --all --dir /tmp/mc-scratch/runs   # kill switch (AC-6, ms-scale)
 ```
 
@@ -183,17 +189,22 @@ sudo ip netns del mc-probe-ns                      # revert proven
   time; the whitelist fires only at revert, MISCHIEF-DF-29). Stick to the two
   kinds per decl above until DF-29 closes — an invented kind journals fine and
   grades `revert_failed` at expiry.
-- `serve`'s `boot_id` is the REVERTER's id (from the run dir's `boot.json`), not
-  the host's `/proc/sys/kernel/random/boot_id` — an arm record stamped with the
-  host id grades false-stuck on the same boot. The reverter id is itself
-  HOST-BOOT-scoped: it is reused across daemon restarts (identical in health.json
-  for three different `pid`s), so `daemon_boot` identifies the host generation,
-  not the daemon process — use `pid`/`started_at`/`generated_at` for freshness
-  (MISCHIEF-DF-32).
-- A long-running `serve` folds only the holds it loaded at boot (MISCHIEF-DF-30):
-  its revert loop and `health.json` never re-read the journal. Trust `status` and
-  `revert --all` (both fold fresh) over `health.json` when asking "is anything
-  armed past its TTL?".
+- `serve`'s `boot_id` (what `status` prints and what arm records carry) comes from the
+  run dir's `boot.json`, not the host's `/proc/sys/kernel/random/boot_id` — an arm record
+  stamped with the host id grades false-stuck on the same boot. That run-dir value is
+  **run-dir-scoped**: it stays constant across serve restarts (observed 2026-10-20:
+  `boot.json.reverter_boot` unchanged while three daemons started and died).
+  `health.json`'s `daemon_boot` is a DIFFERENT field and is **unique per serve process
+  start** since MISCHIEF-DF-32 was fixed (re-verified live 2026-10-20 on 337ebe5: three
+  consecutive `serve` starts → `5d387c00bc1afead`, `55e5526bb5b1b018`, `8038b874f5edd71f`),
+  so it is a usable freshness key for "has this daemon restarted". Host boot is
+  `boot.json.host_boot`.
+- A long-running `serve` NOW folds the holds it did not load at boot — MISCHIEF-DF-30 is
+  fixed and re-proven live 2026-10-20 (arms issued after the daemon started reverted at
+  TTL). The `boot_id` scope caveat in MISCHIEF-DF-30's own row text is therefore stale:
+  `status` and `revert --all` still fold fresh and remain the authoritative read, but
+  `health.json` is no longer blind to post-boot arms (its `holds`/`reverted` counters
+  tracked the arms in this run's probes).
 - The detached-owner route `arm` names in its write-ahead line ("serve (or
   Detach) reverts at TTL") is NOT reachable from any verb: `Lifecycle.Detach` and
   the `__owner` entry exist but no flag/subcommand calls them (MISCHIEF-DF-31).
@@ -209,6 +220,21 @@ sudo ip netns del mc-probe-ns                      # revert proven
 - `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
   `.holds|length` is 0; and a terminal hold keeps its arm-time `expiry` on the wire, so `expiry - now` is
   POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2). Gate on `.status`, never on the expiry.
+- **`arm` does NOT evaluate the protected-target rail (MISCHIEF-DF-58, verified live 2026-10-20).**
+  `arm --target process:scheduler` answers `armed <id> … rc=0` — no refusal, no advisory — writes the hold,
+  and `status --all` publishes it as a live hold, while `plan` on the same protected selector refuses rc=2
+  `protected_target`. `arm` is only documented as running the SPEC-13 sanction gate: if you arm a
+  control-plane component, the product did not check it for you.
+- The protected-target refusal names a remediation that does not exist (MISCHIEF-DF-57): *"an operator may
+  pass the explicit override flag, and the run then records it in the journal"* — no verb ships such a flag
+  (`plan`: `-catalog-dir -f -journal-dir -json -plan-only-sanction-skip -scratch-dir`; `arm`: `-catalog-dir
+  -check-kind -check-params -dir -fault -inverse-kind -inverse-params -target -ttl`) and no doc names one.
+  A protected target is therefore not faultable at all in v0.1, despite the message.
+- An **absent** run dir reads as a clean sweep (MISCHIEF-DF-60): `revert --all --dir <nonexistent>` prints
+  `kill switch: 0 holds reverted, wall=0s` rc=0 and `status --dir <nonexistent>` prints `holds: 0` with a
+  freshly minted `boot_id` rc=0. Before trusting "0 holds reverted", confirm the run dir exists.
+- The torn-journal ladder below was measured on 2026-10-17; DF-39-R2 / DF-40 / DF-41 are all closed rows
+  now and the ladder has NOT been re-measured since. Re-probe before quoting it.
 
 ## Privileged lifecycle verbs (`install`, `uninstall`, `retention`) — apply-leg contract
 
