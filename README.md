@@ -226,6 +226,7 @@ kill switch.
 
 ```sh
 mkdir -p /tmp/mischief-scratch
+echo 'original' > /tmp/mischief-scratch/config.toml   # the file the fault will target — create it before backing it up
 cp /tmp/mischief-scratch/config.toml /tmp/mischief-scratch/config.toml.bak
 bin/mischief arm \
   --fault S-001 --target scratch:/tmp/mischief-scratch \
