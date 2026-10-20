@@ -34,6 +34,14 @@ var ErrNoOwner = errors.New("reverter: detached TTL owner could not be started")
 // error names the unreadable path; refusals precede the write-ahead line.
 var ErrInverseUnreadable = errors.New("reverter: arm: inverse restore-file backup is not readable")
 
+// ErrNotRetryable is RevertRetry's refusal when the hold is not in the ONE
+// state a retry exists for: a terminal measured revert_failed (MISCHIEF-
+// DF-52). A live (armed/stuck) hold belongs to the plain revert path, and a
+// hold already measured `reverted` has nothing left to undo — appending a
+// second proof for it would be a fabricated revert. The error names the
+// status; nothing is written.
+var ErrNotRetryable = errors.New("reverter: --retry requires a hold whose status is revert_failed")
+
 // Lifecycle is the reverter API: arm → land → (hold) → measured revert, with
 // TTL ownership and the kill switch. All methods are safe for concurrent
 // use; all durable state is the journal.
@@ -198,7 +206,10 @@ func (l *Lifecycle) Land(holdID string) error {
 // measured detail, NEVER "reverted". The reason names why the revert ran
 // (ttl_expiry / kill_switch / direct). A selector with no live hold returns
 // ErrNoHold and writes nothing (a revert of nothing is reported, not
-// swallowed).
+// swallowed). A hold that is already terminal is refused here — for a
+// terminal revert_failed hold the refusal names the retry entry point
+// (RevertRetry, the `revert --retry` flag), which is the only path allowed
+// to re-execute a recorded inverse on a terminal hold.
 func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role) (Proof, error) {
 	if !role.Valid() {
 		return Proof{}, fmt.Errorf("reverter: revert: role %q is not in the closed vocabulary", role)
@@ -210,7 +221,8 @@ func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role
 		s.mu.Unlock()
 		return Proof{}, fmt.Errorf("%w: %s", ErrNoHold, holdID)
 	}
-	terminal := st.Status == StatusReverted || st.Status == StatusRevertFailed
+	status := st.Status
+	terminal := status == StatusReverted || status == StatusRevertFailed
 	arm := st.Arm
 	expiry := st.Expiry
 	s.mu.Unlock()
@@ -221,9 +233,68 @@ func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role
 	_ = expiry
 
 	if terminal {
-		return Proof{}, fmt.Errorf("%w: %s (already terminal: %s)", ErrNoHold, holdID, st.Status)
+		if status == StatusRevertFailed {
+			// MISCHIEF-DF-52: a failed measured revert is not a dead end.
+			// The fault may still be live, so the refusal names the retry
+			// entry point (the CLI spells it --retry) instead of only
+			// stating the terminal status.
+			return Proof{}, fmt.Errorf("%w: %s (already terminal: %s — re-run with --retry to re-execute the recorded inverse)", ErrNoHold, holdID, status)
+		}
+		return Proof{}, fmt.Errorf("%w: %s (already terminal: %s)", ErrNoHold, holdID, status)
 	}
 
+	return l.revertNow(holdID, arm, reason, role)
+}
+
+// RevertRetry re-executes the recorded inverse of a hold whose measured
+// revert is TERMINAL revert_failed (MISCHIEF-DF-52). The fault such a hold
+// names may still be live, so the honest recovery is another MEASURED
+// attempt rather than a permanent refusal — the retry runs the SAME
+// recorded inverse against the SAME check and is graded by the same AC-4
+// rule as any first attempt (a retry that does not measure as reverted
+// grades revert_failed again, loudly).
+//
+// The retry APPENDS a new revert_proof: the journal is append-only, so the
+// failed attempt and the retry's outcome are BOTH on the record and Status
+// folds the latest outcome into the hold's status. Evidence is never
+// rewritten, only added to.
+//
+// Admission is narrow on purpose — only a revert_failed hold — and every
+// other status is refused with ErrNotRetryable, naming the status, having
+// written nothing:
+//
+//   - armed / stuck: the hold is live; the plain revert path (no flag)
+//     reverts it, and a "retry" there would be a second revert of the same
+//     live fault under a misleading name;
+//   - reverted: the fault is already measured undone; a second proof would
+//     fabricate a revert that never happened.
+func (l *Lifecycle) RevertRetry(ctx context.Context, holdID, reason string, role Role) (Proof, error) {
+	if !role.Valid() {
+		return Proof{}, fmt.Errorf("reverter: revert: role %q is not in the closed vocabulary", role)
+	}
+	s := l.store
+	s.mu.Lock()
+	st, ok := s.holds[holdID]
+	if !ok {
+		s.mu.Unlock()
+		return Proof{}, fmt.Errorf("%w: %s", ErrNoHold, holdID)
+	}
+	status := st.Status
+	arm := st.Arm
+	s.mu.Unlock()
+	if status != StatusRevertFailed {
+		return Proof{}, fmt.Errorf("%w: %s (status is %s)", ErrNotRetryable, holdID, status)
+	}
+	return l.revertNow(holdID, arm, reason, role)
+}
+
+// revertNow is the execution core Revert and RevertRetry share: execute the
+// recorded inverse, MEASURE the check against the affected resource, append
+// the measured proof (AC-4). The two entry points differ ONLY in the hold
+// status they admit — never in how an outcome is measured or recorded, so a
+// proof appended by a retry is the same evidence a first attempt produces.
+func (l *Lifecycle) revertNow(holdID string, arm armPayload, reason string, role Role) (Proof, error) {
+	s := l.store
 	start := s.Now()
 	_, actionErr := l.exec.execAction(arm.Inverse.Kind, arm.Inverse)
 	detail, checkOK, checkErr := l.exec.evalCheck(arm.Check.Kind, arm.Check)

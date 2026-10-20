@@ -6,7 +6,9 @@
 //
 //	plan     — resolve an experiment, emit the plan, ZERO side effects (AC-1)
 //	status   — fold the run dir's journal: armed/held holds, stuck, proofs
-//	revert   — measured revert by --all / --hold selector (AC-4/AC-6)
+//	revert   — measured revert by --all / --hold selector (AC-4/AC-6);
+//	           --retry re-executes the recorded inverse of a terminal
+//	           revert_failed hold (one more measured attempt, AC-4 grading)
 //	doctor   — capability/tier ladder report, refuses nothing extra
 //	serve    — the reverter daemon: TTL ownership + boot reconcile + health.json
 //	arm      — write-ahead a reverter hold (fault + inverse/check decls + TTL;
@@ -147,7 +149,7 @@ Usage:
   mischief plan      -f <exp.yaml> [--json] [--scratch-dir D]
   mischief status    [--dir D]
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
-  mischief revert    (--all | --hold <id>) [--dir D]
+  mischief revert    (--all | --hold <id> [--retry]) [--dir D]
   mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
   mischief selftest  (--all | --primitive <id>) [--dir D] [--catalog-dir D]  (exit 0 only when green-or-skip — the M1 exit criterion)
   mischief serve     --dir D          (reverter daemon: TTLs + boot reconcile + health.json)
@@ -309,8 +311,21 @@ func cmdRevert(args []string) int {
 	dir := fs.String("dir", defaultRunDir(), "run dir (journal home)")
 	all := fs.Bool("all", false, "kill switch: revert every live or stuck hold (AC-6)")
 	hold := fs.String("hold", "", "revert one hold by id")
+	// MISCHIEF-DF-52: a terminal revert_failed hold is NOT a dead end. The
+	// retry re-executes the recorded inverse as one more MEASURED attempt
+	// (same inverse, same check, same AC-4 grading) and appends a new proof,
+	// so the failed attempt and the retry's outcome both stay on the record.
+	retry := fs.Bool("retry", false, "re-execute the recorded inverse of a terminal revert_failed hold (requires --hold; exit 0 only if the retry measures reverted)")
 	if err := fs.Parse(args); err != nil {
 		return verbParseExit(err)
+	}
+	if *retry && *all {
+		fmt.Fprintln(os.Stderr, "revert: --retry and --all are mutually exclusive (--retry re-executes ONE hold's recorded inverse)")
+		return 2
+	}
+	if *retry && *hold == "" {
+		fmt.Fprintln(os.Stderr, "revert: --retry requires --hold <id>")
+		return 2
 	}
 	if !*all && *hold == "" {
 		fmt.Fprintln(os.Stderr, "revert: --all or --hold <id> is required (reverting nothing is a report, not a pass)")
@@ -353,12 +368,25 @@ func cmdRevert(args []string) int {
 		fmt.Printf("kill switch: %d holds reverted, wall=%s (AC-6 budget 2s)\n", len(proofs), wall.Round(time.Millisecond))
 		return 0
 	}
-	pr, err := lf.Revert(ctx, *hold, "direct", reverter.RoleAPI)
+	// The retry is the ONLY path that admits a terminal revert_failed hold
+	// (Revert refuses it and points at this flag); the plain path is
+	// unchanged, including its `direct` reason on the proof. A retry proof
+	// carries reason=retry, so the journal distinguishes the two attempts.
+	var pr reverter.Proof
+	if *retry {
+		pr, err = lf.RevertRetry(ctx, *hold, "retry", reverter.RoleAPI)
+	} else {
+		pr, err = lf.Revert(ctx, *hold, "direct", reverter.RoleAPI)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "revert:", err)
 		return 1
 	}
-	fmt.Printf("reverted %-16s outcome=%s detail=%s duration=%s\n", pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
+	if *retry {
+		fmt.Printf("retried %-16s outcome=%s detail=%s duration=%s\n", pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
+	} else {
+		fmt.Printf("reverted %-16s outcome=%s detail=%s duration=%s\n", pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
+	}
 	if pr.Outcome != reverter.OutcomeReverted {
 		return 1
 	}
