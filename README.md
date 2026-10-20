@@ -82,7 +82,7 @@ Then check the install:
 
 ```sh
 mischief version   # mischief v0.1.0 (a release stamps the tag; `make bin` stamps the git sha)
-mischief status    # folds the run dir's journal: armed/held holds, stuck, proofs
+mischief status    # folds the run dir's journal: armed/stuck holds + TTL remaining, proofs
 mischief doctor    # capability/tier ladder report (see the catalog note below)
 ```
 
