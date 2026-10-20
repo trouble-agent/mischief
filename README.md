@@ -210,6 +210,7 @@ contract:
 | exit | `condition` | meaning |
 |---|---|---|
 | 0 | `not_installed` | drop-in simply absent — a healthy pre-install state, not drift |
+| 0 | `manifest_only` | manifest installed (`mischief install --no-drop-in`), drop-in absent — the drop-in write needs root; complete with `sudo mischief install` |
 | 0 | `ok` | installed and byte-identical to the canonical verb table |
 | 1 | `drift` | present but divergent (hand-edited or stale) — regenerate with `mischief install` |
 | 1 | `unreadable` | present but unmeasurable — investigate access/permissions |
@@ -218,7 +219,10 @@ A setuid binary under the prefix is reported as a finding at any condition (the
 design ships none) and also exits 1. `audit --json` carries the same facts —
 including `condition` — for an operator diff; an uninstalled host is a normal
 `not_installed` result, so tooling can distinguish "nothing here yet" (exit 0)
-from "someone changed what is here" (exit 1).
+from "someone changed what is here" (exit 1). A manifest-only install
+(`mischief install --no-drop-in` — the mode available without root) reports
+`manifest_only` (MISCHIEF-DF-35), so tooling can equally tell it apart from a
+never-installed host.
 
 ## The loop
 

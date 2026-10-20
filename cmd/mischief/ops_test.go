@@ -110,6 +110,45 @@ func TestAuditUninstalledTextExitsZero(t *testing.T) {
 	}
 }
 
+// TestAuditManifestOnlyExitsZeroDistinctToken (MISCHIEF-DF-35): drive the
+// REAL unprivileged install mode the dogfood used — `install --no-drop-in`
+// through the CLI — then audit. The manifest-only install must grade its
+// own `manifest_only` condition (exit 0, still healthy) in BOTH output
+// forms, distinguishable from a never-installed host's `not_installed`.
+func TestAuditManifestOnlyExitsZeroDistinctToken(t *testing.T) {
+	root := t.TempDir()
+	saved := ops.Root
+	ops.Root = root
+	t.Cleanup(func() { ops.Root = saved })
+
+	icode, iout := captureStdout(t, func() int { return run([]string{"install", "--no-drop-in"}) })
+	if icode != 0 {
+		t.Fatalf("manifest-only install exit: %d, want 0 (out=%s)", icode, iout)
+	}
+	// JSON form: the distinct token, exit 0, manifest facts carried
+	code, out := captureStdout(t, func() int { return run([]string{"audit", "--json"}) })
+	if code != 0 {
+		t.Fatalf("manifest-only JSON audit exit: %d, want 0 (healthy)", code)
+	}
+	if !strings.Contains(out, `"condition": "manifest_only"`) {
+		t.Fatalf("manifest-only JSON audit does not carry the manifest_only condition: %s", out)
+	}
+	if !strings.Contains(out, `"helper_manifest_installed": true`) {
+		t.Fatalf("manifest-only JSON audit does not report the installed manifest: %s", out)
+	}
+	// text form: the same verdict
+	code, out = captureStdout(t, func() int { return run([]string{"audit"}) })
+	if code != 0 {
+		t.Fatalf("manifest-only text audit exit: %d, want 0 (healthy)", code)
+	}
+	if !strings.Contains(out, "condition: manifest_only") {
+		t.Fatalf("manifest-only text audit does not name the manifest_only condition: %s", out)
+	}
+	if !strings.Contains(out, "helper manifest: "+filepath.Join(ops.DefaultPrefix, "helper-manifest.json")+" installed=true") {
+		t.Fatalf("manifest-only text audit does not report the installed manifest: %s", out)
+	}
+}
+
 // TestAuditDriftExitsOneNamesCondition: install, then hand-edit the
 // drop-in — present-but-divergent IS drift: exit 1, condition named.
 // (MISCHIEF-DF-16 reserves exit 1 for this arm.)

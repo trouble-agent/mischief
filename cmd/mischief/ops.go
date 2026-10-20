@@ -156,9 +156,12 @@ func cmdAudit(args []string) int {
 	// — drift (drop-in diverges from the canonical render), a drop-in that
 	// exists but cannot be measured, and setuid binaries in the prefix.
 	// A simply-absent drop-in is a healthy pre-install state: the audit
-	// reports it as `condition: not_installed` and exits 0. Both output
-	// forms carry the same verdict (the JSON is a surface, not a separate
-	// policy).
+	// reports it as `condition: not_installed` and exits 0. A manifest-only
+	// install (MISCHIEF-DF-35: manifest landed via `install --no-drop-in`,
+	// drop-in absent because its write needs root) is its own still-healthy
+	// condition `manifest_only` — exit 0 like not_installed, but a distinct
+	// token so tooling can tell the two apart. Both output forms carry the
+	// same verdict (the JSON is a surface, not a separate policy).
 	verdict := 0
 	if a.Condition == ops.ConditionDrift || a.Condition == ops.ConditionUnreadable || len(a.SetuidBinaries) > 0 {
 		verdict = 1

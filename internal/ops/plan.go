@@ -177,7 +177,10 @@ type Audit struct {
 	// pre-install state, NEVER drift), "ok" (present, byte-identical),
 	// "drift" (present, divergent from the canonical render), or
 	// "unreadable" (present but unmeasurable — the one absence-shaped
-	// state that IS a finding). Empty only when unset by older callers.
+	// state that IS a finding). MISCHIEF-DF-35 adds "manifest_only"
+	// (drop-in absent but the helper manifest IS installed — a real
+	// `mischief install --no-drop-in` landed, still healthy, exit 0).
+	// Empty only when unset by older callers.
 	Condition string `json:"condition,omitempty"`
 	// HelperManifestPath is where the manifest is expected.
 	HelperManifestPath string `json:"helper_manifest_path"`

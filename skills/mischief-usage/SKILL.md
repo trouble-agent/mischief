@@ -235,9 +235,11 @@ Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-
   leaving the freshly `mkdir`ed prefix dir behind. `--no-drop-in` is the
   unprivileged path and it really does install the manifest (the README calls it
   a "manifest-only plan" — it is not one).
-- After a manifest-only install, `audit` still reports `condition: not_installed`
-  while its own output says the manifest is installed and matching (DF-35): do
-  not key a script on that condition, and expect `audit` to be exit 0 either way.
+- After a manifest-only install, `audit` grades `condition: manifest_only`
+  (DF-35 fixed: previously it wrongly reported `not_installed`) — still exit 0
+  (healthy: the drop-in write needs root), but a distinct token a script can
+  key on to tell "manifest landed, drop-in pending" from a never-installed
+  host.
 
 ## Driving the RELEASED artifact (README Option A) — verified on a fresh agent 2026-10-16
 

@@ -243,6 +243,61 @@ func TestAuditConditionDriftAndUnreadable(t *testing.T) {
 	}
 }
 
+// TestAuditConditionManifestOnly: a real `install --no-drop-in` lands the
+// helper manifest but not the drop-in (MISCHIEF-DF-35) — the audit must
+// grade this manifest-only install as its own condition, NOT not_installed
+// (which erases a landed install) and never drift (nothing diverged).
+func TestAuditConditionManifestOnly(t *testing.T) {
+	tempRoot(t)
+	p, err := PlanInstall(InstallOpts{Prefix: DefaultPrefix, SkipDropIn: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := p.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Condition != ConditionManifestOnly {
+		t.Fatalf("manifest-only install condition: %q, want %q (diff=%s)", a.Condition, ConditionManifestOnly, a.DropInDiff)
+	}
+	// posture must stay honest: manifest IS installed and matching, the
+	// drop-in is absent and matches nothing
+	if !a.HelperManifestInstalled || !a.HelperManifestMatches {
+		t.Fatalf("manifest-only posture wrong: manifest_installed=%v matches=%v", a.HelperManifestInstalled, a.HelperManifestMatches)
+	}
+	if a.DropInInstalled || a.DropInMatches {
+		t.Fatalf("manifest-only posture wrong: drop-in reported installed=%v matches=%v", a.DropInInstalled, a.DropInMatches)
+	}
+	// the note must NOT say "nothing installed" — something IS installed
+	for _, n := range a.Notes {
+		if strings.Contains(n, "nothing installed") {
+			t.Fatalf("manifest-only audit carries the pre-install note: %q", n)
+		}
+	}
+	if !strings.Contains(a.DropInDiff, "manifest-only install") {
+		t.Fatalf("manifest-only diff line does not name the state: %q", a.DropInDiff)
+	}
+	if !strings.Contains(string(RenderAuditJSON(a)), `"condition": "`+ConditionManifestOnly+`"`) {
+		t.Fatal("audit JSON does not carry the manifest_only condition token")
+	}
+	// discriminating arm: the empty host STILL grades not_installed — the
+	// new token never shadows the healthy pre-install state
+	tempRoot(t)
+	a2, err := RunAudit(AuditOpts{Prefix: DefaultPrefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a2.Condition != ConditionUninstalled {
+		t.Fatalf("empty-host condition regressed: %q, want %q", a2.Condition, ConditionUninstalled)
+	}
+	if a2.HelperManifestInstalled {
+		t.Fatalf("empty host reported a manifest: %+v", a2)
+	}
+}
+
 func TestInstallPlanOrderAndModes(t *testing.T) {
 	tempRoot(t)
 	opts := InstallOpts{Prefix: "/var/lib/mischief"}

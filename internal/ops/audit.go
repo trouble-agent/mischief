@@ -54,7 +54,23 @@ func RunAudit(opts AuditOpts) (*Audit, error) {
 	}
 	_ = manifest
 
-	// 1. drop-in: installed? matches? — and the MISCHIEF-DF-16 install
+	// 1. helper manifest: measured FIRST so the drop-in grade below can
+	// classify a manifest-only install (MISCHIEF-DF-35) instead of calling
+	// it not_installed. (The manifest is advisory context for every other
+	// grade — the drop-in is still the graded artefact.)
+	mraw, err := os.ReadFile(resolve(a.HelperManifestPath))
+	switch {
+	case err == nil:
+		a.HelperManifestInstalled = true
+		a.HelperManifestMatches = string(mraw) == string(manifest)
+	case os.IsNotExist(err):
+		a.HelperManifestInstalled = false
+	default:
+		a.HelperManifestInstalled = false
+		a.Notes = append(a.Notes, fmt.Sprintf("helper manifest unreadable: %v", err))
+	}
+
+	// 2. drop-in: installed? matches? — and the MISCHIEF-DF-16 install
 	// condition: the drop-in is the graded artefact, so its state is
 	// classified right here (the helper manifest is advisory context).
 	// Absent = healthy pre-install, NEVER drift; drift and unreadable
@@ -72,25 +88,24 @@ func RunAudit(opts AuditOpts) (*Audit, error) {
 		}
 	case os.IsNotExist(err):
 		a.DropInInstalled = false
-		a.Condition = ConditionUninstalled
-		a.DropInDiff = "drop-in not installed (expected at " + a.DropInPath + ")"
+		if a.HelperManifestInstalled {
+			// MISCHIEF-DF-35: the manifest-only install (the ONE
+			// install mode an unprivileged operator can run —
+			// `mischief install --no-drop-in`) is a real, landed
+			// state, not a pre-install one. Grading it as
+			// not_installed erases it: the operator cannot tell
+			// "nothing here yet" from "manifest landed, drop-in
+			// absent by design". Grade it its own condition.
+			a.Condition = ConditionManifestOnly
+			a.DropInDiff = "drop-in not installed (manifest-only install at " + a.HelperManifestPath + "; the drop-in write needs root)"
+		} else {
+			a.Condition = ConditionUninstalled
+			a.DropInDiff = "drop-in not installed (expected at " + a.DropInPath + ")"
+		}
 	default:
 		a.DropInInstalled = false
 		a.Condition = ConditionUnreadable
 		a.DropInDiff = fmt.Sprintf("drop-in unreadable: %v", err)
-	}
-
-	// 2. helper manifest
-	mraw, err := os.ReadFile(resolve(a.HelperManifestPath))
-	switch {
-	case err == nil:
-		a.HelperManifestInstalled = true
-		a.HelperManifestMatches = string(mraw) == string(manifest)
-	case os.IsNotExist(err):
-		a.HelperManifestInstalled = false
-	default:
-		a.HelperManifestInstalled = false
-		a.Notes = append(a.Notes, fmt.Sprintf("helper manifest unreadable: %v", err))
 	}
 
 	// 3. setuid sweep over the prefix
@@ -165,6 +180,11 @@ const (
 	ConditionOK          = "ok"
 	ConditionDrift       = "drift"
 	ConditionUnreadable  = "unreadable"
+	// MISCHIEF-DF-35: the manifest landed (a real `mischief install
+	// --no-drop-in` — the ONE install mode an unprivileged operator can
+	// run) but the drop-in is absent (its write needs root). A distinct,
+	// still-healthy state: not a pre-install host, not drift.
+	ConditionManifestOnly = "manifest_only"
 )
 
 // RenderAuditJSON renders the audit as indented JSON for an operator diff.
