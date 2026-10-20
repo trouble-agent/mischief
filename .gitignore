@@ -4,6 +4,9 @@ dist/
 *.so
 *.o
 
+# `go build ./...` drops the compiled binary at the repo root
+/mischief
+
 # goreleaser release workflow drops the binary in the repo root (release.yml)
 /goreleaser
 
