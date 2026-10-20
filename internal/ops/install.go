@@ -404,10 +404,12 @@ func (p *Plan) Execute() (map[string]string, error) {
 // brief: "uninstall removes EVERY artefact including the drop-in and
 // journals per retention policy").
 //
-// Policy: run dirs older/newer than the retention window are REMOVED;
-// within-window dirs are KEPT (the evidence stays auditable for the
-// window). RetainAll=true (retention policy "keep") skips journal removal
-// entirely.
+// Policy: run dirs older/newer than the retention window are REMOVED
+// recursively (OpRemoveTree — a real run dir holds journal files, so the
+// plain file removal died ENOTEMPTY here while `retention` applied the
+// identical policy successfully; MISCHIEF-DF-33); within-window dirs are
+// KEPT (the evidence stays auditable for the window). RetainAll=true
+// (retention policy "keep") skips journal removal entirely.
 func PlanUninstall(opts InstallOpts, runsDir string, pol RetentionPolicy) (*Plan, error) {
 	opts.defaults()
 	p := &Plan{Op: "uninstall", DryRun: opts.DryRun}
@@ -422,7 +424,9 @@ func PlanUninstall(opts InstallOpts, runsDir string, pol RetentionPolicy) (*Plan
 		Reason: "privileged helper manifest",
 	})
 	// Journals per retention policy: remove only the dirs the policy
-	// expires (never blanket-delete the evidence).
+	// expires (never blanket-delete the evidence). The dirs arrive as
+	// OpRemoveTree from PlanRetention — the same plan shape ExecuteRetention
+	// applies, so both verbs rotate identically.
 	if runsDir != "" && pol.ApplyOnUninstall {
 		exp, err := PlanRetention(runsDir, pol)
 		if err != nil {
@@ -445,7 +449,10 @@ func PlanUninstall(opts InstallOpts, runsDir string, pol RetentionPolicy) (*Plan
 // ExecuteUninstall applies an uninstall plan. Removals are
 // existence-guarded HERE (not only in the plan): uninstall is idempotent —
 // an absent artefact is success, a failed removal is an error naming the
-// path. rmdir on the prefix refuses non-empty (residue is operator data).
+// path. File-shaped actions remove one file; OpRemoveTree removes a run
+// dir recursively (a populated run dir is exactly what plain rmdir-style
+// removal cannot eat); OpRemoveDir on the prefix refuses non-empty
+// (residue is operator data).
 func (p *Plan) ExecuteUninstall() ([]string, error) {
 	var removed []string
 	if p.DryRun {
@@ -463,6 +470,25 @@ func (p *Plan) ExecuteUninstall() ([]string, error) {
 			}
 			if err := os.Remove(real); err != nil {
 				return removed, fmt.Errorf("uninstall: remove %s: %w", a.Path, err)
+			}
+			removed = append(removed, a.Path)
+		case OpRemoveTree:
+			// Confinement guard (mirrors ExecuteRetention): a tree
+			// removal must be a DIRECT child of the runs dir the plan
+			// was rendered against, never an arbitrary path.
+			cleanRoot := filepath.Clean(resolve(a.runsDir))
+			target := filepath.Clean(real)
+			if filepath.Dir(target) != cleanRoot || target == cleanRoot {
+				return removed, fmt.Errorf("uninstall: refusing %s (not a direct child of %s)", a.Path, a.runsDir)
+			}
+			if _, err := os.Lstat(target); err != nil {
+				if os.IsNotExist(err) {
+					continue // idempotent
+				}
+				return removed, fmt.Errorf("uninstall: stat %s: %w", a.Path, err)
+			}
+			if err := os.RemoveAll(target); err != nil {
+				return removed, fmt.Errorf("uninstall: remove-tree %s: %w", a.Path, err)
 			}
 			removed = append(removed, a.Path)
 		case OpRemoveDir:

@@ -145,9 +145,13 @@ func PlanRetention(runsDir string, pol RetentionPolicy) (*Plan, error) {
 	for _, d := range expired {
 		// A run dir is removed recursively (it holds the journal files);
 		// the plan carries the DIR as one action and execution walks it.
+		// Kind is OpRemoveTree: a run dir is a directory WITH CONTENT, so
+		// the file-shaped OpRemove (plain os.Remove) dies ENOTEMPTY on
+		// real data — the exact bug uninstall shipped (MISCHIEF-DF-33).
 		p.Actions = append(p.Actions, Action{
-			Kind: OpRemove, Path: filepath.Join(runsDir, d.Name),
+			Kind: OpRemoveTree, Path: filepath.Join(runsDir, d.Name),
 			Reason: fmt.Sprintf("run dir expired (mtime %s beyond policy keep %d dirs / %s)", d.ModTime.UTC().Format(time.RFC3339), pol.KeepCount, pol.KeepAge),
+			runsDir: runsDir,
 		})
 	}
 	return p, nil
@@ -163,8 +167,11 @@ func ExecuteRetention(runsDir string, p *Plan) ([]string, error) {
 	}
 	cleanRoot := filepath.Clean(resolve(runsDir))
 	for _, a := range p.Actions {
-		if a.Kind != OpRemove {
-			return removed, fmt.Errorf("retention: unexpected action kind %q", a.Kind)
+		// The old plan shape (OpRemove on run dirs) is refused here: this
+		// executor is recursive-only, and a file-kind action silently
+		// under-removes a populated run dir (ENOTEMPTY on real data).
+		if a.Kind != OpRemoveTree {
+			return removed, fmt.Errorf("retention: unexpected action kind %q (run-dir removals are %q — re-render the plan)", a.Kind, OpRemoveTree)
 		}
 		real := filepath.Clean(resolve(a.Path))
 		// Confinement guard: the target must be a DIRECT child of the
