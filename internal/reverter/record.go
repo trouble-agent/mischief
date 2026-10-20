@@ -124,10 +124,44 @@ func (d Decl) declText() string {
 	return canonicalJoin(parts...)
 }
 
-// inverseKinds and checkKinds are the closed vocabulary declared in the README
-// and enforced by the exec path. Decl.Validate enforces the same set at arm
-// time so a write-ahead record cannot be booked whose undo can only grade
-// revert_failed (SPEC-04, DF-29).
+// Slot names the role a Decl plays inside a hold: the write-ahead inverse
+// (the undo) or the measured post-revert check. The inverse and check
+// vocabularies are DISJOINT (DF-29-R2): a kind from the wrong slot arms a
+// hold whose undo or measurement can only grade revert_failed, so slot-aware
+// validation (ValidateFor) checks each Decl against ITS slot's set only.
+type Slot string
+
+const (
+	// SlotInverse: the write-ahead undo (restore-file, remove-file).
+	SlotInverse Slot = "inverse"
+	// SlotCheck: the measured post-revert probe (file-matches-backup,
+	// file-absent).
+	SlotCheck Slot = "check"
+)
+
+// kinds returns the slot's closed vocabulary.
+func (s Slot) kinds() map[string]struct{} {
+	if s == SlotInverse {
+		return InverseKinds
+	}
+	return CheckKinds
+}
+
+// other returns the opposite slot (cross-slot refusals name it as the slot
+// the kind actually belongs to).
+func (s Slot) other() Slot {
+	if s == SlotInverse {
+		return SlotCheck
+	}
+	return SlotInverse
+}
+
+// inverseKinds and checkKinds are the closed, DISJOINT vocabularies declared
+// in the README and enforced by the exec path (exec.go dispatches inverse
+// kinds in execAction, check kinds in evalCheck — a kind outside a slot's
+// set fails closed there). ValidateFor enforces the same per-slot sets at
+// arm time so a write-ahead record cannot be booked whose undo or check can
+// only grade revert_failed (SPEC-04, DF-29, DF-29-R2).
 var (
 	InverseKinds = map[string]struct{}{
 		"restore-file": {},
@@ -139,24 +173,30 @@ var (
 	}
 )
 
-// Validate checks a Decl's invariants: a kind (against the closed vocabulary),
-// and no empty param keys or values (an empty path is how a "restore" that
-// touches nothing would pass). An unknown kind fails closed: the arm path
-// refuses immediately rather than booking a hold whose undo can only grade
+// ValidateFor checks a Decl's invariants for ONE slot: a kind (against that
+// slot's closed vocabulary ONLY — a kind belonging to the other slot is
+// refused with the wrong slot named, so an arm cannot book a hold whose undo
+// is a check kind or whose check is an inverse kind; DF-29-R2), and no empty
+// param keys or values (an empty path is how a "restore" that touches
+// nothing would pass). An unknown kind fails closed: the arm path refuses
+// immediately rather than booking a hold whose undo can only grade
 // revert_failed at TTL (DF-29).
-func (d Decl) Validate() error {
+func (d Decl) ValidateFor(slot Slot) error {
 	if d.Kind == "" {
 		return fmt.Errorf("kind: missing")
 	}
-	// Is this an inverse kind?
-	if _, inv := InverseKinds[d.Kind]; inv {
-		// valid inverse
-	} else if _, chk := CheckKinds[d.Kind]; chk {
-		// valid check
-	} else {
-		// unknown kind — refuse at arm time, fail closed
-		return fmt.Errorf("inverse kind %q: unknown (refusing to execute)", d.Kind)
+	if _, ok := slot.kinds()[d.Kind]; ok {
+		return d.validateParams()
 	}
+	if _, elsewhere := slot.other().kinds()[d.Kind]; elsewhere {
+		return fmt.Errorf("kind %q belongs in the %s slot, not the %s slot (refusing)", d.Kind, slot.other(), slot)
+	}
+	return fmt.Errorf("%s kind %q: unknown (refusing to execute)", slot, d.Kind)
+}
+
+// validateParams rejects empty param keys or values (an empty path is how a
+// "restore" that touches nothing would pass).
+func (d Decl) validateParams() error {
 	for k, v := range d.Params {
 		if k == "" {
 			return fmt.Errorf("params: empty key")
@@ -199,10 +239,10 @@ func (h *Hold) Validate() error {
 	if h.Target == "" {
 		return fmt.Errorf("target: missing")
 	}
-	if err := h.Inverse.Validate(); err != nil {
+	if err := h.Inverse.ValidateFor(SlotInverse); err != nil {
 		return fmt.Errorf("inverse: %w", err)
 	}
-	if err := h.Check.Validate(); err != nil {
+	if err := h.Check.ValidateFor(SlotCheck); err != nil {
 		return fmt.Errorf("check: %w", err)
 	}
 	if h.TTL <= 0 {
