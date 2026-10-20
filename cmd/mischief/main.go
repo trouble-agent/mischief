@@ -180,6 +180,20 @@ func defaultRunDir() string {
 // cmdPlan, renderPlan and the --journal-dir preview record live in plan.go
 // (one verb per file: the ops.go / selftest.go / arm.go convention).
 
+// runDirAbsent reports whether a run dir path does not exist. The CLI
+// checks this BEFORE reverter.Open because Open is a CREATING open: it
+// MkdirAlls the dir and mints a boot.json identity on first open, so an
+// absent --dir used to answer with invented clean state — a minted
+// boot_id over holds: 0 / proofs: 0, and a kill-switch sweep of zero
+// holds graded green (MISCHIEF-DF-60: a typo'd or rotated run dir was
+// indistinguishable from a verified-clean kill switch). Only the
+// IsNotExist case is decided here: a present dir (empty or not) and any
+// other stat error keep the store's own handling.
+func runDirAbsent(dir string) bool {
+	_, err := os.Stat(dir)
+	return os.IsNotExist(err)
+}
+
 // ── status ───────────────────────────────────────────────────────────────────
 
 func cmdStatus(args []string) int {
@@ -195,6 +209,15 @@ func cmdStatus(args []string) int {
 	all := fs.Bool("all", false, "include terminal holds (reverted / revert_failed) in the listing")
 	if err := fs.Parse(args); err != nil {
 		return verbParseExit(err)
+	}
+	// MISCHIEF-DF-60: an absent run dir is a state, not a count. The
+	// creating Open would mint a boot.json and answer holds: 0 / proofs: 0
+	// over an invented boot_id — a typo'd --dir indistinguishable from a
+	// verified-clean run dir. Name the state instead and refuse.
+	if runDirAbsent(*dir) {
+		fmt.Printf("run_dir: %s\n", *dir)
+		fmt.Println("state: absent")
+		return 1
 	}
 	store, err := reverter.Open(*dir)
 	if err != nil {
@@ -272,6 +295,15 @@ func cmdRevert(args []string) int {
 	if *all && *hold != "" {
 		fmt.Fprintln(os.Stderr, "revert: --all and --hold are mutually exclusive")
 		return 2
+	}
+	// MISCHIEF-DF-60: the kill switch must not grade a directory that is
+	// not there as a verified-clean sweep. The creating Open would MkdirAll
+	// the absent path, sweep zero holds and print the green summary; name
+	// the absent state on stderr instead and refuse (no `kill switch:`
+	// line on stdout, nothing created). Mirrors status's absent refusal.
+	if runDirAbsent(*dir) {
+		fmt.Fprintf(os.Stderr, "revert: run dir %s absent (nothing to revert)\n", *dir)
+		return 1
 	}
 	store, err := reverter.Open(*dir)
 	if err != nil {
