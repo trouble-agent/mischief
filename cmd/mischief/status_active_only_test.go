@@ -118,8 +118,8 @@ func statusJSONHolds(t *testing.T, out string) int {
 func TestStatusHidesTerminalHoldsAfterRevertAll(t *testing.T) {
 	writeSanctionMarker(t)
 	dir := t.TempDir()
-	idA := statusArm(t, dir, "S-54A")
-	idB := statusArm(t, dir, "S-54B")
+	idA := statusArm(t, dir, "S-001")
+	idB := statusArm(t, dir, "S-004")
 
 	code, out := captureStdout(t, func() int { return run([]string{"revert", "--all", "--dir", dir}) })
 	if code != 0 {
@@ -180,8 +180,8 @@ func TestStatusHidesTerminalHoldsAfterRevertAll(t *testing.T) {
 func TestStatusKeepsActiveHoldsAndTTL(t *testing.T) {
 	writeSanctionMarker(t)
 	dir := t.TempDir()
-	live := statusArm(t, dir, "S-54C")
-	done := statusArm(t, dir, "S-54D")
+	live := statusArm(t, dir, "S-001")
+	done := statusArm(t, dir, "S-004")
 
 	code, out := captureStdout(t, func() int { return run([]string{"revert", "--hold", done, "--dir", dir}) })
 	if code != 0 {
@@ -234,7 +234,7 @@ func TestStatusKeepsActiveHoldsAndTTL(t *testing.T) {
 func TestStatusJSONDefaultIsActiveSet(t *testing.T) {
 	writeSanctionMarker(t)
 	dir := t.TempDir()
-	id := statusArm(t, dir, "S-54E")
+	id := statusArm(t, dir, "S-001")
 	code, out := captureStdout(t, func() int { return run([]string{"revert", "--hold", id, "--dir", dir}) })
 	if code != 0 {
 		t.Fatalf("revert --hold exit: %d, want 0 (out=%q)", code, out)
@@ -265,7 +265,7 @@ func TestStatusJSONDefaultIsActiveSet(t *testing.T) {
 func TestActiveSetEmptyAfterRevertIsTheLibraryContract(t *testing.T) {
 	writeSanctionMarker(t)
 	dir := t.TempDir()
-	id := statusArm(t, dir, "S-54F")
+	id := statusArm(t, dir, "S-004")
 	code, out := captureStdout(t, func() int { return run([]string{"revert", "--hold", id, "--dir", dir}) })
 	if code != 0 {
 		t.Fatalf("revert --hold exit: %d, want 0 (out=%q)", code, out)

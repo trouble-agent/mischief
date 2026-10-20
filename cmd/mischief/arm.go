@@ -28,10 +28,16 @@ import (
 // check — file-matches-backup (params: path, backup) | file-absent (params:
 // path). Unknown kinds are refused here at arm time (the same fail-closed
 // grade a revert would give them, surfaced a whole phase earlier).
+//
+// The fault id is checked the same way (MISCHIEF-RV-2): it must resolve in
+// the catalog (--catalog-dir, default catalog/faults from cwd upward — the
+// same resolution every catalog-consuming verb uses). An unknown id never
+// becomes a durable hold.
 func cmdArm(args []string) int {
 	fs := flag.NewFlagSet("arm", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	dir := fs.String("dir", defaultRunDir(), "run dir (journal home)")
+	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
 	fault := fs.String("fault", "", "fault id to arm a hold for (required)")
 	target := fs.String("target", "", "target selector the fault lands on (required)")
 	ttl := fs.Duration("ttl", 0, "how long the fault may be held (required, e.g. 30s)")
@@ -67,8 +73,23 @@ func cmdArm(args []string) int {
 		return 2
 	}
 
+	// MISCHIEF-RV-2: the fault id must exist in a catalog. An arm naming an
+	// id no catalog knows would write a write-ahead hold that can never be
+	// landed or reasoned about — the same fail-closed grade the malformation
+	// gate gives an unknown inverse-kind: usage refusal, exit 2, naming the
+	// offending field, nothing written. It fires before the sanction gate
+	// (usage errors precede posture refusals).
+	cat, err := loadCatalog(*catalogDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "arm:", err)
+		return 1
+	}
+	if cat.Get(*fault) == nil {
+		fmt.Fprintf(os.Stderr, "arm: unknown fault id %q (not in catalog)\n", *fault)
+		return 2
+	}
+
 	inv := reverter.Decl{Kind: *invKind}
-	var err error
 	if inv.Params, err = parseDeclParams(*invParams); err != nil {
 		fmt.Fprintf(os.Stderr, "arm: --inverse-params: %v\n", err)
 		return 2

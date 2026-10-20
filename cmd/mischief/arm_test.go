@@ -139,6 +139,41 @@ func TestArmUsageValidation(t *testing.T) {
 	}
 }
 
+// TestArmRefusesUnknownFaultID (MISCHIEF-RV-2): a fault id no catalog knows
+// catalog knows is refused fail-closed (exit 2, "unknown fault id" on stderr,
+// nothing written) BEFORE the sanction gate — the same grade the malformation
+// gate gives an unknown inverse-kind. The positive control arms the same
+// everything with a KNOWN catalog id (S-001) and must exit 0: the gate blocks
+// unknown ids, not the verb itself. The catalog resolves from cwd upward
+// (DefaultDir), which reaches the repo's catalog/faults from the package dir.
+func TestArmRefusesUnknownFaultID(t *testing.T) {
+	writeSanctionMarker(t) // sanctioned posture: only the fault-id check can produce this refusal
+	dir := t.TempDir()
+	args := armTestArgs(t, dir)
+	for i, a := range args {
+		if a == "S-001" {
+			args[i] = "Z-999"
+		}
+	}
+	code, stderr := captureStderr(t, func() int { return run(args) })
+	if code != 2 {
+		t.Fatalf("arm with unknown fault id: exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr, "unknown fault id") || !strings.Contains(stderr, "Z-999") {
+		t.Fatalf("refusal does not name the unknown fault id: %s", stderr)
+	}
+	if ents, _ := os.ReadDir(dir); len(ents) != 0 {
+		t.Errorf("refused arm wrote into the run dir: %v", ents)
+	}
+	// positive control: the same arm with the real catalog id lands (exit 0).
+	dir2 := t.TempDir()
+	args = armTestArgs(t, dir2)
+	code, out := captureStdout(t, func() int { return run(args) })
+	if code != 0 || !strings.Contains(out, "armed ") {
+		t.Fatalf("known-id control arm: exit %d out=%q, want 0 + armed", code, out)
+	}
+}
+
 // TestArmToServeRevertAtTTL (DF-05 acceptance: serve reverts at TTL): arm a
 // hold with a sub-second TTL against a scratch file, then run the reverter
 // daemon's real Run loop (the serve verb's body) and let its heartbeat sweep
