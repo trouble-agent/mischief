@@ -1,0 +1,48 @@
+{
+  "tick": "mischief-foreman-2026-10-20-15-54-27",
+  "project": "mischief",
+  "budget": 12,
+  "wave_size": 3,
+  "base": "e662308ba10351c6971294fdc1adc2606e05b54a",
+  "created_at": "2026-10-20T11:20:00-05:00",
+  "workers": [
+    {
+      "task_id": "MISCHIEF-DF-58",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-58",
+      "branch": "wt/MISCHIEF-DF-58",
+      "base_sha": "e662308ba10351c6971294fdc1adc2606e05b54a",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": ["cmd/mischief/arm.go", "cmd/mischief/arm_test.go"],
+      "step": "w1"
+    },
+    {
+      "task_id": "MISCHIEF-DF-60",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-60",
+      "branch": "wt/MISCHIEF-DF-60",
+      "base_sha": "e662308ba10351c6971294fdc1adc2606e05b54a",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": ["cmd/mischief/main.go", "cmd/mischief/status_active_only_test.go", "cmd/mischief/revert_all_test.go"],
+      "step": "w2"
+    },
+    {
+      "task_id": "MISCHIEF-DF-59",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-59",
+      "branch": "wt/MISCHIEF-DF-59",
+      "base_sha": "e662308ba10351c6971294fdc1adc2606e05b54a",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": ["internal/daemon", "internal/reverter", "docs/reference/operator.md"],
+      "step": "w3"
+    }
+  ],
+  "independence": "Three rows, no depends_on edges between them. DF-58 is the arm verb's target resolution (cmd/mischief/arm.go); DF-60 is the status/revert verbs' run-dir handling (cmd/mischief/main.go); DF-59 is the reverter's TTL owner lifecycle (internal/reverter). No shared function or file between the three. Deferred from this wave (NOT independent of the above): MISCHIEF-DF-51-R2 (cmd/mischief/main.go, same file as DF-60), MISCHIEF-DF-57/58 sibling override surface, MISCHIEF-DF-56 (cmd/mischief/ops.go), MISCHIEF-DF-46, QA-MISCHIEF-006 (internal/reverter package as DF-59).",
+  "premise_evidence": {
+    "MISCHIEF-DF-58": "arm.go imports flag/fmt/os/strings + internal/reverter + internal/sanction only (no internal/rails). Live at e662308: arm --target process:scheduler ... -> 'armed 89bd903db83f84b4 ... ttl=30s' rc=0 and status --all publishes holds: 1 for that target, while plan on the same protected plane refuses rc=2 protected_target.",
+    "MISCHIEF-DF-60": "Live at e662308: revert --all --dir <nonexistent> prints 'kill switch: 0 holds reverted, wall=0s (AC-6 budget 2s)' rc=0; status --dir <nonexistent> prints holds: 0 / proofs: 0 with a minted boot_id.",
+    "MISCHIEF-DF-59": "Dogfood tick 23 measured revert-at 9.27/14.21/14.22/14.21/14.21s for a declared 10s TTL; TTL owner is internal/reverter/lifecycle.go OwnerMain + internal/reverter/owner.go defaultDetach (systemd-run leg first when XDG_RUNTIME_DIR is reachable)."
+  },
+  "status": "dispatched",
+  "deferred_to_next_tick": ["MISCHIEF-DF-51-R2", "MISCHIEF-DF-57", "MISCHIEF-DF-56", "MISCHIEF-DF-46", "MISCHIEF-DF-44", "MISCHIEF-DF-54-R2", "MISCHIEF-DF-28-R2", "MISCHIEF-DF-24", "MISCHIEF-RV-3", "README-9", "QA-MISCHIEF-006", "QA-MISCHIEF-002-R2"]
+}
