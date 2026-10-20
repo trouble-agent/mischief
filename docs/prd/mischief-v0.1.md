@@ -162,7 +162,7 @@ deliberately not an operator verb and is not listed in `--help`.
 
 | verb | v0.1 | arguments | returns / side effects |
 |---|---|---|---|
-| `mischief plan -f <exp.yaml> [--json] [--scratch-dir D]` | shipped | experiment file | resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. **No side effects.** exit 0 clean / 2 refused |
+| `mischief plan -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]` | shipped | experiment file | resolved targets, primitives, landed-proofs, inverse plan, blast bound, capability verdicts, refusals. **No side effects** (AC-1: nothing written without `--journal-dir D`, which appends one `run_planned` record — the printed run id, the experiment, the fault set, the target, the refusal tally — to `D/plan.jsonl`). exit 0 clean / 2 refused |
 | `mischief run -f <exp.yaml> [--seed N] [--ttl 60s] [--dry-run] [--out <journal.jsonl>] [--observe trouble=<ns>]` | **planned — not implemented in v0.1** | experiment + overrides | run id, verdict, journal path, timings. (The reverter hold/TTL/kill-switch machinery ships — see `status`/`revert`/`serve` below; the experiment-driven arming loop does not.) |
 | `mischief status [--dir D] [--json]` | shipped | — | boot id, live holds (fault, target, TTL remaining, `stuck_at` leftovers from previous boots), proof history |
 | `mischief revert (--all \| --hold <id>) [--dir D]` | shipped | selector | forced revert + the measurement proving reverted. `--all` is the kill switch over every live or stuck hold (AC-6) |

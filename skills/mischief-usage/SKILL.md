@@ -14,10 +14,11 @@ inverse + blast radius). **v0.1.0 is released**: tarballs (linux_amd64 / linux_a
 tag), or the tarball's static binary plus prebuilt `libfault-anchored.so`.
 Quick checks after install: `mischief version`, `mischief status`, `mischief doctor`.
 
-## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help`, 2026-10-09; arm verified live 2026-10-16)
+## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help`, 2026-10-09; arm verified live 2026-10-16; plan `--journal-dir` verified live 2026-10-19)
 
 ```text
-plan      -f <exp.yaml> [--json] [--scratch-dir D]          # zero side effects (AC-1)
+plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  # zero side effects (AC-1);
+                              # --journal-dir D appends one run_planned record to D/plan.jsonl
 status    [--dir D] [--all]   # ACTIVE holds (armed/stuck) + TTL remaining, proofs;
                               # --all adds terminal holds (reverted/revert_failed)
 revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = the kill switch;
