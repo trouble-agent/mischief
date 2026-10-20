@@ -222,6 +222,7 @@ func (d *Daemon) revertExpired() error {
 	}
 	d.refoldErr = nil // a clean fold drops any held defect: next render is ok:true
 	now := d.Now()
+	// The active view is the right one here: a terminal hold owes no TTL.
 	for _, h := range d.lf.Status().Holds {
 		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
 			continue
@@ -283,7 +284,11 @@ func (d *Daemon) render() Health {
 		return h
 	}
 	d.clearRefoldErr() // the document must never out-stale the fold it just read
-	st := d.lf.Status()
+	// MISCHIEF-DF-54: health keeps the COMPLETE listing (every known hold,
+	// terminal included) — its reverted / revert_failed counters and the
+	// ok=false a live revert_failed raises are derived from the terminal
+	// rows, which the CLI's active-only default no longer carries.
+	st := d.lf.StatusAll()
 	h := Health{
 		OK:          true,
 		DaemonBoot:  st.BootID,
@@ -323,9 +328,11 @@ func (d *Daemon) render() Health {
 // staleRender renders the last-known fold WITHOUT re-reading the journal
 // (the degraded leg of render: the journal is unreadable, so re-folding
 // it inside Status would panic — the Store's maps are nil after a failed
-// boot-less fold). It is the honest frozen view, never a green one.
+// boot-less fold). It is the honest frozen view, never a green one. It
+// reads the COMPLETE listing, so its reverted / revert_failed counters and
+// its ok=false match the live render's for the same fold (MISCHIEF-DF-54).
 func (d *Daemon) staleRender(now time.Time) Health {
-	st := d.lf.StatusSnapshot()
+	st := d.lf.StatusSnapshotAll()
 	h := Health{
 		OK:          true,
 		DaemonBoot:  st.BootID,

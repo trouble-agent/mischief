@@ -147,7 +147,7 @@ func usage(w *os.File) {
 
 Usage:
   mischief plan      -f <exp.yaml> [--json] [--scratch-dir D]
-  mischief status    [--dir D]
+  mischief status    [--dir D] [--all]  (active holds: armed/stuck; --all lists terminal holds too)
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
   mischief revert    (--all | --hold <id> [--retry]) [--dir D]
   mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
@@ -264,6 +264,12 @@ func cmdStatus(args []string) int {
 	fs.SetOutput(os.Stderr)
 	dir := fs.String("dir", defaultRunDir(), "run dir (journal home)")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
+	// MISCHIEF-DF-54: the default surface is the ACTIVE holds (armed or
+	// stuck) — the contract this verb has always documented — so a clean
+	// `revert --all` reads back as "holds: 0" and AC-6's own proof step is
+	// satisfiable. Terminal holds (reverted / revert_failed) are facts:
+	// they stay in the proof history below, and --all lists them here.
+	all := fs.Bool("all", false, "include terminal holds (reverted / revert_failed) in the listing")
 	if err := fs.Parse(args); err != nil {
 		return verbParseExit(err)
 	}
@@ -273,7 +279,11 @@ func cmdStatus(args []string) int {
 		return 1
 	}
 	defer store.Close()
-	st := reverter.New(store).Status()
+	lf := reverter.New(store)
+	st := lf.Status()
+	if *all {
+		st = lf.StatusAll()
+	}
 	if *asJSON {
 		b, err := json.MarshalIndent(st, "", "  ")
 		if err != nil {
@@ -288,7 +298,12 @@ func cmdStatus(args []string) int {
 	fmt.Printf("holds: %d\n", len(st.Holds))
 	for _, h := range st.Holds {
 		line := fmt.Sprintf("  %-16s %-10s %-8s fault=%s target=%s", h.HoldID, h.Status, "", h.FaultID, h.Target)
-		if !h.Expiry.IsZero() {
+		// ttl_remaining is a LIVE field: only a hold that still owes an
+		// inverse has a TTL left to burn. A terminal row keeps its
+		// arm-time expiry in the fold, which is exactly how a reverted hold
+		// came to print a live-looking countdown (MISCHIEF-DF-54) — so the
+		// gate is the status, not the expiry.
+		if h.Status.Active() && !h.Expiry.IsZero() {
 			line += fmt.Sprintf(" ttl_remaining=%s", time.Until(h.Expiry).Round(time.Second))
 		}
 		if !h.StuckAt.IsZero() {

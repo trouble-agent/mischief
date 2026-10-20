@@ -128,10 +128,14 @@ func TestRevertRetryReexecutesFailedRevert(t *testing.T) {
 	if got := proofs[1].Fields["reason"]; got != "retry" {
 		t.Fatalf("retry proof reason = %q, want retry (the journal must tell the two attempts apart)", got)
 	}
-	// status shows the LATEST outcome, with both proofs in its history
-	scode, sout := captureStdout(t, func() int { return run([]string{"status", "--dir", dir}) })
+	// status shows the LATEST outcome, with both proofs in its history.
+	// MISCHIEF-DF-54 took terminal holds (reverted / revert_failed) off the
+	// DEFAULT status listing — they are recorded facts, not active state — so
+	// this hold's own row is read back from the complete listing
+	// (`status --all`); the default surface must not carry it at all.
+	scode, sout := captureStdout(t, func() int { return run([]string{"status", "--all", "--dir", dir}) })
 	if scode != 0 {
-		t.Fatalf("status exit: %d\n%s", scode, sout)
+		t.Fatalf("status --all exit: %d\n%s", scode, sout)
 	}
 	hold := holdStatusLine(t, sout, "DF52-HEALED")
 	if !strings.Contains(hold, "reverted") || strings.Contains(hold, "revert_failed") {
@@ -140,12 +144,23 @@ func TestRevertRetryReexecutesFailedRevert(t *testing.T) {
 	if !strings.Contains(sout, "proofs: 2") {
 		t.Fatalf("status history does not list both proofs: %q", sout)
 	}
+	// The mirror-image half of the same contract (MISCHIEF-DF-54): the
+	// DEFAULT surface carries no terminal row for this hold, while the proofs
+	// stay in its history.
+	_, deflt := captureStdout(t, func() int { return run([]string{"status", "--dir", dir}) })
+	if strings.Contains(deflt, "fault=DF52-HEALED") {
+		t.Fatalf("the default status surface lists a terminal hold: %q", deflt)
+	}
+	if !strings.Contains(deflt, "proofs: 2") {
+		t.Fatalf("the default status surface lost the proof history: %q", deflt)
+	}
 }
 
 // TestRevertRetryFailsAgainExitsOneAndKeepsBothProofs: a retry is a MEASURED
 // attempt, not a wish — when the cause is still broken the verb exits 1, the
 // fault is left live, and the second proof lands on the record next to the
-// first (status keeps grading revert_failed, so nothing reads as green).
+// first (`status --all` keeps grading revert_failed, so nothing reads as
+// green).
 func TestRevertRetryFailsAgainExitsOneAndKeepsBothProofs(t *testing.T) {
 	dir, id, live, _ := failOneHold(t, "DF52-STILL-BROKEN")
 	code, out := captureStdout(t, func() int {
@@ -165,7 +180,9 @@ func TestRevertRetryFailsAgainExitsOneAndKeepsBothProofs(t *testing.T) {
 	if len(proofs) != 2 || proofs[1].Outcome != "revert_failed" {
 		t.Fatalf("journal = %+v, want 2 proofs whose retry is revert_failed", proofs)
 	}
-	_, sout := captureStdout(t, func() int { return run([]string{"status", "--dir", dir}) })
+	// The complete listing (MISCHIEF-DF-54: terminal holds are facts, kept off
+	// the default surface) still grades this hold revert_failed.
+	_, sout := captureStdout(t, func() int { return run([]string{"status", "--all", "--dir", dir}) })
 	if hold := holdStatusLine(t, sout, "DF52-STILL-BROKEN"); !strings.Contains(hold, "revert_failed") {
 		t.Fatalf("status lost the hold's failed grade: %q", hold)
 	}

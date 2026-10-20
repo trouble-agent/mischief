@@ -473,7 +473,11 @@ func (l *Lifecycle) RevertAll(ctx context.Context, reason string) ([]Proof, time
 type Status struct {
 	// BootID is this process generation's id.
 	BootID string
-	// Active holds: armed or stuck, with TTL remaining for live ones.
+	// Holds is the ACTIVE holds only: armed or stuck, with TTL remaining
+	// for live ones. A terminal hold (reverted / revert_failed) owes no
+	// inverse — it is a recorded FACT, so it stays in History and in the
+	// proof count and never reads as a live hold. The complete listing is
+	// StatusAll (`status --all`).
 	Holds []HoldStatusEntry
 	// History is every measured proof ever appended to the journal
 	// (insertion order).
@@ -595,8 +599,26 @@ func wireTime(t time.Time) *time.Time {
 	return &t
 }
 
-// Status folds the current state.
-func (l *Lifecycle) Status() Status {
+// Status folds the current state: the ACTIVE holds only (armed or stuck,
+// with TTL remaining for live ones), the boot id, and every proof in
+// History. A terminal hold is a recorded FACT, not active state — before
+// MISCHIEF-DF-54 this surface listed every hold the journal ever carried,
+// so a clean `revert --all` still printed its reverted holds each with a
+// live-looking ttl_remaining and AC-6's own proof step ("`mischief status`
+// empty") could never pass. The complete listing is StatusAll.
+func (l *Lifecycle) Status() Status { return l.foldStatus(true) }
+
+// StatusAll folds the COMPLETE hold listing — active and terminal — for the
+// `status --all` surface and for consumers that need a terminal hold's own
+// row: the daemon's health document counts reverted / revert_failed and
+// flips ok=false on a live revert_failed from the terminal rows.
+func (l *Lifecycle) StatusAll() Status { return l.foldStatus(false) }
+
+// foldStatus folds the in-memory journal state into a Status. activeOnly
+// keeps Holds to the active subset via HoldStatus.Active — ONE predicate
+// shared by the default surface and `--all`, so the two listing modes can
+// never disagree about which statuses are active.
+func (l *Lifecycle) foldStatus(activeOnly bool) Status {
 	s := l.store
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -608,6 +630,9 @@ func (l *Lifecycle) Status() Status {
 	sort.Strings(ids)
 	for _, id := range ids {
 		st := s.holds[id]
+		if activeOnly && !st.Status.Active() {
+			continue
+		}
 		out.Holds = append(out.Holds, HoldStatusEntry{
 			HoldID:  id,
 			FaultID: st.Arm.FaultID,
@@ -628,33 +653,17 @@ func (l *Lifecycle) Status() Status {
 // (MISCHIEF-DF-30's health leg): it must not re-derive from a journal that
 // just refused to fold, and it must not return a zero Status when the
 // in-memory fold is populated. nil maps (a Store that never folded) read
-// as empty, not as a panic or a fabricated state.
-func (l *Lifecycle) StatusSnapshot() Status {
-	s := l.store
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	out := Status{BootID: s.BootID}
-	ids := make([]string, 0, len(s.holds))
-	for id := range s.holds {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		st := s.holds[id]
-		out.Holds = append(out.Holds, HoldStatusEntry{
-			HoldID:  id,
-			FaultID: st.Arm.FaultID,
-			Target:  st.Arm.Target,
-			Status:  st.Status,
-			Expiry:  st.Expiry,
-			StuckAt: st.StuckAt,
-			LandPID: st.LandPID,
-			OwnPID:  st.OwnPID,
-		})
-	}
-	out.History = append([]Proof(nil), s.history...)
-	return out
-}
+// as empty, not as a panic or a fabricated state. It carries the same
+// active-only Holds contract as Status.
+func (l *Lifecycle) StatusSnapshot() Status { return l.foldStatus(true) }
+
+// StatusSnapshotAll is the degraded read's COMPLETE listing (terminal holds
+// included): the daemon's stale render must count reverted / revert_failed
+// exactly as its live render does while the journal is unreadable — a
+// degraded leg that dropped the terminal rows would report a live
+// revert_failed fault as ok:true, which is the one reading health exists to
+// prevent.
+func (l *Lifecycle) StatusSnapshotAll() Status { return l.foldStatus(false) }
 
 // OwnerMain is the DETACHED owner's entry point (AC-5): it blocks until the
 // hold's expiry, then reverts with the owner role. It is re-exec'd by

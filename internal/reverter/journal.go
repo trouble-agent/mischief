@@ -178,6 +178,21 @@ func (s HoldStatus) Valid() bool {
 	return false
 }
 
+// Active reports whether s is non-terminal: an armed or stuck hold still
+// owes an inverse, so it is ACTIVE state — the status surface's own
+// contract ("active holds: armed or stuck"). Terminal statuses (reverted /
+// revert_failed) are recorded FACTS: they live in the proof history and the
+// counts, never in the active listing (MISCHIEF-DF-54 — a clean kill-switch
+// sweep must read as zero active holds, not as twelve reverted rows each
+// carrying a live-looking ttl_remaining).
+func (s HoldStatus) Active() bool {
+	switch s {
+	case StatusArmed, StatusStuck:
+		return true
+	}
+	return false
+}
+
 // Store is the reverter's state: an append-only JSONL journal under Dir.
 // All writes are serialised through the store's mutex (the CLI, the TTL
 // owner and a concurrent kill switch may write the same file). Lines are

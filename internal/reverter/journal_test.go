@@ -57,8 +57,16 @@ func TestStoreFsyncedAppendSurvivesReopen(t *testing.T) {
 	if got.Duration != pr.Duration {
 		t.Fatalf("duration drift across reopen: %v vs %v", got.Duration, pr.Duration)
 	}
-	if len(s.Holds) != 1 || s.Holds[0].Status != StatusReverted {
-		t.Fatalf("hold status after reopen: %+v", s.Holds)
+	// The default status surface is the ACTIVE holds: the reverted hold is
+	// terminal, so it is a FACT — carried in History (asserted above) and
+	// in the complete listing (StatusAll), never as a live hold
+	// (MISCHIEF-DF-54).
+	if len(s.Holds) != 0 {
+		t.Fatalf("terminal hold leaked into the active status surface: %+v", s.Holds)
+	}
+	complete := New(st2).StatusAll()
+	if len(complete.Holds) != 1 || complete.Holds[0].Status != StatusReverted {
+		t.Fatalf("hold status after reopen (complete listing): %+v", complete.Holds)
 	}
 	// a terminal hold never reverts again (the report, not a silent pass)
 	if _, err := New(st2).Revert(testContext(), id, "direct", RoleAPI); err == nil {
