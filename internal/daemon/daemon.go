@@ -49,7 +49,11 @@ type Health struct {
 	// previous boots do NOT flip OK to false (they are a reported
 	// condition, not a daemon defect) — they are listed.
 	OK bool `json:"ok"`
-	// DaemonBoot is the daemon's own boot id (reverter fold identity).
+	// DaemonBoot is THIS daemon process's boot id (hex16), minted fresh
+	// at every daemon start (MISCHIEF-DF-32) — a consumer keying on it
+	// can tell a stale health.json from the live daemon's. It is NOT the
+	// reverter fold id (that one is host-boot-scoped and shared by every
+	// process of the same host boot; see internal/reverter/journal.go).
 	DaemonBoot string `json:"daemon_boot"`
 	// PID is the daemon process's pid.
 	PID int `json:"pid"`
@@ -96,6 +100,11 @@ type Daemon struct {
 	lf      *reverter.Lifecycle
 	store   *reverter.Store
 	started time.Time
+	// daemonBoot is THIS PROCESS's boot id (health.json `daemon_boot`,
+	// MISCHIEF-DF-32): minted once at New, unique per daemon start —
+	// deliberately NOT the reverter fold's host-boot-scoped BootID, so a
+	// stale health document is distinguishable from the live daemon's.
+	daemonBoot string
 	// refoldErr is the tick's re-fold failure (corruption), held for the
 	// render to report (MISCHIEF-DF-39): the loop must NOT exit on it — a
 	// daemon that dies on a torn journal line leaves health.json frozen at
@@ -114,7 +123,7 @@ func New(dir string) (*Daemon, error) {
 	if store == nil {
 		return nil, err
 	}
-	d := &Daemon{Dir: dir, Now: time.Now, lf: reverter.New(store), store: store, started: time.Now()}
+	d := &Daemon{Dir: dir, Now: time.Now, lf: reverter.New(store), store: store, started: time.Now(), daemonBoot: daemonBootID()}
 	if err != nil {
 		d.refoldErr = err
 	}
@@ -291,7 +300,7 @@ func (d *Daemon) render() Health {
 	st := d.lf.StatusAll()
 	h := Health{
 		OK:          true,
-		DaemonBoot:  st.BootID,
+		DaemonBoot:  d.daemonBoot, // the PROCESS's id (DF-32), not the fold's host-boot id
 		PID:         os.Getpid(),
 		RunDir:      d.Dir,
 		StartedAt:   d.started.Unix(),
@@ -335,7 +344,7 @@ func (d *Daemon) staleRender(now time.Time) Health {
 	st := d.lf.StatusSnapshotAll()
 	h := Health{
 		OK:          true,
-		DaemonBoot:  st.BootID,
+		DaemonBoot:  d.daemonBoot, // the PROCESS's id (DF-32), not the fold's host-boot id
 		PID:         os.Getpid(),
 		RunDir:      d.Dir,
 		StartedAt:   d.started.Unix(),
