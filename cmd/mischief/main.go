@@ -338,6 +338,18 @@ func cmdRevert(args []string) int {
 			fmt.Fprintln(os.Stderr, "revert:", err)
 			return 1
 		}
+		// DF-51: a proof graded revert_failed is a LIVE fault — the sweep
+		// continued (every fault got its proof, the journal keeps the
+		// evidence) but the kill switch must not report success. Successful
+		// proofs are counted separately and ANY outcome that is not a
+		// measured reverted — revert_failed included, and a malformed or
+		// unknown outcome value too — fails the verb. Mirrors the --hold
+		// path, which already exits non-zero on the same outcome.
+		if failed := countRevertFailures(proofs); failed > 0 {
+			fmt.Printf("kill switch: %d holds reverted, %d revert_failed, wall=%s (AC-6 budget 2s)\n", len(proofs)-failed, failed, wall.Round(time.Millisecond))
+			fmt.Fprintln(os.Stderr, "revert: kill switch sweep did not fully revert — at least one fault may still be live")
+			return 1
+		}
 		fmt.Printf("kill switch: %d holds reverted, wall=%s (AC-6 budget 2s)\n", len(proofs), wall.Round(time.Millisecond))
 		return 0
 	}
@@ -351,6 +363,20 @@ func cmdRevert(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// countRevertFailures counts sweep proofs that do NOT attest a measured
+// revert: the declared revert_failed outcome, and any outcome value outside
+// the closed vocabulary (a malformed or unknown proof must never count as
+// green by accident — the sweep is only as good as its worst proof).
+func countRevertFailures(proofs []reverter.Proof) int {
+	n := 0
+	for _, pr := range proofs {
+		if pr.Outcome != reverter.OutcomeReverted || !pr.Outcome.Valid() {
+			n++
+		}
+	}
+	return n
 }
 
 // ── doctor ───────────────────────────────────────────────────────────────────
