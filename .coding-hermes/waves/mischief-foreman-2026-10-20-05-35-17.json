@@ -1,0 +1,33 @@
+{
+  "tick_id": "mischief-foreman-2026-10-20-05-35-17",
+  "project": "mischief",
+  "workdir": "/home/kara/mischief",
+  "base_sha": "2c5eed3",
+  "wave_budget": 2,
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-48",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-48",
+      "branch": "wt/MISCHIEF-DF-48",
+      "priority": "P3",
+      "title": "sim --destroy-class: the documented permanent-destroy refusal gets an operator surface",
+      "files": ["cmd/mischief/sim.go", "cmd/mischief/sim_test.go"]
+    },
+    {
+      "id": "MISCHIEF-DF-34",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-34",
+      "branch": "wt/MISCHIEF-DF-34",
+      "priority": "P2",
+      "title": "install/uninstall lifecycle ops report per-step state on failure",
+      "files": ["cmd/mischief/ops.go", "internal/ops/install.go", "internal/ops/install_test.go"]
+    }
+  ],
+  "created_at": "2026-10-20T05:40:00-05:00",
+  "status": "complete",
+  "finished_at": "2026-10-20T06:50:00+00:00",
+  "merged": {
+    "MISCHIEF-DF-48": {"worker_commit": "e95a89f", "merge_commit": "91e510c", "tier2_verdict": "a8d93662", "tier2": "PASS", "ci_run": 39377980611, "ci": "success"},
+    "MISCHIEF-DF-34": {"worker_commit": "a0ed0c7", "merge_commit": "c132489", "tier2_verdict": "a09f75fb", "tier2": "PASS", "ci_run": 39380919285, "ci": "success"}
+  },
+  "verified_head": "c132489"
+}
