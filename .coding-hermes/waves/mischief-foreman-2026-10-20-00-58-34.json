@@ -1,0 +1,16 @@
+{
+  "tick_id": "mischief-foreman-2026-10-20-00-58-34",
+  "tasks": [
+    "MISCHIEF-DF-33",
+    "MISCHIEF-DF-36",
+    "MISCHIEF-DF-38",
+    "MISCHIEF-DF-29-R2",
+    "MISCHIEF-RV-1",
+    "MISCHIEF-RV-2",
+    "MISCHIEF-DF-45",
+    "MISCHIEF-DF-53"
+  ],
+  "status": "finished",
+  "finished_at": "2026-10-20T01:27:42Z",
+  "recovery_notes": "DF-45 and DF-51 already merged to main (0bb2687 ancestor verified). DF-52/53/54 failed with no commits - remain pending for future dispatch. No worktrees to reap."
+}
