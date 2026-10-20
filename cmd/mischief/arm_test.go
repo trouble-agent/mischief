@@ -71,6 +71,16 @@ func TestArmWritesHoldAndStatusShowsIt(t *testing.T) {
 // On an unsanctioned host the verb refuses fail-closed (exit 2), names the
 // missing marker, and writes NOTHING into the run dir.
 func TestArmRefusesUnsanctionedHost(t *testing.T) {
+	// CI runners (and worktree runs on a sanctioned lane) can carry
+	// MISCHIEF_SANCTION=1 in the ambient env; the env half alone admits
+	// the arm and this refusal test dies a phantom red (MISCHIEF-CI-2).
+	// Neutralize both halves: only the exact value "1" sanctions, so an
+	// empty MISCHIEF_SANCTION is neutral, and the marker override pins the
+	// file half to an absent path regardless of any ambient
+	// MISCHIEF_SANCTION_FILE. t.Setenv restores the original ambient
+	// values after the test. (Same idiom as internal/sanction's
+	// TestThisHostRefuses.)
+	t.Setenv("MISCHIEF_SANCTION", "")
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	dir := t.TempDir()
 	code, stderr := captureStderr(t, func() int { return run(armTestArgs(t, dir)) })
