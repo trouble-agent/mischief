@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
@@ -94,6 +95,19 @@ func cmdSelftest(args []string) int {
 		results = append(results, selftest.RunOnePublic(id))
 	}
 
+	// MISCHIEF-DF-38: version-skew hint. The catalog is read at run time;
+	// the selftest corpus is compiled INTO the binary. So a catalog NEWER
+	// than the binary lands here as an unknown-primitive FAIL — the id is
+	// real (the catalog the CLI just loaded declares it) but this build
+	// has no actuator for it. Failing is the correct verdict (an
+	// unprovable primitive must never pass); what was missing is the
+	// cause, and the README's own advice ("run it from a checkout") is
+	// exactly what pairs a HEAD catalog with a release binary. The hint
+	// goes to stderr — stdout stays the results-and-summary surface.
+	if ids := corpusUnknownIDs(results); len(ids) > 0 {
+		fmt.Fprint(os.Stderr, versionSkewHint(ids, cat))
+	}
+
 	os.Stdout.WriteString(selftest.Print(results))
 	summary, exit := selftest.Summarize(results)
 	fmt.Println(summary)
@@ -121,6 +135,53 @@ func cmdSelftest(args []string) int {
 	}
 
 	return exit
+}
+
+// corpusUnknownIDs returns the failing result ids this build's compiled-in
+// corpus does not cover — the one shape a catalog/binary VINTAGE MISMATCH
+// produces (MISCHIEF-DF-38): a catalog id outside the corpus reaches the
+// run loop (the CLI loaded the catalog and accepted the id) and the runner
+// refuses it as unknown. Sorted, so the hint reads the same for --all and
+// for a single --primitive. Membership is tested against the corpus itself
+// rather than the runner's reason text — the predicate is the fact, not
+// the prose that describes it.
+func corpusUnknownIDs(results []selftest.Result) []string {
+	covered := map[string]bool{}
+	for _, id := range selftest.CoveredIDs() {
+		covered[id] = true
+	}
+	var ids []string
+	for _, r := range results {
+		if r.State == "fail" && !covered[r.ID] {
+			ids = append(ids, r.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// versionSkewHint renders the operator-facing version-skew hint for the
+// primitives this build cannot prove (MISCHIEF-DF-38): the two vintages to
+// compare — the binary's stamped build (the `version` verb) and the
+// catalog's own content-derived version with the directory it was read
+// from — plus the remedy, which is to pair the binary with the catalog
+// tree of its own release rather than a newer checkout's.
+func versionSkewHint(ids []string, cat *catalog.Catalog) string {
+	quoted := make([]string, 0, len(ids))
+	for _, id := range ids {
+		quoted = append(quoted, fmt.Sprintf("%q", id))
+	}
+	var b strings.Builder
+	catWord := "primitives"
+	if cat.Len() == 1 {
+		catWord = "primitive"
+	}
+	fmt.Fprintf(&b, "selftest: version skew? %s not in this build's selftest corpus (%d covered ids) but declared by the catalog at %s (%d %s, version %s %s)\n",
+		strings.Join(quoted, ", "), len(selftest.CoveredIDs()), cat.SourceDir, cat.Len(), catWord, cat.VersionScheme, cat.Version)
+	b.WriteString("  the corpus is compiled into the binary; the catalog is read at run time — a catalog NEWER than this binary fails closed exactly like this\n")
+	fmt.Fprintf(&b, "  compare the vintages: `mischief version` reports this binary as %q; the catalog was read from %s\n", gitSha, cat.SourceDir)
+	b.WriteString("  remedy: point --catalog-dir at the catalog tree matching this binary's release (`git archive <tag> catalog`), or rebuild from the checkout the catalog came from\n")
+	return b.String()
 }
 
 // printAC19Wiring renders the per-primitive AC-19 gate demonstration with
