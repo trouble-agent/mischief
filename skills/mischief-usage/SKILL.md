@@ -18,8 +18,10 @@ Quick checks after install: `mischief version`, `mischief status`, `mischief doc
 
 ```text
 plan      -f <exp.yaml> [--json] [--scratch-dir D]          # zero side effects (AC-1)
-status    [--dir D]           # folds the run journal: armed/held holds, stuck, proofs
-revert    (--all | --hold <id>) [--dir D]                   # `revert --all` = the kill switch
+status    [--dir D] [--all]   # ACTIVE holds (armed/stuck) + TTL remaining, proofs;
+                              # --all adds terminal holds (reverted/revert_failed)
+revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = the kill switch;
+                              # --retry re-executes a revert_failed hold's recorded inverse
 arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
 serve     --dir D             # reverter daemon: TTLs + boot reconcile + health.json
 doctor    [--catalog-dir D] [--json] [--self-check]         # exit 1 = a check FAILED
@@ -71,6 +73,28 @@ The journal is the evidence: each arm is one JSONL line with the full hold
 writes a `revert_proof` line (`outcome` + `reason` + `detail=check: same` /
 `check: absent` / the inverse's failure). Hold ids are content hashes — the same
 declaration armed twice yields the same id; do not dedupe the journal.
+
+## Recovering a revert that FAILED (`revert --hold <id> --retry`) — verified live 2026-10-20
+
+A hold whose measured revert graded `revert_failed` says the fault may still be live. Before DF-52 it was a
+dead end (every verb refused it; the only recovery was a fresh arm). Now:
+
+```sh
+bin/mischief revert --hold <id>            # rc=1, "… (already terminal: revert_failed — re-run with --retry …)"
+bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 only when it grades reverted
+```
+
+* Admission is narrow on purpose: **only** `revert_failed`. A live (`armed`/`stuck`) hold belongs to the
+  plain path and a `reverted` hold has nothing left to undo — both refuse with the status named, nothing
+  written. `--retry` requires `--hold` and is mutually exclusive with `--all` (both rc=2).
+* The journal is append-only: the failed attempt and every retry stay on the record (`reason=direct` for
+  the first, `reason=retry` after), and `status` labels the hold with the LATEST outcome. `proofs: N` in
+  `status` therefore counts attempts, not holds.
+* A retry that fails again exits 1 and leaves the hold `revert_failed` — so retrying is idempotent: heal
+  the cause (e.g. restore the inverse's backup file) and retry again.
+* Creating a failed revert deliberately: arm first (arm pre-checks that the inverse's backup is readable),
+  then move/delete the backup. Heal with `mv` **plus `chmod 644`** — mode 000 survives the move and yields
+  `permission denied`, which reads like a product bug and is a probe bug.
 
 ## Gating you WILL hit outside a sanctioned host
 
@@ -173,6 +197,17 @@ sudo ip netns del mc-probe-ns                      # revert proven
   Detach) reverts at TTL") is NOT reachable from any verb: `Lifecycle.Detach` and
   the `__owner` entry exist but no flag/subcommand calls them (MISCHIEF-DF-31).
   Do not count on it as a second containment path.
+- `status` (default) lists ACTIVE holds only (armed/stuck) since DF-54 — a **failed** revert is terminal,
+  so it is visible only in the `proofs:` list, in `status --all`, or in `health.json`. With a fault still
+  landed and its revert failed, `status` prints `holds: 0` and exits **0** (MISCHIEF-DF-54-R2) while the
+  daemon on the same run dir says `ok:false / revert_failed:1`: do not gate a script on `status`'s exit code
+  to mean "host is clean", count `revert_failed` yourself (`status --json | jq '[.history[]|select(.outcome=="revert_failed")]|length'`).
+- The kill switch's **per-hold stdout line** always starts with the word `reverted`, whatever the outcome
+  (`reverted <id> outcome=revert_failed …`, main.go:365) — the exit code and the summary line are honest
+  since DF-51, the leading word is not (MISCHIEF-DF-51-R2). Parse `outcome=`, not the verb.
+- `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
+  `.holds|length` is 0; and a terminal hold keeps its arm-time `expiry` on the wire, so `expiry - now` is
+  POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2). Gate on `.status`, never on the expiry.
 
 ## Privileged lifecycle verbs (`install`, `uninstall`, `retention`) — apply-leg contract
 
