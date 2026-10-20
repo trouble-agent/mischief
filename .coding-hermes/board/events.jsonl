@@ -236,3 +236,11 @@
 {"id":172,"task_id":"MISCHIEF-RV-1","event_type":"task_created","timestamp":"2026-10-20T00:58:39+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"id\":\"MISCHIEF-RV-1\",\"status\":\"pending\"}"}
 {"id":173,"task_id":"MISCHIEF-RV-2","event_type":"task_created","timestamp":"2026-10-20T00:58:39+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"id\":\"MISCHIEF-RV-2\",\"status\":\"pending\"}"}
 {"id":174,"task_id":"MISCHIEF-RV-3","event_type":"task_created","timestamp":"2026-10-20T00:58:39+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"id\":\"MISCHIEF-RV-3\",\"status\":\"pending\"}"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-33","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-36","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-38","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-29-R2","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-RV-1","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-RV-2","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-45","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"event_type":"task_completed","task_id":"MISCHIEF-DF-53","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
