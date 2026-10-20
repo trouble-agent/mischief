@@ -2,6 +2,7 @@ package reverter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -462,6 +463,13 @@ func (l *Lifecycle) RevertAll(ctx context.Context, reason string) ([]Proof, time
 // Status is the state surface (status verb + future /health.json): the
 // active holds (armed + TTL remaining), the stuck leftovers (previous
 // boots), and the reverter owner pids.
+//
+// The --json form is NOT this struct's field names: MarshalJSON renders it
+// through statusWire below (MISCHIEF-DF-53) so the machine surface is
+// snake_case like every other JSON surface in the product (plan, doctor,
+// audit, the daemon's health.json) and an unset timestamp is null instead
+// of time.Time's "0001-01-01T00:00:00Z". The domain fields stay time.Time
+// so the daemon's TTL math (Expiry.IsZero()/Sub) is untouched.
 type Status struct {
 	// BootID is this process generation's id.
 	BootID string
@@ -472,7 +480,9 @@ type Status struct {
 	History []Proof
 }
 
-// HoldStatusEntry is one hold's Status row.
+// HoldStatusEntry is one hold's Status row. Marshalled through
+// holdStatusWire (MISCHIEF-DF-53): Expiry/StuckAt are pointers on the wire
+// so unset renders null — a json tag alone cannot do that for time.Time.
 type HoldStatusEntry struct {
 	// HoldID is the content-derived hold id.
 	HoldID string
@@ -490,6 +500,99 @@ type HoldStatusEntry struct {
 	LandPID int
 	// OwnPID is the pid that last proved this hold (0 = none).
 	OwnPID int
+}
+
+// ── status --json wire contract (MISCHIEF-DF-53) ─────────────────────────────
+//
+// statusWire is the ONE document `mischief status --json` emits. The mirrors
+// exist because a json tag alone cannot render an unset time.Time as null
+// (time.Time.MarshalJSON always writes year 1) and the domain structs must
+// not switch to *time.Time (that would push nil-checks into the daemon's TTL
+// math) — so the pointers live here only.
+//
+// cmd/mischief/status_json_test.go enumerates the exact key surface of every
+// level (top-level, one hold row, one proof row): a field added to Status /
+// HoldStatusEntry / Proof without a mirror key fails that test loud, which is
+// the point of keeping the mirrors in one block.
+
+// statusWire mirrors Status.
+type statusWire struct {
+	BootID  string           `json:"boot_id"`
+	Holds   []holdStatusWire `json:"holds"`
+	History []proofWire      `json:"history"`
+}
+
+// holdStatusWire mirrors HoldStatusEntry. Expiry/StuckAt are pointers so an
+// unset timestamp is null; the key is always present, so a consumer reads
+// `.holds[].stuck_at` without a missing-key branch.
+type holdStatusWire struct {
+	HoldID  string     `json:"hold_id"`
+	FaultID string     `json:"fault_id"`
+	Target  string     `json:"target"`
+	Status  HoldStatus `json:"status"`
+	Expiry  *time.Time `json:"expiry"`
+	StuckAt *time.Time `json:"stuck_at"`
+	LandPID int        `json:"land_pid"`
+	OwnPID  int        `json:"own_pid"`
+}
+
+// proofWire mirrors Proof. DurationNanos keeps the journal record's own field
+// name (internal/reverter/record.go writes duration_nanos), so the raw
+// journal and the status surface spell it the same way.
+type proofWire struct {
+	HoldID        string  `json:"hold_id"`
+	FaultID       string  `json:"fault_id"`
+	Target        string  `json:"target"`
+	Outcome       Outcome `json:"outcome"`
+	Detail        string  `json:"detail"`
+	DurationNanos int64   `json:"duration_nanos"`
+	Role          Role    `json:"role"`
+	PID           int     `json:"pid"`
+	Reason        string  `json:"reason"`
+}
+
+// MarshalJSON renders Status as the snake_case wire document the status verb
+// emits (MISCHIEF-DF-53). A nil slice still renders as JSON null — exactly
+// the pre-fix encoding for an empty fold, because this change is keys and
+// timestamps only.
+func (s Status) MarshalJSON() ([]byte, error) {
+	var holds []holdStatusWire
+	for _, h := range s.Holds {
+		holds = append(holds, holdStatusWire{
+			HoldID:  h.HoldID,
+			FaultID: h.FaultID,
+			Target:  h.Target,
+			Status:  h.Status,
+			Expiry:  wireTime(h.Expiry),
+			StuckAt: wireTime(h.StuckAt),
+			LandPID: h.LandPID,
+			OwnPID:  h.OwnPID,
+		})
+	}
+	var history []proofWire
+	for _, p := range s.History {
+		history = append(history, proofWire{
+			HoldID:        p.HoldID,
+			FaultID:       p.FaultID,
+			Target:        p.Target,
+			Outcome:       p.Outcome,
+			Detail:        p.Detail,
+			DurationNanos: int64(p.Duration),
+			Role:          p.Role,
+			PID:           p.PID,
+			Reason:        p.Reason,
+		})
+	}
+	return json.Marshal(statusWire{BootID: s.BootID, Holds: holds, History: history})
+}
+
+// wireTime maps a domain timestamp onto the wire: the zero time is JSON null
+// (unset), anything else keeps time.Time's own RFC3339 encoding.
+func wireTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 // Status folds the current state.
