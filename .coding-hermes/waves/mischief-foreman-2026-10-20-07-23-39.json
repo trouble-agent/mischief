@@ -1,0 +1,29 @@
+{
+  "tick": "mischief-foreman-2026-10-20-07-23-39",
+  "project": "mischief",
+  "budget": 11,
+  "base": "f0d2d43ca78305841b42f7cb1f6862ded21e8000",
+  "created_at": "2026-10-20T07:34:50-05:00",
+  "workers": [
+    {
+      "task_id": "MISCHIEF-DF-56",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-56",
+      "branch": "wt/MISCHIEF-DF-56",
+      "base_sha": "f0d2d43ca78305841b42f7cb1f6862ded21e8000",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": ["cmd/mischief/ops.go", "cmd/mischief/arm.go", "cmd/mischief/*_test.go"]
+    },
+    {
+      "task_id": "MISCHIEF-RV-4",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-4",
+      "branch": "wt/MISCHIEF-RV-4",
+      "base_sha": "f0d2d43ca78305841b42f7cb1f6862ded21e8000",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": [".gitignore", "mischief"]
+    }
+  ],
+  "independence": "Both rows have no dependencies; DF-56 is CLI error rendering/tests, RV-4 is root artifact hygiene. No shared implementation files.",
+  "status": "dispatched"
+}
