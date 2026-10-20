@@ -4,7 +4,9 @@
 //
 // Verbs (PRD §6.1; M1 scope marks the ones this build ships):
 //
-//	plan     — resolve an experiment, emit the plan, ZERO side effects (AC-1)
+//	plan     — resolve an experiment, emit the plan, ZERO side effects
+//	           (AC-1: nothing is written; --journal-dir D opts IN to
+//	           recording the preview as D/plan.jsonl — see plan.go)
 //	status   — fold the run dir's journal: armed/held holds, stuck, proofs
 //	revert   — measured revert by --all / --hold selector (AC-4/AC-6);
 //	           --retry re-executes the recorded inverse of a terminal
@@ -46,11 +48,7 @@ import (
 	"github.com/trouble-agent/mischief/internal/catalog"
 	"github.com/trouble-agent/mischief/internal/daemon"
 	"github.com/trouble-agent/mischief/internal/doctor"
-	"github.com/trouble-agent/mischief/internal/journal"
-	"github.com/trouble-agent/mischief/internal/plan"
-	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/reverter"
-	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // gitSha is stamped at build time by the Makefile's bin target:
@@ -146,7 +144,7 @@ func usage(w *os.File) {
 	fmt.Fprint(w, `mischief — fault injection for a fleet of Linux daemons (M1 chassis)
 
 Usage:
-  mischief plan      -f <exp.yaml> [--json] [--scratch-dir D]
+  mischief plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  (writes nothing without --journal-dir)
   mischief status    [--dir D] [--all]  (active holds: armed/stuck; --all lists terminal holds too)
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
   mischief revert    (--all | --hold <id> [--retry]) [--dir D]
@@ -179,83 +177,8 @@ func defaultRunDir() string {
 }
 
 // ── plan ─────────────────────────────────────────────────────────────────────
-
-func cmdPlan(args []string) int {
-	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-	expPath := fs.String("f", "", "experiment YAML (required)")
-	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
-	asJSON := fs.Bool("json", false, "emit JSON instead of text")
-	// MISCHIEF-CLI-002: the shipped usage/docs advertise the path-valued
-	// form (--scratch-dir D), so the flag IS path-valued. Plan only
-	// DECLARES the dir — it never creates, reads or writes it (AC-1); the
-	// run contract owns the actual scratch dir ("plan reports, run
-	// enforces"). A valueless --scratch-dir is a usage error naming the
-	// flag (never the old "invalid boolean value" type confusion).
-	scratchDir := fs.String("scratch-dir", "", "scratch dir the plan declares for the L0 preview (verbatim, never created by plan; run owns the flag)")
-	skipSanction := fs.Bool("plan-only-sanction-skip", false, "(unimplemented stub flag: reserved for MSF-020; plan never lands faults)")
-	_ = skipSanction
-	if err := fs.Parse(args); err != nil {
-		return verbParseExit(err)
-	}
-	if *expPath == "" {
-		fmt.Fprintln(os.Stderr, "plan: -f <exp.yaml> is required (no default experiment)")
-		return 2
-	}
-
-	// AC-1: plan is a dry run — the sanction gate still runs (it is a
-	// host posture check, not a landing act) but NOTHING is written: the
-	// only output is stdout. No run dir, no journal, no target writes.
-	if err := sanction.Check(sanction.Options{}); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 2
-	}
-
-	exp, err := journal.Load(*expPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "plan:", err)
-		return 1
-	}
-	raw, err := os.ReadFile(*expPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "plan: read:", err)
-		return 1
-	}
-	cat, err := loadCatalog(*catalogDir)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "plan:", err)
-		return 1
-	}
-	reg := hostCapabilityRegistry()
-	scope := rails.Scope{Level: 0, Scratch: true, ScratchDir: *scratchDir} // plan previews the L0 scratch posture; run applies its own scope
-	p, err := plan.Build(exp, raw, cat, reg, scope)
-	if err != nil {
-		// The plan still renders (the operator sees what resolved), but
-		// the exit is the refusal's (2) — rails.MapExit owns the mapping.
-		out := renderPlan(p, *asJSON)
-		os.Stdout.Write(out)
-		fmt.Fprintln(os.Stderr, "plan:", err)
-		return rails.MapExit(err)
-	}
-	os.Stdout.Write(renderPlan(p, *asJSON))
-	// A plan that surfaced rail refusals (unknown primitive, scope below
-	// minimum, protected target previewed) exits 2 — the rails exit
-	// contract, applied to the report even though plan landed nothing.
-	if len(p.Refusals) > 0 {
-		return rails.ExitCode
-	}
-	return 0
-}
-
-func renderPlan(p *plan.Plan, asJSON bool) []byte {
-	if asJSON && p != nil {
-		b, err := json.MarshalIndent(p, "", "  ")
-		if err == nil {
-			return append(b, '\n')
-		}
-	}
-	return plan.Render(p)
-}
+// cmdPlan, renderPlan and the --journal-dir preview record live in plan.go
+// (one verb per file: the ops.go / selftest.go / arm.go convention).
 
 // ── status ───────────────────────────────────────────────────────────────────
 

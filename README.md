@@ -44,7 +44,7 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `docs/SPEC-PLAN.md` | the spec set and the spec→PRD→AC map |
 | `probe/RESULTS.md` | the measured capability audit the design rests on, with the scripts that produced it |
 | `docs/EXPERIMENTS.md` | the rehearsal contract for `catalog/experiments/`: which experiments are runnable today, why the rest are rehearsal-only, and the scratch-host rule |
-| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`) — core verbs: `plan` (zero side effects, AC-1) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha); v0.1 also ships `install` (privileged helper manifest + a visudo-validated sudoers drop-in — never elevates itself) · `uninstall` · `audit` (survey the live privileged surface against the canonical verb table) · `retention` (rotate old run dirs; report-only without `--apply`), plus the evidence verbs `battery` · `chaos` · `sim` · `plane` |
+| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`) — core verbs: `plan` (zero side effects, AC-1: nothing is written; `--journal-dir D` opts in to recording the preview as `D/plan.jsonl`) · `status` · `revert` · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha); v0.1 also ships `install` (privileged helper manifest + a visudo-validated sudoers drop-in — never elevates itself) · `uninstall` · `audit` (survey the live privileged surface against the canonical verb table) · `retention` (rotate old run dirs; report-only without `--apply`), plus the evidence verbs `battery` · `chaos` · `sim` · `plane` |
 | `catalog/` | machine-readable fault and experiment examples |
 
 ## Install
@@ -89,8 +89,15 @@ mischief doctor    # capability/tier ladder report (see the catalog note below)
 **Run an experiment end-to-end (plan).** From a checkout, `plan` is the
 zero-side-effects preview of an experiment: it resolves the target and every
 fault against the catalog and prints what would land, what proves it landed,
-and how it is reverted — without touching anything. One thing the verb will
-not do without being told: mischief only runs on a **sanctioned host**
+and how it is reverted — without touching anything. It writes no run dir and
+no journal: AC-1's proof is exactly that (`plan` leaves the journal file
+absent), and the run dir and the journal belong to the verbs that land and
+hold. An operator who wants the preview on disk asks for it — `plan
+--journal-dir D` appends one `run_planned` record (the `run_id` the render
+printed, the experiment, the resolved fault set, the target and the refusal
+tally) to `D/plan.jsonl`, the same per-verb journal convention
+`selftest.jsonl` and `battery.jsonl` follow. Run on an unsanctioned host,
+though, and the verb refuses: mischief only runs on a **sanctioned host**
 (SPEC-13). On a fresh machine the gate refuses with `host_not_sanctioned`
 until you export `MISCHIEF_SANCTION=1` (the env half of the sanction marker;
 the file half is `/etc/mischief-sanction`, overridable with
@@ -101,9 +108,11 @@ experiments, exactly one is plan-clean by default:
 MISCHIEF_SANCTION=1 bin/mischief plan -f catalog/experiments/ex-001-noop-detector.yaml
 ```
 
-This replays S-1 ("the false green") and must grade `no_op` — the injector
-finds no live target holding the state file, so the fault never lands. `plan`
-creates a run dir and journal entry but no fault. The other three shipped
+This previews S-1 ("the false green"): the injector finds no live target
+holding the state file, so the fault never lands — the `run` verb that grades
+it `no_op` is not implemented in v0.1 (see the verb table in the PRD). `plan`
+lands no fault and writes nothing at all unless `--journal-dir D` asks for the
+preview record. The other three shipped
 experiments (`ex-002`, `ex-003`, `ex-004`) are rehearsal-only: they need
 capabilities or selectors not yet in the catalog (`I-002`, `P-006`), or an
 explicit sanction override for `F-009`, and their YAML headers say why — read
