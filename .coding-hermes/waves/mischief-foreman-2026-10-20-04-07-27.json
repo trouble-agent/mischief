@@ -1,0 +1,81 @@
+{
+  "tick_id": "mischief-foreman-2026-10-20-04-07-27",
+  "project": "mischief",
+  "workdir": "/home/kara/mischief",
+  "base_sha": "36a47c4",
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-33",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-33",
+      "branch": "wt/MISCHIEF-DF-33",
+      "priority": "P2",
+      "title": "uninstall rotation fails on real run dir"
+    },
+    {
+      "id": "MISCHIEF-DF-34",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-34",
+      "branch": "wt/MISCHIEF-DF-34",
+      "priority": "P2",
+      "title": "lifecycle ops not atomic"
+    },
+    {
+      "id": "MISCHIEF-DF-29-R2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-29-R2",
+      "branch": "wt/MISCHIEF-DF-29-R2",
+      "priority": "P2",
+      "title": "Decl.Validate checks union of inverse+check"
+    },
+    {
+      "id": "MISCHIEF-CI-2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-CI-2",
+      "branch": "wt/MISCHIEF-CI-2",
+      "priority": "P2",
+      "title": "TestArmRefusesUnsanctionedHost env-dependent"
+    },
+    {
+      "id": "MISCHIEF-RV-1",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-1",
+      "branch": "wt/MISCHIEF-RV-1",
+      "priority": "P2",
+      "title": "protected-target exact token match"
+    },
+    {
+      "id": "MISCHIEF-DF-32",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-32",
+      "branch": "wt/MISCHIEF-DF-32",
+      "priority": "P3",
+      "title": "health.json daemon_boot scope"
+    },
+    {
+      "id": "MISCHIEF-DF-36",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-36",
+      "branch": "wt/MISCHIEF-DF-36",
+      "priority": "P2",
+      "title": "README Option A ~/.local/bin missing"
+    },
+    {
+      "id": "MISCHIEF-DF-37",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-37",
+      "branch": "wt/MISCHIEF-DF-37",
+      "priority": "P2",
+      "title": "README plan journals nothing"
+    },
+    {
+      "id": "MISCHIEF-DF-38",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-38",
+      "branch": "wt/MISCHIEF-DF-38",
+      "priority": "P2",
+      "title": "selftest version-skew hint"
+    },
+    {
+      "id": "README-7",
+      "worktree": "/home/kara/worktrees/mischief-README-7",
+      "branch": "wt/README-7",
+      "priority": "P4",
+      "title": "README arm example cp fails"
+    }
+  ],
+  "created_at": "2026-10-20T04:07:27-05:00",
+  "status": "complete",
+  "finished_at": "2026-10-20T04:28:57-05:00"
+}
