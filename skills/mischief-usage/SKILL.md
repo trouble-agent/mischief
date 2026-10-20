@@ -220,19 +220,29 @@ sudo ip netns del mc-probe-ns                      # revert proven
 - `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
   `.holds|length` is 0; and a terminal hold keeps its arm-time `expiry` on the wire, so `expiry - now` is
   POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2). Gate on `.status`, never on the expiry.
-- **`arm` does NOT evaluate the protected-target rail (MISCHIEF-DF-58, verified live 2026-10-20).**
-  `arm --target process:scheduler` answers `armed <id> … rc=0` — no refusal, no advisory — writes the hold,
-  and `status --all` publishes it as a live hold, while `plan` on the same protected selector refuses rc=2
-  `protected_target`. `arm` is only documented as running the SPEC-13 sanction gate: if you arm a
-  control-plane component, the product did not check it for you.
+- **`arm` NOW evaluates the protected-target rail** (MISCHIEF-DF-58, closed by f794ed0/37310b3; re-verified
+  live 2026-10-20 on HEAD 8e8fd4f). `arm --target process:scheduler` refuses rc=2 `protected target
+  "scheduler" refused` and writes NOTHING — no run dir, no hold — the same verdict `plan` gives for the
+  same selector, and `status --dir <D>` then reads `holds: 0`. The match is deliberately prefix-wide, so
+  near-miss names refuse as well: `process:schedulerd`, `process:hermes-scheduler`, `process:gateway-test`,
+  `process:scheduler-probe`, `host:memory-daemon` all refuse (intended over-refusal in
+  `rails.selectorNames`), while unrelated names (`process:hermes-api`, `process:loadbalancer`,
+  `container:mischief-scratch`) arm normally rc=0. Because the remediation the refusal names does not
+  exist (next bullet), a legitimately-named `…-gateway-…` workload is not faultable at all in v0.1.
 - The protected-target refusal names a remediation that does not exist (MISCHIEF-DF-57): *"an operator may
   pass the explicit override flag, and the run then records it in the journal"* — no verb ships such a flag
   (`plan`: `-catalog-dir -f -journal-dir -json -plan-only-sanction-skip -scratch-dir`; `arm`: `-catalog-dir
   -check-kind -check-params -dir -fault -inverse-kind -inverse-params -target -ttl`) and no doc names one.
   A protected target is therefore not faultable at all in v0.1, despite the message.
-- An **absent** run dir reads as a clean sweep (MISCHIEF-DF-60): `revert --all --dir <nonexistent>` prints
-  `kill switch: 0 holds reverted, wall=0s` rc=0 and `status --dir <nonexistent>` prints `holds: 0` with a
-  freshly minted `boot_id` rc=0. Before trusting "0 holds reverted", confirm the run dir exists.
+- An **absent** run dir is a named refusal (MISCHIEF-DF-60, closed by d51d65e/72d3939; re-verified live
+  2026-10-20 on HEAD 8e8fd4f): `revert --all --dir <nonexistent>` prints `revert: run dir <D> absent
+  (nothing to revert)` on stderr, rc=1, with NO `kill switch:` line and creates nothing; `status --dir
+  <nonexistent>` prints `run_dir: <D>` + `state: absent`, rc=1, and mints no `boot_id`; a present (even
+  empty) dir still answers `kill switch: 0 holds reverted, wall=0s` rc=0. Two adjacent states to know:
+  a path that is a FILE, an unreadable dir, or `/root/…` falls through to the store and reports
+  `reverter: state dir: mkdir …: not a directory|permission denied` (rc=1, stderr, nothing written); and
+  `status --json` over an absent dir prints those two TEXT lines instead of JSON, so
+  `status --json | jq` dies with a parse error exactly there (MISCHIEF-DF-61).
 - The torn-journal ladder below was measured on 2026-10-17; DF-39-R2 / DF-40 / DF-41 are all closed rows
   now and the ladder has NOT been re-measured since. Re-probe before quoting it.
 
