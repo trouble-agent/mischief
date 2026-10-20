@@ -98,3 +98,93 @@ func TestSelftestVerbWritesJournalAndWiring(t *testing.T) {
 		t.Fatalf("a green selftest must grade recovered: %.400s", b)
 	}
 }
+
+// versionSkewDescriptor declares a primitive id no build in this tree
+// covers — the artifact a catalog NEWER than the binary carries (the
+// documented DF-38 pairing: `git archive v0.1.0 catalog` has 10 fault
+// files, a HEAD catalog has 11). The descriptor only has to load: the run
+// never reaches an actuator, because the corpus check refuses the id.
+const versionSkewDescriptor = `id: F-099
+name: version-skew-probe
+what: a primitive the catalog declares and this build's corpus does not cover
+breaks: nothing — it exists to shape the catalog/binary vintage mismatch
+params: {path: str}
+landed_proof: {kind: size-zero, check: "stat(path).size == 0"}
+inverse: {action: restore-from-copy, verify: "the path's bytes match the pre-fault copy"}
+capability: none
+tier: L0
+backend: fs
+maturity: planned
+`
+
+// TestSelftestUnknownCorpusHintsVersionSkew (MISCHIEF-DF-38): a catalog id
+// this build's compiled-in corpus does not cover still FAILs (fail-closed:
+// an unprovable primitive never passes) — and the run must now say why.
+// The operator-facing surface is the hint: version skew, the two vintages
+// to compare (the binary's own stamp via `mischief version`, the catalog's
+// content-derived version and the directory it was read from), and the
+// remedy. Without it the documented scenario (release binary + HEAD
+// catalog) reads as a broken product.
+func TestSelftestUnknownCorpusHintsVersionSkew(t *testing.T) {
+	writeSanctionMarker(t) // the MSF-032 gate runs before catalog validation
+	catDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(catDir, "f-099.yaml"), []byte(versionSkewDescriptor), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	args := []string{"selftest", "--primitive", "F-099", "--catalog-dir", catDir, "--dir", dir}
+
+	code, out := captureStdout(t, func() int { return run(args) })
+	if code != 1 {
+		t.Fatalf("unknown-corpus primitive exit %d, want 1 (never a pass)\n%s", code, out)
+	}
+	if !strings.Contains(out, "not in the selftest corpus") {
+		t.Fatalf("fail line no longer names the corpus: %s", out)
+	}
+	if strings.Contains(out, "version skew") {
+		t.Fatalf("the hint must not pollute the stdout results surface:\n%s", out)
+	}
+
+	code, stderr := captureStderr(t, func() int { return run(args) })
+	if code != 1 {
+		t.Fatalf("unknown-corpus primitive exit %d on the stderr capture, want 1", code)
+	}
+	// The hint must name the skew, BOTH vintages, the offending id, and the
+	// way out — a hint that only says "version skew" would not tell the
+	// operator which versions to compare (the DF-38 ask).
+	for _, want := range []string{"version skew", "mischief version", "content-v1", catDir, "F-099", "--catalog-dir"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("version-skew hint does not name %q:\n%s", want, stderr)
+		}
+	}
+}
+
+// TestSelftestNoVersionSkewHintWithoutSkew: the hint is scoped to the
+// corpus mismatch. A typo id refuses at the catalog rail with its own
+// message (exit 2, "not in the catalog") and a green primitive's run stays
+// hint-free — a hint that fires on every failure trains the operator to
+// ignore it.
+func TestSelftestNoVersionSkewHintWithoutSkew(t *testing.T) {
+	writeSanctionMarker(t)
+	dir := t.TempDir()
+	code, stderr := captureStderr(t, func() int {
+		return run([]string{"selftest", "--primitive", "ZZZ-999", "--dir", dir})
+	})
+	if code != 2 {
+		t.Fatalf("typo primitive exit %d, want 2", code)
+	}
+	if strings.Contains(stderr, "version skew") {
+		t.Fatalf("a typo refusal must not claim version skew:\n%s", stderr)
+	}
+
+	writeHealthyLoad(t) // MISCHIEF-DF-28: the AC-8 gate reads the injected posture
+	code, stderr = captureStderr(t, func() int {
+		return run([]string{"selftest", "--primitive", "P-001", "--dir", dir})
+	})
+	if code != 0 {
+		t.Fatalf("green P-001 exit %d, want 0\n%s", code, stderr)
+	}
+	if strings.Contains(stderr, "version skew") {
+		t.Fatalf("a green run must not carry the hint:\n%s", stderr)
+	}
+}
