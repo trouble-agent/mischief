@@ -200,31 +200,61 @@ func TestProofFromRecord(t *testing.T) {
 	}
 }
 
-// TestDeclValidateRefusesUnknownKinds: MISCHIEF-DF-29 regression. Decl.Validate
-// must refuse kinds not in the closed vocabulary (inverse: restore-file,
-// remove-file; check: file-matches-backup, file-absent). An unknown inverse
-// must fail at Arm time, not only at TTL revert (where it would grade
-// revert_failed). The arm path's doc comment promises unknown kinds are
-// refused here.
-func TestDeclValidateRefusesUnknownKinds(t *testing.T) {
-	// Known kinds must still pass
-	for _, kind := range []string{"restore-file", "remove-file", "file-matches-backup", "file-absent"} {
-		d := Decl{Kind: kind, Params: map[string]string{"path": "x"}}
-		if err := d.Validate(); err != nil {
-			t.Errorf("expected known kind %q to pass: %v", kind, err)
+// TestDeclValidateForRefusesUnknownAndCrossSlotKinds: MISCHIEF-DF-29 and
+// MISCHIEF-DF-29-R2 regression. Decl.ValidateFor must refuse kinds not in
+// the slot's closed vocabulary (inverse: restore-file, remove-file; check:
+// file-matches-backup, file-absent) AND kinds that belong to the OTHER slot
+// (the union check armed holds whose undo was a check kind — graded
+// revert_failed with the fault left landed — or whose check was an inverse
+// kind — graded revert_failed on a correct undo). An unknown or cross-slot
+// kind must fail at Arm time, not only at TTL revert. The arm path's doc
+// comment promises kinds are refused here.
+func TestDeclValidateForRefusesUnknownAndCrossSlotKinds(t *testing.T) {
+	// Known kinds must pass IN their own slot
+	for _, tc := range []struct {
+		slot Slot
+		kind string
+	}{
+		{SlotInverse, "restore-file"},
+		{SlotInverse, "remove-file"},
+		{SlotCheck, "file-matches-backup"},
+		{SlotCheck, "file-absent"},
+	} {
+		d := Decl{Kind: tc.kind, Params: map[string]string{"path": "x"}}
+		if err := d.ValidateFor(tc.slot); err != nil {
+			t.Errorf("expected known %s kind %q to pass: %v", tc.slot, tc.kind, err)
 		}
+	}
+
+	// Cross-slot kinds must be refused with the wrong slot named (DF-29-R2)
+	crossInverse := Decl{Kind: "file-absent", Params: map[string]string{"path": "x"}}
+	err := crossInverse.ValidateFor(SlotInverse)
+	if err == nil {
+		t.Fatal("expected check kind in inverse slot to be refused at arm time")
+	}
+	if !strings.Contains(err.Error(), "check") || !strings.Contains(err.Error(), "inverse") {
+		t.Fatalf("expected refusal to name both slots, got: %v", err)
+	}
+
+	crossCheck := Decl{Kind: "remove-file", Params: map[string]string{"path": "x"}}
+	err = crossCheck.ValidateFor(SlotCheck)
+	if err == nil {
+		t.Fatal("expected inverse kind in check slot to be refused at arm time")
+	}
+	if !strings.Contains(err.Error(), "inverse") || !strings.Contains(err.Error(), "check") {
+		t.Fatalf("expected refusal to name both slots, got: %v", err)
 	}
 
 	// Unknown kinds must fail closed at arm time
 	unknownInverse := Decl{Kind: "delete-everything", Params: map[string]string{"path": "x"}}
-	if err := unknownInverse.Validate(); err == nil {
+	if err := unknownInverse.ValidateFor(SlotInverse); err == nil {
 		t.Fatal("expected unknown inverse kind to be refused at arm time")
 	} else if !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected 'unknown' in error, got: %v", err)
 	}
 
 	unknownCheck := Decl{Kind: "checksum-match", Params: map[string]string{"path": "x", "backup": "y"}}
-	if err := unknownCheck.Validate(); err == nil {
+	if err := unknownCheck.ValidateFor(SlotCheck); err == nil {
 		t.Fatal("expected unknown check kind to be refused at arm time")
 	} else if !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("expected 'unknown' in error, got: %v", err)
@@ -232,9 +262,64 @@ func TestDeclValidateRefusesUnknownKinds(t *testing.T) {
 
 	// Missing kind must still fail with "missing"
 	missing := Decl{Kind: "", Params: map[string]string{"path": "x"}}
-	if err := missing.Validate(); err == nil {
+	if err := missing.ValidateFor(SlotInverse); err == nil {
 		t.Fatal("expected empty kind to be refused")
 	} else if !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("expected 'missing' in error, got: %v", err)
+	}
+}
+
+// TestHoldValidateRefusesCrossSlotKinds: DF-29-R2 at the Hold boundary — the
+// arm path (Arm -> Hold.Validate) must refuse a hold whose inverse slot
+// carries a check kind or whose check slot carries an inverse kind, with the
+// offending slot named in the error.
+func TestHoldValidateRefusesCrossSlotKinds(t *testing.T) {
+	base := func(inv, chk Decl) Hold {
+		return Hold{
+			FaultID: "F", Target: "file:/x",
+			Inverse: inv, Check: chk,
+			TTL: time.Second,
+		}
+	}
+	cases := []struct {
+		name string
+		hold Hold
+		want string
+	}{
+		{
+			name: "check kind in inverse slot",
+			hold: base(
+				Decl{Kind: "file-absent", Params: map[string]string{"path": "/x"}},
+				Decl{Kind: "file-absent", Params: map[string]string{"path": "/x"}},
+			),
+			want: "inverse",
+		},
+		{
+			name: "inverse kind in check slot",
+			hold: base(
+				Decl{Kind: "remove-file", Params: map[string]string{"path": "/x"}},
+				Decl{Kind: "remove-file", Params: map[string]string{"path": "/x"}},
+			),
+			want: "check",
+		},
+	}
+	for _, tc := range cases {
+		err := tc.hold.Validate()
+		if err == nil {
+			t.Errorf("%s: expected cross-slot hold to be refused", tc.name)
+			continue
+		}
+		if !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "not the") {
+			t.Errorf("%s: err=%v, want slot %q named with the cross-slot refusal", tc.name, err, tc.want)
+		}
+	}
+
+	// The well-formed hold still passes.
+	ok := base(
+		Decl{Kind: "restore-file", Params: map[string]string{"path": "/x", "backup": "/b"}},
+		Decl{Kind: "file-matches-backup", Params: map[string]string{"path": "/x", "backup": "/b"}},
+	)
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("expected well-formed hold to pass: %v", err)
 	}
 }
