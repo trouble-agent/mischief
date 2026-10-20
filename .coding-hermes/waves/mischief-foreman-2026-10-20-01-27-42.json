@@ -1,22 +1,22 @@
 {
   "tick_id": "mischief-foreman-2026-10-20-01-27-42",
-  "tasks": ["MISCHIEF-DF-52", "MISCHIEF-DF-53", "MISCHIEF-DF-54"],
-  "status": "dispatching",
-  "workers": {
-    "MISCHIEF-DF-52": {
-      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-52",
-      "branch": "wt/MISCHIEF-DF-52",
-      "base_sha": "3481795"
-    },
-    "MISCHIEF-DF-53": {
-      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-53",
-      "branch": "wt/MISCHIEF-DF-53",
-      "base_sha": "3481795"
-    },
-    "MISCHIEF-DF-54": {
-      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-54",
-      "branch": "wt/MISCHIEF-DF-54",
-      "base_sha": "3481795"
-    }
-  }
+  "tasks": [
+    "MISCHIEF-DF-52",
+    "MISCHIEF-DF-53",
+    "MISCHIEF-DF-54"
+  ],
+  "status": "finished",
+  "started_at": "2026-10-20T01:27:42Z",
+  "worktrees": {
+    "MISCHIEF-DF-52": "/home/kara/worktrees/mischief-MISCHIEF-DF-52",
+    "MISCHIEF-DF-53": "/home/kara/worktrees/mischief-MISCHIEF-DF-53",
+    "MISCHIEF-DF-54": "/home/kara/worktrees/mischief-MISCHIEF-DF-54"
+  },
+  "branches": {
+    "MISCHIEF-DF-52": "wt/MISCHIEF-DF-52",
+    "MISCHIEF-DF-53": "wt/MISCHIEF-DF-53",
+    "MISCHIEF-DF-54": "wt/MISCHIEF-DF-54"
+  },
+  "finished_at": "2026-10-20T02:15:00Z",
+  "recovery_notes": "All three tasks (DF-52, DF-53, DF-54) successfully recovered. DF-52 and DF-53 merged directly. DF-54 required rebase via fixup worktree due to merge conflict with DF-52/53 changes to lifecycle.go. All tests pass, CI green."
 }
