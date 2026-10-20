@@ -1,0 +1,22 @@
+{
+  "tick_id": "mischief-foreman-2026-10-20-01-27-42",
+  "tasks": ["MISCHIEF-DF-52", "MISCHIEF-DF-53", "MISCHIEF-DF-54"],
+  "status": "dispatching",
+  "workers": {
+    "MISCHIEF-DF-52": {
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-52",
+      "branch": "wt/MISCHIEF-DF-52",
+      "base_sha": "3481795"
+    },
+    "MISCHIEF-DF-53": {
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-53",
+      "branch": "wt/MISCHIEF-DF-53",
+      "base_sha": "3481795"
+    },
+    "MISCHIEF-DF-54": {
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-54",
+      "branch": "wt/MISCHIEF-DF-54",
+      "base_sha": "3481795"
+    }
+  }
+}
