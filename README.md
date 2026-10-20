@@ -51,6 +51,8 @@ archive hole behind an untested restore path) were found by hand or not at all.
 
 ### Option A — release tarball (no Go toolchain needed)
 
+Short version: download, verify, unpack, then `mkdir -p ~/.local/bin && install -m 0755 mischief ~/.local/bin/`.
+
 Releases live at <https://github.com/trouble-agent/mischief/releases>. Download the
 tarball for your architecture (`linux_amd64` / `linux_arm64`) plus `checksums.txt`,
 verify, and unpack (example for tag `v0.1.0`, amd64):
@@ -72,10 +74,10 @@ The archive contains four files:
 | `libfault-anchored.so` | the LD_PRELOAD fault shim (mode 0755) |
 | `LICENSE`, `README.md` | the usual |
 
-Put the binary on your PATH:
+Put the binary on your PATH (create the directory first if it doesn't exist):
 
 ```sh
-install -m 0755 mischief ~/.local/bin/
+mkdir -p ~/.local/bin && install -m 0755 mischief ~/.local/bin/
 ```
 
 Then check the install:
