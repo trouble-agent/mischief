@@ -107,16 +107,70 @@ func TestResolveProtectedAllowedRecords(t *testing.T) {
 	}
 }
 
-// TestResolveProtectedNearMiss: the protected match is on selector
-// components, never inside a longer word — "gateway-test" is not the
-// gateway.
-func TestResolveProtectedNearMiss(t *testing.T) {
-	tgt, err := Resolve(DeclaredTarget{Kind: TargetProcess, Selector: "process:gateway-test"}, ResolveOptions{})
-	if err != nil {
-		t.Fatalf("Resolve(gateway-test): %v (a component match must not eat longer words)", err)
+// TestResolveProtectedFleetProcessNames: AC-1/2/3 — the fleet's real
+// control-plane process names must land on the protected list, not plan
+// clean on an exact-token miss. ex-004 ships "process:hermes-gateway" and
+// the scheduler runs as "schedulerd": both must refuse naming the plane.
+func TestResolveProtectedFleetProcessNames(t *testing.T) {
+	cases := []struct {
+		selector string
+		want     ProtectedKind
+	}{
+		{"process:hermes-gateway", ProtectedGateway},
+		{"process:schedulerd", ProtectedScheduler},
+		{"process:hermes-scheduler", ProtectedScheduler},
+		{"process:hermes-memory-daemon", ProtectedMemoryDaemon},
 	}
-	if tgt.IsProtected() {
-		t.Fatalf("gateway-test resolved as protected (%q); near-miss leaked", tgt.Protected)
+	for _, tc := range cases {
+		_, err := Resolve(DeclaredTarget{Kind: TargetProcess, Selector: tc.selector}, ResolveOptions{})
+		if err == nil {
+			t.Fatalf("%s: Resolve succeeded, want the protected refusal (the fleet's real name must not plan clean)", tc.selector)
+		}
+		var re *ResolveError
+		if !errors.As(err, &re) {
+			t.Fatalf("%s: error is %T, want *ResolveError", tc.selector, err)
+		}
+		if re.Reason != ReasonProtected {
+			t.Fatalf("%s: Reason=%q, want %q", tc.selector, re.Reason, ReasonProtected)
+		}
+		if re.Protected != tc.want {
+			t.Fatalf("%s: named %q, want %q", tc.selector, re.Protected, tc.want)
+		}
+		if !strings.Contains(err.Error(), tc.want.String()) {
+			t.Fatalf("%s: refusal text %q must name the plane", tc.selector, err.Error())
+		}
+	}
+}
+
+// TestResolveProtectedNearMiss: the component match is directional prefix
+// containment, not free substring — "hermes-api" is not the gateway and
+// "loadbalancer" is not the scheduler. Names that share a prefix with a
+// plane ("gateway-test") DO refuse: over-refusing is the rail's intended
+// failure mode (the operator override is the release valve).
+func TestResolveProtectedNearMiss(t *testing.T) {
+	// still refuse: shared prefixes are treated as naming the plane
+	for _, sel := range []string{"process:gateway-test", "process:scheduler-probe"} {
+		_, err := Resolve(DeclaredTarget{Kind: TargetProcess, Selector: sel}, ResolveOptions{})
+		if err == nil {
+			t.Fatalf("%s: Resolve succeeded; a shared prefix with a control plane must over-refuse, not plan clean", sel)
+		}
+		var re *ResolveError
+		if !errors.As(err, &re) {
+			t.Fatalf("%s: error is %T, want *ResolveError", sel, err)
+		}
+		if re.Reason != ReasonProtected {
+			t.Fatalf("%s: Reason=%q, want %q", sel, re.Reason, ReasonProtected)
+		}
+	}
+	// genuinely unrelated names still pass clean
+	for _, sel := range []string{"process:hermes-api", "process:loadbalancer", "process:troubled"} {
+		tgt, err := Resolve(DeclaredTarget{Kind: TargetProcess, Selector: sel}, ResolveOptions{})
+		if err != nil {
+			t.Fatalf("Resolve(%s): %v (unrelated name must not be eaten by the protected rail)", sel, err)
+		}
+		if tgt.IsProtected() {
+			t.Fatalf("%s resolved as protected (%q); near-miss leaked", sel, tgt.Protected)
+		}
 	}
 }
 
