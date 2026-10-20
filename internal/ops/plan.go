@@ -23,8 +23,12 @@ const (
 	OpWriteFile OpKind = "write"
 	// OpRemove: remove one file (retention / uninstall).
 	OpRemove OpKind = "remove"
-	// OpRemoveDir: remove one EMPTY dir (uninstall).
+	// OpRemoveDir: remove one EMPTY dir (uninstall prefix).
 	OpRemoveDir OpKind = "rmdir"
+	// OpRemoveTree: remove one directory RECURSIVELY (uninstall journal
+	// run-dir rotation — a run dir holds journal files, so the plain
+	// file-shaped OpRemove dies ENOTEMPTY on real data; MISCHIEF-DF-33).
+	OpRemoveTree OpKind = "remove-tree"
 )
 
 // Action is one planned filesystem mutation. Path is the ROOT-RELATIVE
@@ -44,6 +48,13 @@ type Action struct {
 	// Reason names WHY the action exists (one line — the dry-run plan is
 	// operator-readable).
 	Reason string
+	// runsDir is the logical runs dir an OpRemoveTree action was rendered
+	// against (PlanUninstall copies PlanRetention's actions verbatim, so
+	// the field rides along). ExecuteUninstall's confinement guard
+	// resolves the tree target against it: a tree removal must be a
+	// DIRECT child of this dir, never an arbitrary path. Empty on all
+	// other kinds.
+	runsDir string
 }
 
 // DryRunString renders the action as one operator-readable plan line —
@@ -59,6 +70,8 @@ func (a Action) DryRunString() string {
 		return fmt.Sprintf("remove %s — %s", a.Path, a.Reason)
 	case OpRemoveDir:
 		return fmt.Sprintf("rmdir %s — %s", a.Path, a.Reason)
+	case OpRemoveTree:
+		return fmt.Sprintf("remove-tree %s — %s", a.Path, a.Reason)
 	default:
 		return fmt.Sprintf("%s %s — %s", a.Kind, a.Path, a.Reason)
 	}
