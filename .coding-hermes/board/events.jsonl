@@ -244,3 +244,4 @@
 {"event_type":"task_completed","task_id":"MISCHIEF-RV-2","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
 {"event_type":"task_completed","task_id":"MISCHIEF-DF-45","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
 {"event_type":"task_completed","task_id":"MISCHIEF-DF-53","timestamp":"2026-10-20T01:15:13Z","worker_summary":"Wave worker completed task"}
+{"id":175,"task_id":"MISCHIEF-RV-4","event_type":"task_created","timestamp":"2026-10-20T01:37:48+00:00","author":null,"body":null,"actor":"foreman","detail":"{\"id\":\"MISCHIEF-RV-4\",\"status\":\"pending\"}"}
