@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/reverter"
 	"github.com/trouble-agent/mischief/internal/sanction"
 )
@@ -33,6 +34,13 @@ import (
 // the catalog (--catalog-dir, default catalog/faults from cwd upward — the
 // same resolution every catalog-consuming verb uses). An unknown id never
 // becomes a durable hold.
+//
+// The declared target is resolved through the rails' own accessor
+// (internal/rails Resolve — MISCHIEF-DF-58), so the protected-target list
+// (scheduler, gateway, memory-daemon) and the structural exclusions refuse
+// here exactly as they do on the plan path, before anything is written. There
+// is no override flag on this verb; the override surface is a separate
+// change.
 func cmdArm(args []string) int {
 	fs := flag.NewFlagSet("arm", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -100,6 +108,23 @@ func cmdArm(args []string) int {
 		return 2
 	}
 
+	// MISCHIEF-DF-58: the protected-target rail covers the arm path. Plan
+	// refuses a protected selector at resolution (AC-7); arm — the
+	// write-ahead half of the same loop — must agree, or a fleet control
+	// plane gains a durable hold (status --all publishes it) that plan
+	// would have refused in the same session. Resolve through the same
+	// rails accessor with the same options plan passes
+	// (internal/plan.Build), AFTER every usage-class check (missing flags,
+	// unknown fault id, malformed params) and BEFORE the sanction gate and
+	// any journal write — the write-ahead contract: a refused arm writes
+	// nothing. No operator override here: the override surface is
+	// MISCHIEF-DF-57's.
+	decl := rails.DeclaredTarget{Kind: declaredTargetKind(*target), Selector: *target}
+	if _, err := rails.Resolve(decl, rails.ResolveOptions{SelfPID: 0, SelfExe: ""}); err != nil {
+		fmt.Fprintln(os.Stderr, "arm:", err)
+		return rails.MapExit(err)
+	}
+
 	// SPEC-13 sanction gate (same shape as plan/selftest/battery): fail
 	// closed, exit 2, NOTHING written to the run dir on refusal.
 	if err := sanction.Check(sanction.Options{}); err != nil {
@@ -128,6 +153,28 @@ func cmdArm(args []string) int {
 	fmt.Printf("armed %s fault=%s target=%s ttl=%s dir=%s\n", id, *fault, *target, *ttl, *dir)
 	fmt.Printf("write-ahead: inverse + check durable in the journal (SPEC-04); serve reverts at TTL\n")
 	return 0
+}
+
+// declaredTargetKind derives the rails TargetKind for a --target selector
+// value, with the same prefix rule internal/plan's kindFor applies to an
+// experiment's declared selector: the prefix before the first ':' names the
+// class when it is one of the five (process | pid→process | cgroup |
+// container | host | cloud); anything else is a host selector. Arm refuses
+// bare selectors with the usage gate before this is consulted, so the
+// default never runs on an empty value.
+func declaredTargetKind(selector string) rails.TargetKind {
+	switch {
+	case strings.HasPrefix(selector, "process:"), strings.HasPrefix(selector, "pid:"):
+		return rails.TargetProcess
+	case strings.HasPrefix(selector, "cgroup:"):
+		return rails.TargetCgroup
+	case strings.HasPrefix(selector, "container:"):
+		return rails.TargetContainer
+	case strings.HasPrefix(selector, "cloud:"):
+		return rails.TargetCloud
+	default:
+		return rails.TargetHost
+	}
 }
 
 // parseDeclParams parses a "k=v,k=v" flag value into a Decl's param map.

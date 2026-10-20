@@ -230,6 +230,62 @@ func TestArmToServeRevertAtTTL(t *testing.T) {
 	}
 }
 
+// TestArmRefusesProtectedTarget (MISCHIEF-DF-58): the protected-target rail
+// now covers the arm path. Every selector naming a fleet control plane is
+// refused fail-closed (exit 2, "protected target" naming the plane on
+// stderr) BEFORE the sanction gate or any journal write — the same
+// protected_target refusal the plan verb returns for the same selector in
+// the same session. A benign control arms normally (rc=0, hold published).
+func TestArmRefusesProtectedTarget(t *testing.T) {
+	writeSanctionMarker(t) // sanctioned posture: only the protected rail can produce this refusal
+	for _, selector := range []string{
+		"process:scheduler",
+		"container:gateway",
+		"host:memory-daemon",
+	} {
+		dir := t.TempDir()
+		args := armTestArgs(t, dir)
+		for i, a := range args {
+			if a == "scratch:/tmp/mischief-arm-test" {
+				args[i] = selector
+			}
+		}
+		code, stderr := captureStderr(t, func() int { return run(args) })
+		if code != 2 {
+			t.Fatalf("arm %q: exit %d, want 2", selector, code)
+		}
+		if !strings.Contains(stderr, "protected target") {
+			t.Fatalf("arm %q: refusal does not name the protected target: %s", selector, stderr)
+		}
+		plane := strings.TrimPrefix(selector, strings.SplitN(selector, ":", 2)[0]+":")
+		if !strings.Contains(stderr, plane) {
+			t.Fatalf("arm %q: refusal does not name the plane %q: %s", selector, plane, stderr)
+		}
+		if ents, _ := os.ReadDir(dir); len(ents) != 0 {
+			t.Errorf("arm %q: refused arm wrote into the run dir: %v", selector, ents)
+		}
+		// the refused hold was never published: an empty fold shows holds: 0.
+		code, out := captureStdout(t, func() int { return run([]string{"status", "--all", "--dir", dir}) })
+		if code != 0 || !strings.Contains(out, "holds: 0") {
+			t.Fatalf("arm %q: status after refusal: exit %d out=%q, want 0 + holds: 0", selector, code, out)
+		}
+	}
+
+	// positive control: the benign scratch selector still arms exactly as
+	// before (rc=0, hold published) — the rail did not regress the admitted
+	// path.
+	dir := t.TempDir()
+	args := armTestArgs(t, dir)
+	code, out := captureStdout(t, func() int { return run(args) })
+	if code != 0 || !strings.Contains(out, "armed ") {
+		t.Fatalf("benign control arm: exit %d out=%q, want 0 + armed", code, out)
+	}
+	code, out = captureStdout(t, func() int { return run([]string{"status", "--all", "--dir", dir}) })
+	if code != 0 || !strings.Contains(out, "holds: 1") {
+		t.Fatalf("benign control status: exit %d out=%q, want 0 + holds: 1", code, out)
+	}
+}
+
 // TestArmOutputNamesOnlySupportedRevertRoute (MISCHIEF-DF-31): arm's
 // write-ahead line is the user-facing contract for WHERE the hold reverts.
 // It must name only a supported route — the serve verb's TTL sweep. The
