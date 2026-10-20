@@ -24,12 +24,22 @@ import (
 // Real mode (--allow-real + --resource + --spend-cap) applies the AC-17
 // gate explicitly: in v0.1 the real adapter is a documented stub, so the
 // gate's decision (admit-refused-by-stub | redirect-to-sim) is printed and
-// the redirect path PROVES itself in the sim's request log. destroy_class
-// =permanent refuses outright everywhere (the companion-faults doctrine).
+// the redirect path PROVES itself in the sim's request log.
+//
+// --destroy-class names the requested fault's destroy class (closed
+// vocabulary: reversible | permanent; default reversible). The value is
+// validated BEFORE anything arms and feeds the gate directly: outside the
+// vocabulary is a usage refusal naming the offending value (exit 2), and
+// destroy_class=permanent refuses outright everywhere in v0.1 (the
+// companion-faults doctrine — the refusal the PRD's L5 row and
+// docs/FAULT-CATALOG.md promise): the gate's RefusalText line prints and
+// the verb exits 2 BEFORE the simulator starts — no request log, nothing
+// armed, nothing landed ("simulator included").
 //
 // Usage:
 //
 //	mischief sim --shape I-003 [--path /fault] [--log PATH]
+//	mischief sim --shape I-003 --destroy-class permanent   (refused outright: exit 2)
 //	mischief sim --shape I-012 --allow-real --resource aws:sandbox-lab --spend-cap 0.50
 //
 // ch:trace row=MSF-010 spec=docs/SPEC-PLAN.md#SPEC-09 wave=.coding-hermes/waves/mischief-foreman-2026-10-05-10-40-40.json#MSF-010 test=cmd/mischief evidence=cmd/mischief/sim.go witness=none:layer-I-shape-exercised-via-selfCall-request-log
@@ -39,6 +49,7 @@ func cmdSim(args []string) int {
 	shapeID := fs.String("shape", "", "the layer-I catalog id to simulate (I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014)")
 	path := fs.String("path", "/fault", "request path the sim serves")
 	logPath := fs.String("log", "", "sim request log path (default <tmpdir>/mischief-sim-<shape>.log)")
+	destroyClass := fs.String("destroy-class", "reversible", "the requested fault's destroy class, closed vocabulary reversible | permanent (permanent refuses outright in v0.1)")
 	allowReal := fs.Bool("allow-real", false, "AC-17 opt-in: admit the real-provider plane (v0.1: gate decides; adapter is a stub)")
 	resource := fs.String("resource", "", "allowlisted resource tag (AC-17 triad)")
 	spendCap := fs.Float64("spend-cap", 0, "spend cap in USD (AC-17 triad)")
@@ -56,6 +67,20 @@ func cmdSim(args []string) int {
 		return 2
 	}
 
+	// --destroy-class is a closed vocabulary validated BEFORE anything
+	// arms (PRD L5: reversible, non-destructive verbs only). The gate's
+	// permanent check is case-insensitive, so the vocabulary check matches
+	// that shape; canonicalize so exactly one spelling reaches the gate.
+	switch {
+	case strings.EqualFold(*destroyClass, "reversible"):
+		*destroyClass = "reversible"
+	case strings.EqualFold(*destroyClass, "permanent"):
+		*destroyClass = "permanent"
+	default:
+		fmt.Fprintf(os.Stderr, "mischief sim: unknown --destroy-class %q — the closed vocabulary is reversible | permanent\n", *destroyClass)
+		return 2
+	}
+
 	// The AC-17 gate decides BEFORE anything arms: the triad
 	// (--allow-real AND resource tag AND spend cap) is what separates a
 	// real-plane admission from a forced simulator redirect. Refusals do
@@ -65,11 +90,20 @@ func cmdSim(args []string) int {
 		ResourceTag: *resource,
 		SpendCapUSD: *spendCap,
 	}
-	decision, detail := gate.Decide("reversible")
+	decision, detail := gate.Decide(*destroyClass)
 
 	log := *logPath
 	if log == "" {
 		log = filepath.Join(os.TempDir(), fmt.Sprintf("mischief-sim-%s.log", *shapeID))
+	}
+
+	// The permanent destroy refuses OUTRIGHT — simulator included — so the
+	// verb exits before the simulator starts: no request log created, no
+	// shape armed, no request landed. This is the documented refusal, not
+	// a sim-mode redirect.
+	if decision == backend_sim.DecideRefused {
+		fmt.Println(backend_sim.RefusalText(*shapeID, decision, detail))
+		return 2
 	}
 
 	sim := backend_sim.NewSimulator(log)

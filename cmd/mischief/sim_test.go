@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -212,17 +213,55 @@ func TestSimVerbResourceTagAllowlist(t *testing.T) {
 	}
 }
 
-// TestSimVerbPermanentDestroyRefusedOutright: destroy_class=permanent
-// refuses everywhere in v0.1 — the companion-faults doctrine — and the
-// refusal names the doctrine.
+// TestSimVerbPermanentDestroyRefusedOutright: --destroy-class permanent
+// refuses everywhere in v0.1 — the companion-faults doctrine — at the
+// operator surface: the verb prints the gate's refusal line (the
+// RefusalText form naming the permanent destroy) and exits 2 BEFORE the
+// simulator starts, so nothing arms, nothing lands and the request log is
+// never created ("refuses outright everywhere, simulator included").
 func TestSimVerbPermanentDestroyRefusedOutright(t *testing.T) {
-	// The sim verb only arms reversible layer-I shapes; a permanent-destroy
-	// request cannot be expressed as a shape, so the gate-level refusal is
-	// asserted directly (the command refuses before any arming).
-	gate := backend_sim.RealGate{AllowReal: true, ResourceTag: "aws:x", SpendCapUSD: 1}
-	d, detail := gate.Decide("permanent")
-	if d != backend_sim.DecideRefused || !strings.Contains(detail, "permanent") {
-		t.Fatalf("permanent destroy not refused outright: %s %s", d, detail)
+	log := filepath.Join(t.TempDir(), "sim-requests.log")
+	rc, out := captureStdout(t, func() int {
+		return cmdSim([]string{"--shape", "I-003", "--log", log, "--destroy-class", "permanent"})
+	})
+	if rc != 2 {
+		t.Fatalf("exit %d, want 2 (the permanent destroy refuses outright)", rc)
+	}
+	for _, want := range []string{
+		"backend_sim: I-003: refused:",
+		"permanent",
+		"refuses outright",
+		"simulator included",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("permanent-destroy refusal lacks %q:\n%s", want, out)
+		}
+	}
+	if _, err := os.Stat(log); !os.IsNotExist(err) {
+		t.Fatalf("refused run created or wrote the request log %s (nothing may arm or land): %v", log, err)
+	}
+}
+
+// TestSimVerbUnknownDestroyClassRefuses: a --destroy-class value outside
+// the closed vocabulary (reversible | permanent) is a usage refusal that
+// NAMES the offending value (exit 2) before anything arms — no request
+// log, no simulator start.
+func TestSimVerbUnknownDestroyClassRefuses(t *testing.T) {
+	log := filepath.Join(t.TempDir(), "sim-requests.log")
+	rc, stderr := captureStderr(t, func() int {
+		return cmdSim([]string{"--shape", "I-003", "--log", log, "--destroy-class", "delete-the-world"})
+	})
+	if rc != 2 {
+		t.Fatalf("exit %d, want 2", rc)
+	}
+	if !strings.Contains(stderr, "delete-the-world") {
+		t.Fatalf("usage refusal does not name the offending value:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "mischief sim:") {
+		t.Fatalf("usage refusal does not carry the verb prefix:\n%s", stderr)
+	}
+	if _, err := os.Stat(log); !os.IsNotExist(err) {
+		t.Fatalf("refused run created the request log %s: %v", log, err)
 	}
 }
 
