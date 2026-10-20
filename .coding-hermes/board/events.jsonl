@@ -263,3 +263,4 @@
 {"id": 191, "timestamp": "2026-10-20 07:36:16", "event_type": "task_updated", "task_id": "MISCHIEF-RV-4", "actor": "foreman", "detail": "{\"status\":\"in_progress\"}", "tick": null}
 {"id": 192, "timestamp": "2026-10-20 08:21:05", "event_type": "task_completed", "task_id": "MISCHIEF-RV-4", "actor": "foreman", "detail": "{\"status\":\"complete\"}", "tick": null}
 {"id": 193, "timestamp": "2026-10-20 08:21:05", "event_type": "task_updated", "task_id": "MISCHIEF-DF-56", "actor": "foreman", "detail": "{\"status\":\"pending\"}", "tick": null}
+{"id": 194, "timestamp": "2026-10-20 12:08:58", "event_type": "task_created", "task_id": "QA-MISCHIEF-005", "actor": "foreman", "detail": "{\"id\":\"QA-MISCHIEF-005\",\"status\":\"pending\"}", "tick": null}
