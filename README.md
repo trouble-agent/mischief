@@ -264,6 +264,33 @@ SPEC-13 sanction gate and refuses fail-closed (exit 2, nothing written) on an
 unsanctioned host. Arming writes the hold only — landing the fault remains
 the fault verbs' act.
 
+## Landing the fault, and recovering a failed revert
+
+`arm` is write-ahead only: it records the hold in the journal and stops there.
+**Landing the fault is a separate act**, performed by the operator or by the
+fault verbs (`sim`, `selftest`, `battery`, `plane`) — the bare `LAND` step in
+the loop above. Landing means making the fault real on the target yourself;
+for a file-scoped fault that is the change the fault models:
+
+```sh
+printf 'FAULTED' > /tmp/mischief-scratch/config.toml   # the LAND step
+bin/mischief status --dir ~/.mischief/runs/default      # the hold is still armed
+```
+
+The hold's measured check and its recorded reverse action decide the outcome:
+the serve daemon (or a detached TTL owner) reverts at TTL expiry, and
+`mischief revert --all` is the kill switch. The full contract — what to write,
+what proof lines to expect — is spelled out in `skills/mischief-usage/`
+(`# LAND the fault yourself (arm writes the hold only; printf FAULTED > file, etc.)`).
+
+Two operator flags close the surfaces around a failed revert. They are the
+recovery path, so they are worth knowing before you need them:
+
+| command | what it does |
+|---|---|
+| `mischief status --all` | lists TERMINAL holds (`reverted` / `revert_failed`) alongside active ones. The default `status` shows active holds only, so a hold that has already ended is visible here — and only here. |
+| `mischief revert --hold <id> --retry` | re-executes a terminal `revert_failed` hold's recorded inverse as one more MEASURED attempt (same inverse, same check, same grading); exit 0 only if the retry measures `reverted`. A plain `revert --hold <id>` refuses a terminal `revert_failed` hold, so this flag is the only way out of that dead end. `--retry` and `--all` are mutually exclusive. |
+
 ## Safety, in one breath
 
 No setuid. Rootless-first (`systemd-run --user` scopes, LD_PRELOAD, seccomp, userspace
