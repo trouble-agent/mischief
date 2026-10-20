@@ -13,6 +13,7 @@ import (
 
 	"github.com/trouble-agent/mischief/internal/backend_docker"
 	"github.com/trouble-agent/mischief/internal/backend_sim"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // docker.go — the SPEC-09 landables: the docker node faults and the sim
@@ -289,6 +290,15 @@ type dockerLandable struct {
 }
 
 func (d *dockerLandable) capability() (string, bool) {
+	// SPEC-13 host admission applies to the docker landables too: they spawn
+	// real containers (docker:oom's scratch runs `dd if=/dev/zero` at full
+	// core for the life of the land). The CLI checks sanction in cmd/mischief,
+	// but `go test ./internal/selftest` reaches this path directly — so an
+	// unsanctioned host must refuse HERE, at the capability probe, before any
+	// container is minted. Absence of the marker is a refusal, not a warning.
+	if err := sanction.Check(sanction.Options{}); err != nil {
+		return "capability_unavailable: " + err.Error(), true
+	}
 	cli, err := backend_docker.NewCLI()
 	if err != nil {
 		return err.Error(), true
