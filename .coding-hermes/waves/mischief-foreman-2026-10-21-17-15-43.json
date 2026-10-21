@@ -1,0 +1,36 @@
+{
+  "tick": "mischief-foreman-2026-10-21-17-15-43",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "25d2a39a119e5158cb0a4cbb3966ef1184c8ed79",
+  "wave_budget": 7,
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-62",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-62",
+      "branch": "wt/MISCHIEF-DF-62",
+      "step": 1,
+      "scope": ["README.md", "docs/prd/mischief-v0.1.md"],
+      "criterion": "Document the shipped absent run-dir state and exit code; add state: absent text without changing product behavior.",
+      "implementation_commit": "25241a6c6af4d43fb1d554ed251d19ad1e38518d",
+      "pushed_tip": "1d3d374d46b51382d338dd224cce8e2dc92c9f63",
+      "verdict": ".gitreins/history/2026-10-21/7f657ee9/verdict.json",
+      "result": "complete"
+    },
+    {
+      "id": "MISCHIEF-DF-64",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-64",
+      "branch": "wt/MISCHIEF-DF-64",
+      "step": 2,
+      "scope": ["docs/EXPERIMENTS.md"],
+      "criterion": "Replace stale SPEC-03 selector-unresolvability explanations with the measured refusal classes for ex-002, ex-003, and ex-004; preserve the four probe contract.",
+      "implementation_commit": "ca29800c2ae6e6f86bf2ac635ca2cbb4d4156346",
+      "pushed_tip": "7afa7708400ee7157daa39842570b8e76ef18911",
+      "verdict": ".gitreins/history/2026-10-21/8954bfc7/verdict.json",
+      "result": "complete"
+    }
+  ],
+  "finished_at": "2026-10-21T18:11:22Z",
+  "final_main": "67d614baf5adf7f46b769671869a6e259963f800",
+  "final_ci": "in_progress"
+}
