@@ -214,7 +214,21 @@ func cmdStatus(args []string) int {
 	// creating Open would mint a boot.json and answer holds: 0 / proofs: 0
 	// over an invented boot_id — a typo'd --dir indistinguishable from a
 	// verified-clean run dir. Name the state instead and refuse.
+	// MISCHIEF-DF-61: the refusal is a machine surface too — --json emits
+	// ONE parseable object ({run_dir, state:"absent"}), never the text
+	// lines, so `status --json | jq -e .state` parses; the exit code stays
+	// 1 in BOTH modes (the grade is the state, not the rendering). The
+	// guard runs BEFORE reverter.Open: nothing is created, fail-closed.
 	if runDirAbsent(*dir) {
+		if *asJSON {
+			b, err := json.MarshalIndent(map[string]string{"run_dir": *dir, "state": "absent"}, "", "  ")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "status:", err)
+				return 1
+			}
+			os.Stdout.Write(append(b, '\n'))
+			return 1
+		}
 		fmt.Printf("run_dir: %s\n", *dir)
 		fmt.Println("state: absent")
 		return 1
