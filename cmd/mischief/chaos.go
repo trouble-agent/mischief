@@ -10,6 +10,7 @@ import (
 
 	"github.com/trouble-agent/mischief/internal/battery"
 	"github.com/trouble-agent/mischief/internal/chaos"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // chaos.go — the `mischief chaos` verb (MSF-017, M6 fleet adoption): the
@@ -82,6 +83,20 @@ func cmdChaosMatrix(args []string) int {
 		fmt.Fprintln(os.Stderr, "chaos matrix:", err)
 		return 1
 	}
+	// MISCHIEF-DF-67: the matrix's SPEC-13 posture is EXPLICIT, not
+	// enforced. The matrix is evidence-plane — it derives cells from the
+	// catalog + registry and writes artifacts; it never arms a fault,
+	// never binds a port, never claims a landed proof — so unlike the
+	// landing verbs (plan/arm/selftest/battery/sim) it does not refuse on
+	// an unsanctioned host. But the artifact and its summary line record
+	// WHICH host posture produced them: a matrix derived on the
+	// unsanctioned scheduler host can never pass as the artifact a
+	// sanctioned chaos host would produce (a NULL with a reason, not a
+	// blank).
+	posture := chaos.PostureSanctioned
+	if err := sanction.Check(sanction.Options{}); err != nil {
+		posture = chaos.PostureUnsanctioned
+	}
 	lane := &chaos.Lane{
 		Schema:    chaos.Schema,
 		Lane:      *project + "-chaos",
@@ -94,7 +109,7 @@ func cmdChaosMatrix(args []string) int {
 		fmt.Fprintln(os.Stderr, "chaos matrix:", err)
 		return 2
 	}
-	m := chaos.ProjectMatrix(*project, cat, hostCapabilityRegistry(), lane)
+	m := chaos.ProjectMatrix(*project, cat, hostCapabilityRegistry(), lane, posture)
 	outDir := *out
 	if outDir == "" {
 		outDir = filepath.Join(os.TempDir(), *project+"-chaos")
@@ -127,8 +142,10 @@ func cmdChaosMatrix(args []string) int {
 			inc++
 		}
 	}
-	fmt.Printf("chaos matrix: %s — %d/%d cells executable at L%d on this chaos host (artifact: %s)\n",
-		m.Project, inc, len(m.Cells), *tierMax, jp)
+	// MISCHIEF-DF-67: the summary names the host posture so an
+	// unsanctioned derivation is never mistaken for a sanctioned one.
+	fmt.Printf("chaos matrix: %s — %d/%d cells executable at L%d on this %s chaos host (artifact: %s)\n",
+		m.Project, inc, len(m.Cells), *tierMax, posture, jp)
 	return 0
 }
 

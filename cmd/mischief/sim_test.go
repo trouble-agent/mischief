@@ -16,6 +16,7 @@ import (
 // whose entries include a FAULTED request of the armed shape (read back
 // from disk, not from the sim's memory).
 func TestSimVerbEachShapeProvesInRequestLog(t *testing.T) {
+	writeSanctionMarker(t) // MISCHIEF-DF-67: sim now carries the SPEC-13 gate; the sanctioned posture is the plane's own shape
 	for _, id := range simCoveredIDs {
 		t.Run(id, func(t *testing.T) {
 			log := filepath.Join(t.TempDir(), "sim-requests.log")
@@ -47,6 +48,7 @@ func TestSimVerbEachShapeProvesInRequestLog(t *testing.T) {
 // refuses the real plane, names the missing pieces, and STILL lands in the
 // simulator (exit 0, faulted log entry present).
 func TestSimVerbRealGateRedirectWithoutOptIn(t *testing.T) {
+	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc := cmdSim([]string{"--shape", "I-012", "--log", log})
 	if rc != 0 {
@@ -71,6 +73,7 @@ func TestSimVerbRealGateRedirectWithoutOptIn(t *testing.T) {
 // admits "real" and the v0.1 stub refuses the actual cloud call — the
 // decision line must say so (never a silent 200).
 func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
+	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, out := captureStdout(t, func() int {
 		return cmdSim([]string{"--shape", "I-012", "--log", log,
@@ -113,6 +116,7 @@ func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
 // names the missing pieces exactly as before (MISCHIEF-DF-15 regression
 // guard for the non-real decisions).
 func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
+	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, out := captureStdout(t, func() int {
 		return cmdSim([]string{"--shape", "I-012", "--log", log, "--allow-real"})
@@ -144,6 +148,7 @@ func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
 // gate admitted any non-empty tag; these refusals are the red proof at
 // the operator surface.
 func TestSimVerbResourceTagAllowlist(t *testing.T) {
+	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
 	admitted := []string{"aws:sandbox-lab"}
 	refused := []string{"aws:prod-db", "prod-fleet-main-host", "*", "   "}
 	for _, tag := range admitted {
@@ -220,6 +225,7 @@ func TestSimVerbResourceTagAllowlist(t *testing.T) {
 // simulator starts, so nothing arms, nothing lands and the request log is
 // never created ("refuses outright everywhere, simulator included").
 func TestSimVerbPermanentDestroyRefusedOutright(t *testing.T) {
+	writeSanctionMarker(t) // the SPEC-13 gate (DF-67) runs BEFORE the permanent-destroy refusal; keep the sanctioned posture so the asserted text is the gate's
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, out := captureStdout(t, func() int {
 		return cmdSim([]string{"--shape", "I-003", "--log", log, "--destroy-class", "permanent"})
@@ -247,6 +253,7 @@ func TestSimVerbPermanentDestroyRefusedOutright(t *testing.T) {
 // NAMES the offending value (exit 2) before anything arms — no request
 // log, no simulator start.
 func TestSimVerbUnknownDestroyClassRefuses(t *testing.T) {
+	writeSanctionMarker(t) // usage validation precedes the gate; posture kept explicit for hermeticity
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, stderr := captureStderr(t, func() int {
 		return cmdSim([]string{"--shape", "I-003", "--log", log, "--destroy-class", "delete-the-world"})

@@ -13,6 +13,11 @@ import (
 // (the row's scope guard). Cells are only those the project's chaos host
 // can actually execute: capability ready (or explicitly absent with a
 // reason), tier at or below the lane's ceiling, L0 scratch selector.
+//
+// MISCHIEF-DF-67: ProjectMatrix stamps the caller's SPEC-13 host posture
+// into the artifact — tests here use the sanctioned constant; the posture
+// arms (both values, plus the summary line) are pinned at the CLI level
+// (cmd/mischief/sanction_gate_test.go).
 
 // reg is the CapabilityRegistry seam stub: docker answers, NET_ADMIN does
 // not — the two-sided host the matrix tests derive against.
@@ -53,7 +58,7 @@ func TestProjectScopeIsLaneData(t *testing.T) {
 func TestProjectMatrixFiltersByCapabilityAndTier(t *testing.T) {
 	l := validLane(t)
 	l.Matrix.TierMax = 1 // the rootless-bunker workhorse ceiling
-	m := ProjectMatrix("mischief", testCat, reg(false), &l)
+	m := ProjectMatrix("mischief", testCat, reg(false), &l, PostureSanctioned)
 
 	// Included: L0/L1, capability none or cgroup2-probed... cgroup2 is
 	// absent on the stub host, so R-001 must be named-absent.
@@ -76,7 +81,7 @@ func TestProjectMatrixExcludedCarriesReason(t *testing.T) {
 	// cell names WHY — capability absent, or tier above the lane ceiling.
 	l := validLane(t)
 	l.Matrix.TierMax = 3
-	m := ProjectMatrix("mischief", testCat, reg(true), &l)
+	m := ProjectMatrix("mischief", testCat, reg(true), &l, PostureSanctioned)
 	for _, c := range m.Cells {
 		if c.Status == "included" && c.Reason != "" {
 			t.Errorf("included cell %s carries an exclusion reason: %s", c.Primitive, c.Reason)
@@ -104,7 +109,7 @@ func TestProjectMatrixExcludedCarriesReason(t *testing.T) {
 func TestProjectMatrixTierCeiling(t *testing.T) {
 	l := validLane(t)
 	l.Matrix.TierMax = 1
-	m := ProjectMatrix("mischief", testCat, reg(true), &l)
+	m := ProjectMatrix("mischief", testCat, reg(true), &l, PostureSanctioned)
 	byPrim := map[string]ProjectCell{}
 	for _, c := range m.Cells {
 		byPrim[c.Primitive] = c
@@ -125,7 +130,7 @@ func TestProjectMatrixTierCeiling(t *testing.T) {
 // Empty catalog → empty matrix WITH the project stamped (and no panic);
 // the executor refuses an empty matrix, so the artifact marks it.
 func TestProjectMatrixEmptyCatalog(t *testing.T) {
-	m := ProjectMatrix("other", &catalog.Catalog{Primitives: map[string]*catalog.Descriptor{}}, reg(true), mustLane(t))
+	m := ProjectMatrix("other", &catalog.Catalog{Primitives: map[string]*catalog.Descriptor{}}, reg(true), mustLane(t), PostureSanctioned)
 	if m.Project != "other" {
 		t.Errorf("project %q, want other", m.Project)
 	}
@@ -136,7 +141,7 @@ func TestProjectMatrixEmptyCatalog(t *testing.T) {
 
 // The schema stamps the artifact as project-scoped.
 func TestProjectMatrixSchema(t *testing.T) {
-	m := ProjectMatrix("mischief", testCat, reg(false), mustLane(t))
+	m := ProjectMatrix("mischief", testCat, reg(false), mustLane(t), PostureSanctioned)
 	if m.Schema != "mischief.chaos.matrix/v1" {
 		t.Errorf("schema %q", m.Schema)
 	}
@@ -148,7 +153,7 @@ func TestProjectMatrixSchema(t *testing.T) {
 func TestRenderMatrixMarkdownHasProjectAndCells(t *testing.T) {
 	l := validLane(t)
 	l.Matrix.TierMax = 3
-	m := ProjectMatrix("mischief", testCat, reg(true), &l)
+	m := ProjectMatrix("mischief", testCat, reg(true), &l, PostureSanctioned)
 	md := RenderMatrixMarkdown(m)
 	if !strings.Contains(md, "mischief") {
 		t.Error("markdown missing the project name")

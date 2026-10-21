@@ -265,6 +265,19 @@ func ValidateMatrixArtifact(l *Lane, dir string) error {
 	if strings.TrimSpace(m.CatalogVersion) == "" {
 		return fmt.Errorf("chaos lane %s: %s catalog_version missing — the cells name no catalog they were derived from", l.Lane, path)
 	}
+	// MISCHIEF-DF-67: the SPEC-13 host posture is part of the artifact's
+	// evidence. A blank posture means the artifact predates the posture
+	// stamp (or a hand-made artifact skipped it) — refused, not defaulted:
+	// a lane consuming a matrix must know which host posture derived it.
+	// Regenerate with `chaos matrix` to stamp it.
+	switch m.HostPosture {
+	case PostureSanctioned, PostureUnsanctioned:
+		// the only two honest postures
+	case "":
+		return fmt.Errorf("chaos lane %s: %s host_posture missing (SPEC-13, MISCHIEF-DF-67) — regenerate with `chaos matrix` so the artifact names the host posture that derived it", l.Lane, path)
+	default:
+		return fmt.Errorf("chaos lane %s: %s host_posture %q is not %q | %q", l.Lane, path, m.HostPosture, PostureSanctioned, PostureUnsanctioned)
+	}
 	if m.TierMax > l.Matrix.TierMax {
 		return fmt.Errorf("chaos lane %s: %s tier_max %d exceeds the lane's declared ceiling %d — regenerate the artifact at the lane's tier_max (chaos matrix --tier-max %d), never run an above-ceiling matrix on this lane (MISCHIEF-DF-19)", l.Lane, path, m.TierMax, l.Matrix.TierMax, l.Matrix.TierMax)
 	}
