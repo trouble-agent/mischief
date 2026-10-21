@@ -235,7 +235,7 @@ including `condition` — for an operator diff; an uninstalled host is a normal
 `not_installed` result, so tooling can distinguish "nothing here yet" (exit 0)
 from "someone changed what is here" (exit 1). A manifest-only install
 (`mischief install --no-drop-in` — the mode available without root) reports
-`manifest_only` (MISCHIEF-DF-35), so tooling can equally tell it apart from a
+`manifest_only` (MISCHIEF-DF-35, fixed), so tooling can equally tell it apart from a
 never-installed host.
 
 ## The loop

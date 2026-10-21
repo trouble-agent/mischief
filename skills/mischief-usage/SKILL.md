@@ -46,7 +46,8 @@ resolution; sanction-marker gate (SPEC-13) fails closed; load gate on landings.
 ## Arming + serving a hold (the loop from the CLI — verified live 2026-10-16)
 
 ```sh
-# closed vocabulary, refuse-on-unknown at REVERT (not yet at arm — MISCHIEF-DF-29):
+# closed vocabulary, validated per-slot at ARM time (MISCHIEF-DF-29 and its
+# 29-R2 re-cur, both closed; verified live on HEAD 8e8fd4f 2026-10-20):
 #   inverse: restore-file (params path,backup) | remove-file (param path)
 #   check:   file-matches-backup (params path,backup) | file-absent (param path)
 mkdir -p /tmp/mc-scratch/{runs,target}
@@ -140,8 +141,10 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
   the write-ahead design and every arc (the 2026-10-16 entry closes the DF-05
   no-CLI-door arc).
 - `probe/` — the measured capability audit. `capability-probe.sh` runs in ~0.3s,
-  exit 0. NOTE: RESULTS.md transcript is stale vs the script (MSF-024) — trust
-  the live output, 13 sections incl. `== freezer ==`.
+  exit 0, 13 sections incl. `== freezer ==`. RESULTS.md's transcript now carries
+  its provenance stamp (MSF-024, closed): it is the verbatim stdout of
+  `capability-probe.sh @ 09eaff0b8738` — if the script is edited the stamp goes
+  stale and the live output is authoritative again; re-run and diff.
 - `catalog/faults/*.yaml` (10) — each carries all five contract fields; maturity is
   declared per row (mostly `L1-only` — a ladder state, not breakage).
 - `catalog/experiments/*.yaml` (4) — rehearsal artifacts; `mischief plan -f` is now
@@ -182,13 +185,14 @@ sudo ip netns del mc-probe-ns                      # revert proven
   (landed on this host, no battery cell on shared targets yet).
 - Board rows are MSF-<n> in `.coding-hermes/board/tasks.jsonl` (v2.1 JSONL,
   boardctl-managed). Design rows MSF-001..022 pre-date the dogfood run.
-- "Selectors have no resolution semantics" (old MSF-026) is SUPERSEDED: `plan`
-  resolves targets through fail-closed rails; unsanctioned hosts refuse before
-  anything is written.
-- `arm` accepts unknown inverse/check KINDS (structure-only validation at arm
-  time; the whitelist fires only at revert, MISCHIEF-DF-29). Stick to the two
-  kinds per decl above until DF-29 closes — an invented kind journals fine and
-  grades `revert_failed` at expiry.
+- "Selectors have no resolution semantics" (old MSF-026, closed) is SUPERSEDED:
+  `plan` resolves targets through fail-closed rails; unsanctioned hosts refuse
+  before anything is written.
+- `arm` validates inverse/check KINDS at arm time against the kind's own slot
+  (MISCHIEF-DF-29 and the 29-R2 re-cur, both closed): an unknown kind — or a
+  kind from the wrong slot — refuses rc=2 naming the field, nothing written.
+  Stick to the two kinds per decl above; anything else is a usage refusal,
+  not a journalable arm.
 - `serve`'s `boot_id` (what `status` prints and what arm records carry) comes from the
   run dir's `boot.json`, not the host's `/proc/sys/kernel/random/boot_id` — an arm record
   stamped with the host id grades false-stuck on the same boot. That run-dir value is
@@ -201,14 +205,14 @@ sudo ip netns del mc-probe-ns                      # revert proven
   `boot.json.host_boot`.
 - A long-running `serve` NOW folds the holds it did not load at boot — MISCHIEF-DF-30 is
   fixed and re-proven live 2026-10-20 (arms issued after the daemon started reverted at
-  TTL). The `boot_id` scope caveat in MISCHIEF-DF-30's own row text is therefore stale:
+  TTL). The `boot_id` scope caveat in MISCHIEF-DF-30's row text (since fixed) is stale:
   `status` and `revert --all` still fold fresh and remain the authoritative read, but
   `health.json` is no longer blind to post-boot arms (its `holds`/`reverted` counters
   tracked the arms in this run's probes).
-- The detached-owner route `arm` names in its write-ahead line ("serve (or
-  Detach) reverts at TTL") is NOT reachable from any verb: `Lifecycle.Detach` and
-  the `__owner` entry exist but no flag/subcommand calls them (MISCHIEF-DF-31).
-  Do not count on it as a second containment path.
+- `arm`'s write-ahead line now reads "serve reverts at TTL" (MISCHIEF-DF-31,
+  closed): the once-advertised Detach route was removed from the message
+  entirely, so there is no second containment path to count on — `serve` and
+  `revert --all` are the only TTL owners.
 - `status` (default) lists ACTIVE holds only (armed/stuck) since DF-54 — a **failed** revert is terminal,
   so it is visible only in the `proofs:` list, in `status --all`, or in `health.json`. With a fault still
   landed and its revert failed, `status` prints `holds: 0` and exits **0** (MISCHIEF-DF-54-R2) while the
@@ -241,14 +245,15 @@ sudo ip netns del mc-probe-ns                      # revert proven
   empty) dir still answers `kill switch: 0 holds reverted, wall=0s` rc=0. Two adjacent states to know:
   a path that is a FILE, an unreadable dir, or `/root/…` falls through to the store and reports
   `reverter: state dir: mkdir …: not a directory|permission denied` (rc=1, stderr, nothing written); and
-  `status --json` over an absent dir prints those two TEXT lines instead of JSON, so
-  `status --json | jq` dies with a parse error exactly there (MISCHIEF-DF-61).
+- `status --json` over an absent dir prints those two TEXT lines instead of JSON, so
+  `status --json | jq` dies with a parse error exactly there (MISCHIEF-DF-61, still open).
 - The torn-journal ladder below was measured on 2026-10-17; DF-39-R2 / DF-40 / DF-41 are all closed rows
   now and the ladder has NOT been re-measured since. Re-probe before quoting it.
 
 ## Privileged lifecycle verbs (`install`, `uninstall`, `retention`) — apply-leg contract
 
-Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-DF-33/34/35):
+Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings
+MISCHIEF-DF-33/34/35, all closed):
 
 - `--dry-run` prints the exact plan the apply executes (install: 2 actions planned
   == 2 applied; uninstall: 3 planned, present artefacts removed). Use it for
@@ -256,12 +261,11 @@ Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-
   of `uninstall` failed on every real run dir on the same day its `--dry-run`
   read clean.
 - Rotate run history with `mischief retention --runs-dir D --keep-count N --apply`
-  (works: non-empty dirs removed, rc=0). Do NOT use `uninstall`'s integrated
-  rotation until DF-33 closes: `uninstall --runs-dir D --keep-count/--keep-days`
-  dies `remove <dir>: directory not empty` (rc=1) on any run dir containing a
-  journal file, rotates nothing, and by then has already deleted the helper
-  manifest (DF-34). The one shape that passes is an EMPTY fixture dir — never
-  test rotation with empty dirs.
+  (works: non-empty dirs removed, rc=0). `uninstall`'s integrated rotation now
+  handles real run dirs (MISCHIEF-DF-33 closed) and lifecycle verbs report
+  per-step state when a step fails (MISCHIEF-DF-34 closed) — a failed step no
+  longer leaves you guessing what was already deleted. Empty fixture dirs are
+  still a useless rotation test: exercise rotation against a real run dir shape.
 - No keep bounds at all -> `--runs-dir` is silently ignored (artefacts removed,
   rotation skipped, rc=0). `--keep-count 0` is read as UNSET and refuses rc=2
   ("both keep-count and keep-age are unset"): express "keep none" as
@@ -279,15 +283,16 @@ Verified by real use 2026-10-16 (lane mischief-chaos-dogfood; findings MISCHIEF-
 
 ## Driving the RELEASED artifact (README Option A) — verified on a fresh agent 2026-10-16
 
-The tarball path (no Go toolchain) is real and honest — but three frictions cost
-a fresh consumer three stopped moments (MISCHIEF-DF-36/37/38, all README-side):
+The tarball path (no Go toolchain) is real and honest — the README-side
+frictions MISCHIEF-DF-36/37/38 (all closed) left two lasting rules of thumb:
 
 - `install -m 0755 mischief ~/.local/bin/` fails rc=1 if `~/.local/bin` does
   not exist (a bare Debian user has none). Rescue: `mkdir -p ~/.local/bin`
-  first, or use `install -Dm 0755` (GNU -D creates the dir).
+  first, or use `install -Dm 0755` (GNU -D creates the dir) — the README's
+  Install section now leads with the mkdir.
 - `plan` and catalog-backed verbs need the `catalog/` tree from a checkout
-  (or `--catalog-dir`); the tarball ships none and the README mentions this
-  only as a `doctor` caveat.
+  (or `--catalog-dir`); the tarball ships none — `doctor` names the in-repo
+  `catalog/faults` requirement and exits 1 without it.
 - Matching a newer catalog to the older release binary turns `selftest --all`
   red with `unknown primitive "F-008": not in the selftest corpus` and NO
   version-skew hint. With the tag's own catalog (`git archive v0.1.0 catalog`
@@ -308,23 +313,27 @@ a fresh consumer three stopped moments (MISCHIEF-DF-36/37/38, all README-side):
 degraded leg is split three ways — full ladder in
 `docs/dogfood/2026-10-17-torn-journal-ladder.md`:
 
-- Torn line appended WHILE the daemon runs (MISCHIEF-DF-39-R2): the daemon stays
-  up but the tick loop `continue`s before `writeHealth` (daemon.go:148-160), so
-  `health.json` keeps the last good document — `ok:true`, TTLs decaying, no
-  `refold_error` — and no TTL revert is attempted while the corruption is there
-  (target stays FAULTED past its TTL, zero proofs). Repairing the journal makes
-  the SAME daemon fold clean on its next beat and revert normally: no restart
-  needed. Treat `ok:true` as unproven whenever you cannot explain the health
-  file's `generated_at`; `mischief status --dir <run>` is the cross-check (a
+- Torn line appended WHILE the daemon runs (MISCHIEF-DF-39-R2, closed): as
+  measured 2026-10-17 (re-probe before quoting), the daemon stayed up but the
+  tick loop `continue`d before `writeHealth`, so `health.json` kept the last
+  good document — `ok:true`, TTLs decaying, no `refold_error` — and no TTL
+  revert was attempted while the corruption was there (target stays FAULTED
+  past its TTL, zero proofs). Repairing the journal makes the SAME daemon fold
+  clean on its next beat and revert normally: no restart needed. Treat
+  `ok:true` as unproven whenever you cannot explain the health file's
+  `generated_at`; `mischief status --dir <run>` is the cross-check (a
   separate process, failing closed rc=1 with `journal fold: ... unexpected EOF`).
-- Torn line present BEFORE the daemon starts (MISCHIEF-DF-40): `serve` panics on
-  a nil `*reverter.Store` (`reverter.Open` returns nil on a fold error,
-  journal.go:246-248; `New` keeps it, daemon.go:118) and `health.json` is never
-  created — there is nothing to read at all. Repair the journal first.
-- Torn journal + a stop request (MISCHIEF-DF-41): SIGTERM/SIGINT self-deadlock
-  in the ctx-cancel final beat (`render` re-locks `d.mu` at daemon.go:277 while
-  `writeHealth` holds it). The process ignores the signal — use `kill -9` and
-  repair the journal; do not wait for a clean exit.
+- Torn line present BEFORE the daemon starts (MISCHIEF-DF-40, closed by
+  361b64d): pre-fix (measured 2026-10-17) `serve` panicked on a nil
+  `*reverter.Store` and `health.json` was never created — there was nothing to
+  read at all. Since 361b64d the daemon starts DEGRADED on a torn boot journal
+  and publishes `ok:false` + `refold_error` on the tick path; CLI verbs still
+  refuse fail-closed. Repair the journal first either way.
+- Torn journal + a stop request (MISCHIEF-DF-41, closed): as measured
+  2026-10-17 (re-probe before quoting), SIGTERM/SIGINT self-deadlocked in the
+  ctx-cancel final beat (`render` re-locks `d.mu` while `writeHealth` holds
+  it). The process ignored the signal — use `kill -9` and repair the journal;
+  do not wait for a clean exit.
 - The sanction variable is `MISCHIEF_SANCTION` (no "F"): a transposed
   `MISFCHIEF_SANCTION=1` produces the same `host_not_sanctioned` refusal rc=2 as
   setting nothing at all, so read the refusal text before blaming the host.

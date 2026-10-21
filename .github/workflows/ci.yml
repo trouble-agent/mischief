@@ -63,3 +63,6 @@ jobs:
 
       - name: Shim drift gate (tools/shim-extracted.c must match ShimSourceC)
         run: git diff --exit-code -- tools/shim-extracted.c
+
+      - name: Row-status drift gate (skills/README must not cite closed board rows as live)
+        run: python3 tools/check_row_drift.py

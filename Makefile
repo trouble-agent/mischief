@@ -18,7 +18,7 @@ LDFLAGS := -X main.gitSha=$(SHA)
 # release-dry` is the config-only check (no build).
 DIST := dist/release
 
-.PHONY: bin test vet build clean shim dist tags release-dry
+.PHONY: bin test vet build clean shim dist tags release-dry row-drift
 
 bin:
 	CGO_ENABLED=0 $(GO) build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/mischief
@@ -31,6 +31,14 @@ vet:
 
 test:
 	$(GO) test ./...
+
+# row-drift (MISCHIEF-DF-63): the repo's current-behaviour prose (skills/*.md,
+# README) must not cite a CLOSED board row as if its defect were still live.
+# Resolves MISCHIEF-DF-<n>/MSF-<n> references against
+# .coding-hermes/board/tasks.jsonl; docs/, probe/ and the board itself are
+# exempt (dated history may record a row as open at the time of the run).
+row-drift:
+	python3 tools/check_row_drift.py
 
 # shim: the per-arch shim .so from the DECIDED path (MSF-018) — the same
 # ShimSourceC the runtime compiles at arm time, via system cc (amd64) and
