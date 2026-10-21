@@ -1,0 +1,86 @@
+{
+  "tick": "mischief-foreman-2026-10-21-18-18-09",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "b3a07f86d420e3fc052019847030dee467ace1d9",
+  "wave_budget": 6,
+  "status": "dispatching",
+  "tasks": [
+    {
+      "id": "MISCHIEF-DF-61",
+      "step": 1,
+      "scope": [
+        "cmd/mischief/main.go",
+        "cmd/mischief/status_json_test.go",
+        "docs/prd/mischief-v0.1.md"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-61",
+      "branch": "wt/MISCHIEF-DF-61",
+      "pid": 4102845,
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default"
+    },
+    {
+      "id": "MISCHIEF-DF-63",
+      "step": 2,
+      "scope": [
+        "skills/mischief-usage/SKILL.md"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-63",
+      "branch": "wt/MISCHIEF-DF-63",
+      "pid": 4103884,
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default"
+    },
+    {
+      "id": "MISCHIEF-DF-67",
+      "step": 3,
+      "scope": [
+        "cmd/mischief/sim.go",
+        "cmd/mischief/chaos.go",
+        "cmd/mischief/*_test.go",
+        "internal/chaos/lane.go",
+        "docs/TEST-PLANE.md"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-67",
+      "branch": "wt/MISCHIEF-DF-67",
+      "pid": 4108910,
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default"
+    },
+    {
+      "id": "MISCHIEF-DF-44",
+      "step": 4,
+      "scope": [
+        "internal/battery/runner.go",
+        "cmd/mischief/battery.go",
+        "docs/BATTERY-PARITY.md",
+        "README.md"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-44",
+      "branch": "wt/MISCHIEF-DF-44",
+      "pid": 4105201,
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default"
+    },
+    {
+      "id": "MISCHIEF-DF-57",
+      "step": 5,
+      "scope": [
+        "cmd/mischief/plan.go",
+        "cmd/mischief/arm.go",
+        "cmd/mischief/*_test.go",
+        "README.md",
+        "docs/reference/operator.md"
+      ]
+    },
+    {
+      "id": "QA-MISCHIEF-002-R2",
+      "step": 6,
+      "scope": [
+        "internal/reverter/*",
+        "docs/TEST-PLANE.md"
+      ]
+    }
+  ]
+}

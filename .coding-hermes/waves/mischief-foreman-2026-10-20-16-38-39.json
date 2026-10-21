@@ -1,0 +1,37 @@
+{
+  "tick": "mischief-foreman-2026-10-20-16-38-39",
+  "project": "mischief",
+  "base": "origin/main",
+  "wave_budget": 12,
+  "tasks": [
+    {
+      "id": "QA-MISCHIEF-005",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-005",
+      "branch": "wt/QA-MISCHIEF-005",
+      "step": 1
+    },
+    {
+      "id": "MISCHIEF-RV-3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-3",
+      "branch": "wt/MISCHIEF-RV-3",
+      "step": 2
+    },
+    {
+      "id": "MISCHIEF-DF-46",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-46",
+      "branch": "wt/MISCHIEF-DF-46",
+      "step": 3
+    }
+  ],
+  "finished_at": "2026-10-21T18:18:09-05:00",
+  "status": "recovered_partial",
+  "recovery_notes": {
+    "tick": "mischief-foreman-2026-10-21-18-18-09",
+    "disposition": {
+      "QA-MISCHIEF-005": "no-op/obsolete diagnosis: branch has zero commits ahead of inherited base; board remains pending and QA-MISCHIEF-002-R2 owns the recurrence after the same-head regression claim was refuted",
+      "MISCHIEF-RV-3": "no-op: branch has zero commits ahead of inherited base; board remains in_progress with no implementation delivered",
+      "MISCHIEF-DF-46": "no-op: branch has zero commits ahead of inherited base; board remains in_progress with no implementation delivered"
+    },
+    "verification": "All three inherited worktree branches resolve to 8e8fd4f5927c, merge-base origin/main..branch is the branch tip, and git rev-list origin/main...branch reports origin/main 20 ahead / branch 0 ahead. No live worker process was bound to any of these worktrees. No merge or judge was performed."
+  }
+}
