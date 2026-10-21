@@ -52,6 +52,26 @@ arrives with the container backend), `chaos-corruption` → recovered,
 `chaos-resource` → recovered, `chaos-errorpath` → recovered. 4 pass, 1
 named skip, 0 fail.
 
+## Detection axis: NOT measured in v0.1 (read the matrix honestly)
+
+The artefact sells fault × detection × recovery as its SCHEMA, but the
+detection axis is not measured by this build and no shipped artefact
+should be read as claiming it: every cell of every committed run
+(`docs/battery/quick-*/matrix.json`) records detection `not_wired` with
+the named reason — no production path constructs a detector (the
+`battery.Detector` seam exists; `internal/observe` implements the
+read-only ledger assertion; neither is wired into a run — the live
+trouble-ledger integration is the v0.2 fleet-rollout step). Only the
+`detected` state (rendered `detected (observer)`) is a detection claim;
+`gap`, `not_wired` and `error` mean no detection was measured. The
+recovery axis IS measured (the land+revert proofs feed the SPEC-05
+engine); detection is not. Tests pinning this posture:
+`internal/battery/detection_honesty_test.go` (constructor, matrix run,
+artefact render, committed evidence — the four must move together).
+AC-14 remains OPEN at the integration level despite MSF-011's closure:
+closing it requires a real detector on a scratch trouble instance, not
+the seam alone.
+
 ## Replacement command line
 
     mischief battery --quick --file-rows --dir <run-dir> --out <artefact-dir>

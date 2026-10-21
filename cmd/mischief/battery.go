@@ -43,7 +43,10 @@ import (
 //
 // AC-14 honesty: no cell carries a live trouble-ledger detector in v0.1 —
 // every detection entry records the named not-wired reason; the Detector
-// seam is the assertion point the real integration plugs into.
+// seam is the assertion point the real integration plugs into. The
+// detection axis is therefore NOT MEASURED by this build (only
+// `detected` rows are detection claims; gap/not_wired/error are not) —
+// pinned by internal/battery/detection_honesty_test.go.
 //
 // ch:trace row=MSF-011 spec=docs/SPEC-PLAN.md#SPEC-10 evidence=internal/battery/ + cmd/mischief/battery.go witness=none:scratch-only-live-runs
 
