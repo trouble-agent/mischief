@@ -327,4 +327,4 @@ MIT — see `LICENSE`.
 
 ---
 
-ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=none:pending-foreman-trace memory=none:not-durable-yet
+ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=e6c93d2aeb02246d89109a8b4896a7c884de0b68 memory=none:not-durable-yet
