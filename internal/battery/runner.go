@@ -496,6 +496,13 @@ func (rn *Runner) detect(c Cell) DetectionEntry {
 		return DetectionEntry{State: "not_wired", Reason: notWired}
 	}
 	d := rn.Detectors[c.ID]
+	if d.Name() == "" {
+		// An unnamed observer cannot claim any detection outcome: an
+		// unnamed "detected" would be a false-green detection claim
+		// (MISCHIEF-DF-44). The honest record is the error state naming
+		// the wiring defect.
+		return DetectionEntry{State: "error", Reason: "wired detector carries no Name() — the observer is unnamed, so its outcome is unattributable (wiring defect)"}
+	}
 	ok, err := d.Assert(detectWindow)
 	switch {
 	case err != nil:
