@@ -508,13 +508,16 @@ func writeMatrixArtifact(t *testing.T, dir string, m *MatrixArtifact) {
 }
 
 // validArtifact returns an artifact matching the validLane's declaration
-// (project mischief, scope project, tier_max 1, a named catalog).
+// (project mischief, scope project, tier_max 1, a named catalog, and the
+// stamped host posture — MISCHIEF-DF-67: a posture-less artifact is
+// refused by ValidateMatrixArtifact).
 func validArtifact(t *testing.T) *MatrixArtifact {
 	t.Helper()
 	return &MatrixArtifact{
 		Schema:         MatrixSchema,
 		Project:        "mischief",
 		Scope:          ScopeProject,
+		HostPosture:    PostureSanctioned,
 		TierMax:        1,
 		CatalogVersion: "test-catalog-v1",
 		GeneratedAt:    time.Now().Unix(),
@@ -548,6 +551,46 @@ func TestValidateMatrixArtifactAcceptsAtCeiling(t *testing.T) {
 	writeMatrixArtifact(t, dir, validArtifact(t))
 	if err := ValidateMatrixArtifact(&l, dir); err != nil {
 		t.Fatalf("ceiling-matching artifact refused: %v", err)
+	}
+}
+
+// MISCHIEF-DF-67: the SPEC-13 host posture is part of the artifact's
+// evidence. Both postures validate (a lane may consume a matrix derived
+// on an unsanctioned host — the posture is RECORDED, and the recording is
+// the point); a blank posture (pre-stamp artifact) and an unknown value
+// are refused with the posture named — never silently defaulted.
+func TestValidateMatrixArtifactHostPosture(t *testing.T) {
+	l := validLane(t)
+	for _, posture := range []string{PostureSanctioned, PostureUnsanctioned} {
+		dir := t.TempDir()
+		a := validArtifact(t)
+		a.HostPosture = posture
+		writeMatrixArtifact(t, dir, a)
+		if err := ValidateMatrixArtifact(&l, dir); err != nil {
+			t.Errorf("posture %q refused: %v", posture, err)
+		}
+	}
+	dir := t.TempDir()
+	a := validArtifact(t)
+	a.HostPosture = ""
+	writeMatrixArtifact(t, dir, a)
+	err := ValidateMatrixArtifact(&l, dir)
+	if err == nil {
+		t.Fatal("posture-less artifact accepted — the lane cannot know which host posture derived its matrix")
+	}
+	if !strings.Contains(err.Error(), "host_posture") {
+		t.Errorf("blank-posture refusal does not name host_posture: %v", err)
+	}
+	dir = t.TempDir()
+	a = validArtifact(t)
+	a.HostPosture = "blessed-by-vibes"
+	writeMatrixArtifact(t, dir, a)
+	err = ValidateMatrixArtifact(&l, dir)
+	if err == nil {
+		t.Fatal("unknown posture accepted — the posture vocabulary is closed (sanctioned | unsanctioned)")
+	}
+	if !strings.Contains(err.Error(), "blessed-by-vibes") {
+		t.Errorf("unknown-posture refusal does not name the offending value: %v", err)
 	}
 }
 

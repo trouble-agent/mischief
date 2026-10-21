@@ -162,7 +162,10 @@ Usage:
   mischief version
 
 Safety floor: no default target; protected targets refuse at resolution;
-sanction-marker gate (SPEC-13) fail-closed; load gate on every landing path.
+sanction-marker gate (SPEC-13) fail-closed on the landing verbs (plan, arm,
+selftest, battery, sim — unsanctioned hosts refuse exit 2); chaos matrix is
+evidence-plane and stamps its host posture into the artifact; load gate on
+every landing path.
 `)
 }
 

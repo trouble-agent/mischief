@@ -71,7 +71,15 @@ still-live agent (and records that destroy, pass or fail).
   bypass the check; on an unsanctioned host `selftest` refuses (exit 2)
   and the plane grades that a FAIL. (True since MSF-032: the gate
   previously covered `plan` only, so the verb ran unsanctioned — measured
-  2026-10-06 on the scheduler host, filed as MSF-032.)
+  2026-10-06 on the scheduler host, filed as MSF-032. True since
+  MISCHIEF-DF-67 for `sim` too: the simulator is a fault-landing surface
+  — it arms a shape, serves the fault and writes the request-log proof —
+  so an unsanctioned `sim` run now refuses exit 2 with `host_not_sanctioned`
+  BEFORE anything arms, binds or writes. `chaos matrix` stays admission-
+  free by posture: it is evidence-plane, never executes a fault, and
+  stamps `host_posture` (`sanctioned` | `unsanctioned`) into the artifact
+  and names the posture in its summary line, so an unsanctioned
+  derivation can never pass as a sanctioned one.)
 - `mischief selftest --all`: L0 scratch land+prove+revert per primitive
   (AC-3 landed-proof measured, AC-4 revert byte-compared), exit 0 only when
   every primitive is green-or-skip, plus the AC-19 L1 admission report on

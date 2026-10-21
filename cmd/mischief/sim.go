@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/trouble-agent/mischief/internal/backend_sim"
+	"github.com/trouble-agent/mischief/internal/sanction"
 )
 
 // cmdSim implements the `mischief sim` verb — the layer-I cloud-shape
@@ -43,6 +44,12 @@ import (
 //	mischief sim --shape I-012 --allow-real --resource aws:sandbox-lab --spend-cap 0.50
 //
 // ch:trace row=MSF-010 spec=docs/SPEC-PLAN.md#SPEC-09 wave=.coding-hermes/waves/mischief-foreman-2026-10-05-10-40-40.json#MSF-010 test=cmd/mischief evidence=cmd/mischief/sim.go witness=none:layer-I-shape-exercised-via-selfCall-request-log
+// cmdSim — MISCHIEF-DF-67: the SPEC-13 gate runs AFTER usage validation
+// and BEFORE the AC-17 decision — an unsanctioned host refuses with
+// host_not_sanctioned, exit 2, nothing armed, nothing bound, no request
+// log; sanctioned hosts get the AC-17 redirect semantics unchanged.
+//
+// ch:trace row=MISCHIEF-DF-67 spec=docs/prd/mischief-v0.1.md#spec-13 wave=.coding-hermes/waves/mischief-foreman-2026-10-21-18-18-09.json#3 test=cmd/mischief/sanction_gate_test.go doc=docs/TEST-PLANE.md prompt=/tmp/mischief_brief_MISCHIEF-DF-67.txt evidence=docs/verification/MISCHIEF-DF-67.md witness=none:unsanctioned-scratch-only verdict=none:pending-foreman-judge commit=none:pending-foreman-trace memory=none:not-written
 func cmdSim(args []string) int {
 	fs := flag.NewFlagSet("sim", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -78,6 +85,19 @@ func cmdSim(args []string) int {
 		*destroyClass = "permanent"
 	default:
 		fmt.Fprintf(os.Stderr, "mischief sim: unknown --destroy-class %q — the closed vocabulary is reversible | permanent\n", *destroyClass)
+		return 2
+	}
+
+	// MISCHIEF-DF-67: the SPEC-13 host-admission gate, same shape as
+	// plan/arm/selftest/battery (the MSF-032 class again — sim was the
+	// 4th+ fault-landing surface outside the gate). Fail closed BEFORE
+	// anything arms, binds or writes: the request log below is a
+	// landed-proof claim, and an unsanctioned host must never produce
+	// one. Usage validation runs first (usage refusals are not a
+	// sanction matter); from here on a refusal exits 2 and the only
+	// filesystem contact this verb makes is the marker read.
+	if err := sanction.Check(sanction.Options{}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
 

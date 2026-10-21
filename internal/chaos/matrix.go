@@ -61,6 +61,13 @@ type MatrixArtifact struct {
 	Project string `json:"project"`
 	// Scope is "project" (the generator refuses to render any other).
 	Scope string `json:"scope"`
+	// HostPosture is the SPEC-13 admission state of the host that
+	// derived this matrix ("sanctioned" | "unsanctioned" — MISCHIEF-DF-67).
+	// The matrix is evidence-plane: it never executes a fault, so the
+	// posture is RECORDED, not enforced — a matrix derived on an
+	// unsanctioned host is explicit about it and never passes as the
+	// artifact a sanctioned chaos host would produce.
+	HostPosture string `json:"host_posture"`
 	// TierMax is the lane's tier ceiling the cells were filtered by.
 	TierMax int `json:"tier_max"`
 	// CatalogVersion is the content-derived catalog version the cells
@@ -72,16 +79,26 @@ type MatrixArtifact struct {
 	Cells []ProjectCell `json:"cells"`
 }
 
+// Host posture values for MatrixArtifact.HostPosture (MISCHIEF-DF-67):
+// the SPEC-13 admission state of the host that derived the artifact.
+const (
+	PostureSanctioned   = "sanctioned"
+	PostureUnsanctioned = "unsanctioned"
+)
+
 // ProjectMatrix renders the project-scoped matrix for one project from
 // the project's own capability data. An empty catalog yields an empty
 // matrix (the executor refuses an empty matrix; the artifact honestly
-// shows zero cells rather than pretending).
-func ProjectMatrix(project string, cat *catalog.Catalog, reg catalog.CapabilityRegistry, l *Lane) *MatrixArtifact {
+// shows zero cells rather than pretending). hostPosture stamps the
+// caller's SPEC-13 admission state into the artifact (MISCHIEF-DF-67:
+// evidence-plane posture is explicit, never implied).
+func ProjectMatrix(project string, cat *catalog.Catalog, reg catalog.CapabilityRegistry, l *Lane, hostPosture string) *MatrixArtifact {
 	m := &MatrixArtifact{
-		Schema:  MatrixSchema,
-		Project: project,
-		Scope:   ScopeProject,
-		TierMax: l.Matrix.TierMax,
+		Schema:      MatrixSchema,
+		Project:     project,
+		Scope:       ScopeProject,
+		HostPosture: hostPosture,
+		TierMax:     l.Matrix.TierMax,
 	}
 	if cat == nil {
 		return m
@@ -128,6 +145,7 @@ func RenderMatrixMarkdown(m *MatrixArtifact) string {
 	fmt.Fprintf(&b, "# chaos matrix — %s (project-scoped)\n\n", m.Project)
 	fmt.Fprintf(&b, "- schema: `%s`\n", m.Schema)
 	fmt.Fprintf(&b, "- scope: %s (one lane, one project — never a fleet-wide artifact)\n", m.Scope)
+	fmt.Fprintf(&b, "- host posture: %s (SPEC-13 evidence plane — the matrix never executes a fault; MISCHIEF-DF-67)\n", m.HostPosture)
 	fmt.Fprintf(&b, "- tier ceiling: L%d\n", m.TierMax)
 	fmt.Fprintf(&b, "- catalog: %s\n", m.CatalogVersion)
 	fmt.Fprintf(&b, "\n| primitive | name | capability | tier | status | reason |\n")
