@@ -163,7 +163,12 @@ func renderMarkdown(a *Artefact) string {
 	b.WriteString("|---|---|---|---|---|---|---|\n")
 	for _, c := range a.Cells {
 		det := c.Detection.State
-		if c.Detection.Reason != "" && c.Detection.State != "detected" {
+		switch {
+		case c.Detection.State == "detected" && c.Detection.Observer != "":
+			// a detected row names WHO observed — a bare "detected"
+			// that does not name its observer reads as a false green
+			det = fmt.Sprintf("detected (%s)", c.Detection.Observer)
+		case c.Detection.Reason != "" && c.Detection.State != "detected":
 			// the reason is the row's honest payload: keep it short on
 			// the table line, full in the JSON
 			det = fmt.Sprintf("%s (%s)", c.Detection.State, truncate(c.Detection.Reason, 80))
@@ -173,6 +178,7 @@ func renderMarkdown(a *Artefact) string {
 			legacyCellText(c.LegacyCell),
 			c.Verdict, det, c.Recovery)
 	}
+	b.WriteString("\nDetection states: `detected` (observer named — the record appeared in-window) · `gap` (checked, absent) · `not_wired` (no detector on the cell — NOT measured) · `error` (the check itself failed). Only `detected` is a detection claim.\n")
 	return b.String()
 }
 
