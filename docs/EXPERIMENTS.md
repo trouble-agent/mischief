@@ -81,4 +81,4 @@ recorded verbatim in the why column; it does not mean "safe on a fleet host".
 Every experiment, including ex-001, runs on a scratch host or not at all.
 
 ---
-ch:trace row=MISCHIEF-DF-64 spec=docs/EXPERIMENTS.md#runnable-today wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-2 test=none:docs-only doc=docs/EXPERIMENTS.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-64-brief.txt evidence=docs/EXPERIMENTS.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=none:pending-foreman-trace memory=none:not-durable-yet
+ch:trace row=MISCHIEF-DF-64 spec=docs/EXPERIMENTS.md#runnable-today wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-2 test=none:docs-only doc=docs/EXPERIMENTS.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-64-brief.txt evidence=docs/EXPERIMENTS.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=e41255ef4751cea85763381b154c1fbd9024abf8 memory=none:not-durable-yet
