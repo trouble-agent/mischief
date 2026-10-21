@@ -9,10 +9,10 @@ header — read both before touching a target.
 
 | file | runnable today | why |
 |---|---|---|
-| `catalog/experiments/ex-001-noop-detector.yaml` | yes | target selector `host:.` resolves without SPEC-03; still scratch-only, and still read its header first — the fault truncates a live writer's state file |
-| `catalog/experiments/ex-002-redis-loss-recovery.yaml` | no, rehearsal-only | container selector is unresolvable without SPEC-03, the hardcoded `127.0.0.1:7699` / `7661` probes are placeholders, and the inverse restore carries no state-backup assertion (see below) |
-| `catalog/experiments/ex-003-spool-kill-between.yaml` | no, rehearsal-only | process selector and the `<state_root>` probes are unresolvable without SPEC-03 |
-| `catalog/experiments/ex-004-live-file-replace.yaml` | no, rehearsal-only | replaces a live `state.db` under a running process; selectors and `<state_root>` / `<oracle>` placeholders are unresolvable without SPEC-03 |
+| `catalog/experiments/ex-001-noop-detector.yaml` | yes | plans clean today — measured: `mischief plan` exits 0, the target selector `host:.` resolves and no rail refuses; still scratch-only, and still read its header first — the fault truncates a live writer's state file |
+| `catalog/experiments/ex-002-redis-loss-recovery.yaml` | no, rehearsal-only | measured refusal: `mischief plan` exits 2 with `scope_below_minimum` — the selector `container:trouble-hub` resolves, but I-002's declared minimum tier is L3/L4 and a scratch-host plan sits at L0; independently of the tier gate, the hardcoded `127.0.0.1:7699` / `7661` probes are placeholders, and the inverse restore carries no state-backup assertion (see below) |
+| `catalog/experiments/ex-003-spool-kill-between.yaml` | no, rehearsal-only | measured refusal: `mischief plan` exits 2 with unknown primitive P-006 (P-006 is not in the loaded catalog) plus `scope_below_minimum` — the selector `process:troubled` resolves; the `<state_root>` probes remain hand-substituted placeholders |
+| `catalog/experiments/ex-004-live-file-replace.yaml` | no, rehearsal-only | measured refusal: `mischief plan` exits 2 with `protected_target` — the resolver refuses the gateway as fleet control plane (an operator override is possible but is then recorded); replacing a live `state.db` under a running process is data destruction on anything but a scratch copy |
 
 ## The ex-002 backup precondition
 
@@ -32,9 +32,11 @@ state was actually restored.
 and every other angle-bracketed token in the experiment YAMLs are placeholder
 literals. Nothing fills them in: not the loader, not the planner, not the docs.
 They mark values that must be substituted BY HAND, for a specific scratch
-target, by the operator who runs the experiment — and in the rehearsal-only
-files the surrounding selectors do not resolve at all until SPEC-03 landed
-(see SPEC-03 tracking task 6054b4d).
+target, by the operator who runs the experiment. The placeholders are not
+what stops a rehearsal file from planning clean: target selectors resolve
+today (SPEC-03 has landed — the grammar is the section below), and the
+measured refusals in the table above come from the tier scope ladder, the
+loaded catalog and the protected-target list, never from the placeholders.
 
 ## Target-selector grammar (SPEC-03)
 
@@ -73,6 +75,10 @@ experiments automatically.
 ## The contract
 
 A rehearsal YAML is never an authorization to run outside an L0 scratch host.
-Runnable-today status in the table above means "the selectors resolve"; it does
-not mean "safe on a fleet host". Every experiment, including ex-001, runs on a
-scratch host or not at all.
+Runnable-today status in the table above is the measured plan verdict: it means
+`mischief plan` exits 0 for that file today, and every exit-2 refusal is
+recorded verbatim in the why column; it does not mean "safe on a fleet host".
+Every experiment, including ex-001, runs on a scratch host or not at all.
+
+---
+ch:trace row=MISCHIEF-DF-64 spec=docs/EXPERIMENTS.md#runnable-today wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-2 test=none:docs-only doc=docs/EXPERIMENTS.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-64-brief.txt evidence=docs/EXPERIMENTS.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=none:pending-foreman-trace memory=none:not-durable-yet
