@@ -84,9 +84,23 @@ Then check the install:
 
 ```sh
 mischief version   # mischief v0.1.0 (a release stamps the tag; `make bin` stamps the git sha)
-mischief status    # folds the run dir's journal: armed/stuck holds + TTL remaining, proofs
+mischief status    # folds the run dir's journal: armed/stuck holds + TTL remaining, proofs (on a fresh host: `state: absent`, exit 1 — nothing written)
 mischief doctor    # capability/tier ladder report (see the catalog note below)
 ```
+
+On a clean box `mischief status` is the first command that reads state — and the
+state is not there yet. It prints exactly
+
+```
+run_dir: /home/you/.mischief/runs/default
+state: absent
+```
+
+and exits 1, having written nothing (no run dir, no boot id minted). That
+refusal is deliberate: an absent run dir is a **state, not a count** — minting
+a boot id over invented clean state would make a typo'd `--dir`
+indistinguishable from a verified-clean kill switch. `state: absent` + exit 1
+means *no run dir yet*, not a broken install.
 
 **Run an experiment end-to-end (plan).** From a checkout, `plan` is the
 zero-side-effects preview of an experiment: it resolves the target and every
@@ -310,3 +324,7 @@ writable — the sanctioned-run recipe there is a reason-bearing marker at
 ## License
 
 MIT — see `LICENSE`.
+
+---
+
+ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=none:pending-foreman-trace memory=none:not-durable-yet
