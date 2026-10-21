@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -173,6 +175,105 @@ func TestStatusJSONSurface(t *testing.T) {
 	if got, ok := set["stuck_at"]; !ok || got != nil {
 		t.Errorf("set-row stuck_at: got %#v, want null (only expiry is set on this row)", got)
 	}
+}
+
+// TestStatusJSONAbsentRunDir (MISCHIEF-DF-61): `status --json --dir <absent>`
+// is a machine surface — a script runs `status --json | jq -e .state` and
+// consumes the exit code — but the DF-60 absent guard predates the --json
+// flag and prints its TEXT refusal (`run_dir:` + `state: absent`) before the
+// JSON renderer ever runs, so the pipe fed jq two text lines and failed.
+// The graded contract:
+//
+//	(1) absent emits ONE parseable JSON object naming run_dir and
+//	    state="absent" — nothing is created;
+//	(2) the exit code is the SAME as text mode (1) — the state does not
+//	    change grade because the consumer asked for a different rendering;
+//	(3) the present-dir --json surface is untouched: present-empty keeps
+//	    boot_id/holds/history with NO state key, present-with-holds keeps
+//	    the armed hold row;
+//	(4) the early error path (a torn journal at Open) stays fail-closed in
+//	    JSON mode too: exit 1, the diagnostic on stderr, stdout EMPTY — a
+//	    partial/foreign document must never masquerade as a status object.
+func TestStatusJSONAbsentRunDir(t *testing.T) {
+	t.Run("absent_emits_one_json_object", func(t *testing.T) {
+		absent := filepath.Join(t.TempDir(), "rotated-run")
+		code, out, errOut := runCaptureBoth(t, "status", "--json", "--dir", absent)
+		if code != 1 {
+			t.Fatalf("status --json on an absent run dir: exit %d, want 1\nstdout=%s\nstderr=%s", code, out, errOut)
+		}
+		doc := decodeJSONObject(t, out) // ONE object — two text lines fail here (the DF)
+		if got := doc["run_dir"]; got != absent {
+			t.Errorf("run_dir: got %#v, want %q", got, absent)
+		}
+		if got := doc["state"]; got != "absent" {
+			t.Errorf("state: got %#v, want \"absent\"", got)
+		}
+		assertNoPascalCase(t, "absent status --json", doc)
+		assertStillAbsent(t, absent)
+	})
+
+	t.Run("exit_code_matches_text_mode", func(t *testing.T) {
+		base := t.TempDir()
+		textCode, textOut, _ := runCaptureBoth(t, "status", "--dir", filepath.Join(base, "text-run"))
+		jsonCode, jsonOut, _ := runCaptureBoth(t, "status", "--json", "--dir", filepath.Join(base, "json-run"))
+		if textCode != jsonCode || textCode != 1 {
+			t.Fatalf("absent exit codes diverge by mode: text=%d json=%d, both want 1\ntext out=%s\njson out=%s", textCode, jsonCode, textOut, jsonOut)
+		}
+	})
+
+	t.Run("present_empty_keeps_surface", func(t *testing.T) {
+		dir := t.TempDir() // exists, empty
+		code, out := captureStdout(t, func() int { return run([]string{"status", "--json", "--dir", dir}) })
+		if code != 0 {
+			t.Fatalf("status --json on a present-empty run dir: exit %d, want 0\n%s", code, out)
+		}
+		doc := decodeJSONObject(t, out)
+		assertKeys(t, "present-empty status --json", doc, []string{"boot_id", "holds", "history"})
+		if state, present := doc["state"]; present {
+			t.Errorf("present-empty status --json grew a state key: %#v (state is the absent guard's key)", state)
+		}
+	})
+
+	t.Run("present_with_holds_keeps_surface", func(t *testing.T) {
+		writeSanctionMarker(t)
+		dir := t.TempDir()
+		code, armOut := captureStdout(t, func() int { return run(armTestArgs(t, dir)) })
+		if code != 0 {
+			t.Fatalf("arm: exit %d, want 0\n%s", code, armOut)
+		}
+		holdID := strings.Fields(armOut)[1]
+		code, out := captureStdout(t, func() int { return run([]string{"status", "--json", "--dir", dir}) })
+		if code != 0 {
+			t.Fatalf("status --json over an armed hold: exit %d, want 0\n%s", code, out)
+		}
+		doc := decodeJSONObject(t, out)
+		assertNoPascalCase(t, "present-with-holds status --json", doc)
+		holds, ok := doc["holds"].([]any)
+		if !ok || len(holds) != 1 {
+			t.Fatalf("holds: got %#v, want exactly one armed hold row", doc["holds"])
+		}
+		if hold := holds[0].(map[string]any); hold["hold_id"] != holdID {
+			t.Errorf("hold_id: got %#v, want %q", hold["hold_id"], holdID)
+		}
+	})
+
+	t.Run("early_open_error_stays_fail_closed", func(t *testing.T) {
+		dir := t.TempDir()
+		torn := `{"seq":1,"hold_id":"torn-tail` + "\n"
+		if err := os.WriteFile(filepath.Join(dir, "reverter.jsonl"), []byte(torn), 0o600); err != nil {
+			t.Fatalf("write torn journal: %v", err)
+		}
+		code, out, errOut := runCaptureBoth(t, "status", "--json", "--dir", dir)
+		if code != 1 {
+			t.Fatalf("status --json over a torn journal: exit %d, want 1 (fail-closed)\nstdout=%s\nstderr=%s", code, out, errOut)
+		}
+		if out != "" {
+			t.Fatalf("a refused open leaked stdout in JSON mode — a consumer would parse it as a status object:\n%s", out)
+		}
+		if !strings.Contains(errOut, "status:") || !strings.Contains(errOut, "journal") {
+			t.Fatalf("stderr does not name the open failure:\n%s", errOut)
+		}
+	})
 }
 
 // decodeJSONObject decodes one output buffer into a JSON object, failing the
