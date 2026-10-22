@@ -1,0 +1,8 @@
+{"tick":"mischief-foreman-2026-10-22-07-05-13","created_at":"2026-10-22T07:05:13Z","tasks":[
+  {"id":"QA-MISCHIEF-002-R2","worktree":"/home/kara/worktrees/mischief-QA-MISCHIEF-002-R2","branch":"wt/QA-MISCHIEF-002-R2","base":"fd0a8cd"},
+  {"id":"MISCHIEF-DF-24","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-24","branch":"wt/MISCHIEF-DF-24","base":"fd0a8cd"},
+  {"id":"MISCHIEF-DF-68","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-68","branch":"wt/MISCHIEF-DF-68","base":"fd0a8cd"},
+  {"id":"MISCHIEF-DF-66","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-66","branch":"wt/MISCHIEF-DF-66","base":"fd0a8cd"},
+  {"id":"MISCHIEF-DF-65","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-65","branch":"wt/MISCHIEF-DF-65","base":"fd0a8cd"},
+  {"id":"MISCHIEF-DF-59","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-59","branch":"wt/MISCHIEF-DF-59","base":"fd0a8cd"}
+],"budget":6}
