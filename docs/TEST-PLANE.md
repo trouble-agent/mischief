@@ -106,6 +106,13 @@ An agent that cannot be obtained is a **named SKIP, never a pass**:
   defect** ("skip recorded without a named reason") rather than letting
   silence read as a clean skip.
 
+The same honesty applies INSIDE `go test` when JIT agents run the suites
+directly. One structural skip class is named (MISCHIEF-DF-66):
+
+| go-test skip class | where | measured shape | skip not FAIL because | named reason |
+|---|---|---|---|---|
+| systemd exec-formation (203/EXEC) on the real-user-manager live owner leg | `internal/reverter/live_test.go` + `owner_spawn_test.go::TestRealSystemdRunLiveUnitEndToEnd` | agent c978c347 (bunker-mvp JIT, 2026-10-21): 4× `Started mischief-owner-<id>.service` → `Main process exited, code=exited, status=203/EXEC`; Detach graded exec-formation while the product's own liveness gate classified the same class in the same run | the host accepted the START_JOB but cannot exec the test binary inside its private /tmp namespace — an environment capability gap, not a product regression; a unit that STARTS and then misbehaves still FAILS (negative control pinned) | `capability_unavailable: systemd exec-formation class (owner unit could not be started on this host)` + the unit id + exec_status |
+
 ## 5. What this plane CANNOT exercise (the L2/L3 set)
 
 The bunker is unprivileged — measured (SPEC-13): `unshare -rn` fails at the
