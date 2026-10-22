@@ -28,7 +28,14 @@ import (
 // inverse — restore-file (params: path, backup) | remove-file (params: path);
 // check — file-matches-backup (params: path, backup) | file-absent (params:
 // path). Unknown kinds are refused here at arm time (the same fail-closed
-// grade a revert would give them, surfaced a whole phase earlier).
+// grade a revert would give them, surfaced a whole phase earlier) — with one
+// upgrade-path carve-out (MISCHIEF-DF-68): the underscore spellings the
+// pre-whitelist builds wrote (restore_file, remove_file, file_matches_backup,
+// file_absent) are NOT unknown — the reverter's arm normalizes them onto the
+// canonical hyphenated kinds (and the legacy "from" param onto "backup") at
+// write time, so a hold armed via the legacy vocabulary lands in the journal
+// under canonical spellings, annotated; spellings with no canonical
+// equivalent (file_exists) stay unknown and refuse.
 //
 // The fault id is checked the same way (MISCHIEF-RV-2): it must resolve in
 // the catalog (--catalog-dir, default catalog/faults from cwd upward — the

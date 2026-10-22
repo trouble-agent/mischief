@@ -280,6 +280,18 @@ SPEC-13 sanction gate and refuses fail-closed (exit 2, nothing written) on an
 unsanctioned host. Arming writes the hold only — landing the fault remains
 the fault verbs' act.
 
+Legacy-vocabulary upgrade path (MISCHIEF-DF-68): `arm` accepts the underscore
+spellings pre-whitelist builds wrote into journals (`restore_file`,
+`remove_file`, `file_matches_backup`, `file_absent`) and normalizes them onto
+the canonical hyphenated kinds at WRITE time, restoring their legacy
+`from` param onto `backup` — the armed hold's journal record carries only
+canonical spellings plus a `legacy_spelling` annotation naming what was
+renamed, so the kill switch and the TTL owner see one vocabulary. A legacy
+spelling with no canonical equivalent (`file_exists`) still refuses
+fail-closed at arm; an EXISTING journal hold with such kinds folds and lists
+normally and reverts fail-closed (measured `revert_failed` naming the
+unknown kind) — never a fabricated revert.
+
 ## Landing the fault, and recovering a failed revert
 
 `arm` is write-ahead only: it records the hold in the journal and stops there.

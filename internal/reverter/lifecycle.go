@@ -126,6 +126,19 @@ func validateInverseUndo(d Decl) error {
 // refused with the path named — the arm side does not book a fault whose
 // undo can only grade revert_failed (MISCHIEF-DF-23).
 func (l *Lifecycle) Arm(h Hold) (string, error) {
+	// MISCHIEF-DF-68: normalize the legacy vocabulary BEFORE validation —
+	// a hold armed with underscore spellings (inverse kind restore_file,
+	// restore source param from) enters the journal under its canonical
+	// form (restore-file, backup), so the kill switch, the TTL owner and
+	// every status/revert query reconcile ONE vocabulary. The renames are
+	// annotated in the record (payload extra.legacy_spelling); a legacy
+	// spelling with no canonical equivalent (file_exists) is untouched and
+	// refused below, fail-closed — normalization repairs spellings, it
+	// never manufactures validity.
+	extra := map[string]string{}
+	if notes := NormalizeHold(&h); len(notes) > 0 {
+		extra["legacy_spelling"] = strings.Join(notes, "; ")
+	}
 	if err := h.Validate(); err != nil {
 		return "", fmt.Errorf("reverter: arm: %w", err)
 	}
@@ -149,6 +162,7 @@ func (l *Lifecycle) Arm(h Hold) (string, error) {
 			TTL:     durationNanos(h.TTL),
 			BootID:  s.BootID,
 			ArmPID:  os.Getpid(),
+			Extra:   extra, // empty map omitted on the wire (omitempty)
 		},
 	}
 	b, err := rec.encode()

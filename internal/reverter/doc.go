@@ -63,7 +63,10 @@
 //     remove-file; file-matches-backup, file-absent) — enough for v0.1's L0
 //     proofs, extensible without changing the record shape. An UNKNOWN check
 //     kind grades revert_failed (fail closed): a revert that cannot be
-//     measured is not a revert.
+//     measured is not a revert. Legacy underscore spellings of the declared
+//     kinds (restore_file, ...) are normalized onto the canonical forms at
+//     the WRITE path (Arm), annotated in the record; spellings with no
+//     canonical equivalent stay unknown (MISCHIEF-DF-68).
 //   - No /health.json: the daemon surface (mischiefd) serves it; this
 //     package provides the state (Status) it will read.
 //   - The owner survives kill -9 of the CLI, not kill -9 of ITSELF, and not

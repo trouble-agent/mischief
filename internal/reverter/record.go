@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -192,6 +193,117 @@ func (d Decl) ValidateFor(slot Slot) error {
 		return fmt.Errorf("kind %q belongs in the %s slot, not the %s slot (refusing)", d.Kind, slot.other(), slot)
 	}
 	return fmt.Errorf("%s kind %q: unknown (refusing to execute)", slot, d.Kind)
+}
+
+// ── legacy vocabulary normalization (MISCHIEF-DF-68) ─────────────────────────
+//
+// The kind whitelist is hyphenated (DF-29 / DF-29-R2), but the live run
+// journal carries hold b7e9f744dfb5a67d (armed 2026-10-14 by a
+// pre-whitelist dogfood build) whose arm record spells the inverse kind
+// "restore_file", its restore source param "from", and its check kind
+// "file_exists" — spellings this package's source NEVER had (git log -S).
+// On the canonical vocabulary such a hold dead-ends every surface: the kill
+// switch refuses the inverse fail-closed, --retry re-executes the same
+// unknown spelling, and no verb can retire the hold.
+//
+// The fix at the WRITE path: a hold armed via the legacy vocabulary is
+// normalized onto its canonical form BEFORE validation, so the journal
+// carries only canonical kind strings from this build forward. The renames
+// are annotated in the arm record (payload extra.legacy_spelling), so the
+// normalization is on the record, not swallowed. Journals written BEFORE
+// this change are folded unchanged (the fold validates record types and
+// outcomes, not kinds) and stay fail-closed at revert — an existing
+// underscore-kind hold grades revert_failed with the spelling named, the
+// honest measured outcome the kill switch reports today.
+
+// normalizeKind maps a legacy kind spelling onto its canonical form when the
+// two differ ONLY in underscores and the hyphenated form is in the slot's
+// closed vocabulary (restore_file -> restore-file; file_matches_backup ->
+// file-matches-backup). It is mechanical and vocabulary-grounded — no hand
+// table to drift from InverseKinds/CheckKinds. A spelling with no canonical
+// equivalent ("file_exists") is returned untouched and fails closed at
+// ValidateFor, exactly as an unknown kind always has: normalization repairs
+// spellings, it never manufactures validity.
+func normalizeKind(slot Slot, kind string) (string, bool) {
+	canon := strings.ReplaceAll(kind, "_", "-")
+	if canon == kind {
+		return kind, false
+	}
+	if _, ok := slot.kinds()[canon]; ok {
+		return canon, true
+	}
+	return kind, false
+}
+
+// normalizeParams renames the legacy restore-source param "from" onto the
+// canonical "backup" — the param name the measured legacy hold used and the
+// name exec.go's restore-file actually reads. Without the rename a
+// kind-normalized restore_file hold would carry a backup-less undo: the
+// arm-time probe (validateInverseUndo) would refuse it as unreadable, so the
+// normalizer would have traded one dead end for another. The rename applies
+// only when "backup" is absent (the legacy shape); a decl that already names
+// "backup" is left untouched — "from" is no canonical kind's param and the
+// executor ignores it. The caller's map is never mutated; a nil map passes
+// through (no params, nothing to rename).
+func normalizeParams(in map[string]string) (map[string]string, string) {
+	v, ok := in["from"]
+	if !ok {
+		return in, ""
+	}
+	if _, exists := in["backup"]; exists {
+		return in, ""
+	}
+	out := make(map[string]string, len(in))
+	for k, val := range in {
+		if k == "from" {
+			continue
+		}
+		out[k] = val
+	}
+	out["backup"] = v
+	return out, "param from->backup"
+}
+
+// normalizeDecl returns d with any legacy spelling replaced by its canonical
+// form, plus one note per rename applied ("" when d is already canonical).
+// Only spellings move: an unmappable kind, an arbitrary param name, and an
+// empty param VALUE are left for ValidateFor to accept or refuse. The
+// caller's Params map is shared untouched whenever no rename applies.
+func normalizeDecl(slot Slot, d Decl) (Decl, string) {
+	kind, kindRenamed := normalizeKind(slot, d.Kind)
+	params, paramNote := normalizeParams(d.Params)
+	if !kindRenamed && paramNote == "" {
+		return d, ""
+	}
+	var notes []string
+	if kindRenamed {
+		notes = append(notes, "kind "+d.Kind+"->"+kind)
+	}
+	if paramNote != "" {
+		notes = append(notes, paramNote)
+	}
+	return Decl{Kind: kind, Params: params}, strings.Join(notes, "; ")
+}
+
+// NormalizeHold applies the legacy-vocabulary normalization (MISCHIEF-DF-68)
+// to BOTH decls of h in place — before any validation and before the
+// write-ahead record is built — and returns one note per rename applied
+// ("inverse.kind restore_file->restore-file" …; empty when h carries only
+// canonical spellings). The notes travel into the arm record's payload
+// annotation (extra.legacy_spelling), so the journal shows not only the
+// canonical form but that a legacy spelling was renamed on the way in.
+func NormalizeHold(h *Hold) []string {
+	inv, invNote := normalizeDecl(SlotInverse, h.Inverse)
+	chk, chkNote := normalizeDecl(SlotCheck, h.Check)
+	h.Inverse, h.Check = inv, chk
+	var notes []string
+	if invNote != "" {
+		notes = append(notes, "inverse."+invNote)
+	}
+	if chkNote != "" {
+		notes = append(notes, "check."+chkNote)
+	}
+	return notes
 }
 
 // validateParams rejects empty param keys or values (an empty path is how a
