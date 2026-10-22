@@ -55,6 +55,23 @@
 //   - Stuck: a non-terminal hold inherited from a previous boot.
 //   - Kill switch: RevertAll("kill_switch") — everything, proven.
 //
+// TTL clock model (MISCHIEF-DF-59): what "TTL 30s" means, exactly.
+//
+// Journal records carry whole-second timestamps (rec.TS is a floor of the
+// arm instant), so a hold's expiry is derived on the SECOND GRID, one second
+// beyond the last possible arm instant: arm at T+0.9s with TTL 30s → expiry
+// at T+31s. A hold therefore NEVER reverts before its advertised TTL has
+// fully elapsed (that would be a shorter containment than declared); the
+// cost is a bounded overshoot of at most 1s on the derived boundary. The
+// detached owner reverts at the nanosecond expiry passed at Detach time —
+// this same second-grid value. Daemon-side (mischiefd, internal/daemon),
+// expiration is additionally QUANTIZED TO THE 5s TICK (HeartbeatInterval):
+// a hold whose expiry passed mid-tick is reverted at the next tick, and
+// health.json's ttl_remaining decays per tick — so the daemon path reverts
+// within (up to) 5s AFTER the derived expiry, never earlier. Both delays
+// are on the LATE side by design: an early revert is a contract break, a
+// late one is documented latency.
+//
 // NOT-LIST (what SPEC-04 does not promise here):
 //
 //   - No actuators: landing a fault is the caller's land function (SPEC-06/07

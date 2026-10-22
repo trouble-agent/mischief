@@ -380,7 +380,19 @@ func (s *Store) foldLine(line []byte) error {
 		}
 		st.Arm = *rec.Payload
 		st.Status = StatusArmed
-		st.Expiry = time.Unix(rec.TS, 0).Add(time.Duration(rec.Payload.TTL))
+		// MISCHIEF-DF-59: rec.TS is a whole-second floor of the arm instant,
+		// so Unix(TS, 0) + TTL would expire a hold armed mid-second up to
+		// one second EARLIER than the TTL the operator declared (arm at
+		// T+0.9s, TTL 30s → revert at T+30s = 29.1s of hold). The second
+		// grid is the finest the journal record can express, and the fold
+		// cannot recover the lost sub-second part — so expiry is placed ONE
+		// SECOND BEYOND the last possible arm instant: a hold never expires
+		// before its advertised TTL has fully elapsed (bounded overshoot
+		// ≤1s, the documented cost; the daemon's 5s tick adds quantized
+		// latency of its own, never earlier revert). Arm's own in-process
+		// state derives from the same line through appendLocked→foldLine,
+		// so live and re-folded holders agree on the boundary.
+		st.Expiry = time.Unix(rec.TS, 0).Add(time.Duration(rec.Payload.TTL)).Add(time.Second)
 		s.expiries[rec.HoldID] = st.Expiry
 	case RecordLand:
 		if st, ok := s.holds[rec.HoldID]; ok {
