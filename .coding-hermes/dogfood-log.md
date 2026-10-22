@@ -367,3 +367,132 @@
 - PERF re-measured on a clean-archive build (python timing, 20 runs): quiet-verb medians doctor 3.7ms, plan ex-001 3.8ms; status/status --json medians 84/27ms with p90 into the hundreds of ms — attributed to HOST saturation (loadavg 14.3, the product's own load gate refuses there), not the product; prior tick's quiet-host numbers (<10ms) still stand. NOTHING user-noticeable — NO PERF row.
 - READ-ONLY LANE: no product code touched, no pre-existing row or event edited (the append is a NEW row; whole-board JSON parse verified), no fault landed on a real target, no /etc or sudoers state, no scheduler state, no foreman woken, no credential minted. DuckBrain note for the next reader: the two token-<ts>.token files in ~/.duckbrain 401 against the live :3000 server; the role tokens (e.g. standin-pick.token) authenticate.
 - ARTIFACTS: this entry; board row MISCHIEF-DF-68; scratch /tmp/df-mc-t28-QvGcls (clean archive export + built binary); battery evidence /tmp/bunker-qa-evidence-20261022T063927Z-4108770.jsonl.
+## Run 29 — QA-MISCHIEF-002-R2 worker verification (dev box, base fd0a8cd) — 2026-10-22
+
+Worker: coding-hermes worker, worktree /home/kara/worktrees/mischief-QA-MISCHIEF-002-R2,
+branch wt/QA-MISCHIEF-002-R2, base origin/main fd0a8cdf1ef170593147dd222873ae0e9487d1f1
+(zero-commit worktree at start; duplicate-dispatch preflight: `git fetch origin` + grep for
+QA-MISCHIEF-002-R2 on origin/main found no landed fix — clean to proceed).
+
+### Verdict
+
+DEV BOX GREEN AT THE ROW'S BASE HEAD — the fixup is not regressed on a healthy manager, and the
+live detach shape this box takes is measured. This does NOT close the row: AC-1 wants the JIT
+agent. The agent-side shape is already measured by DF-66 (cited below); the recurrence's live
+center of gravity is QA-MISCHIEF-005 (suite-context red on fresh agents), not product code.
+
+### AC-1 leg (dev box half) — isolated AC-5 test
+
+- Build: `CGO_ENABLED=0 make bin` → bin/mischief, ldflags sha fd0a8cdf1ef1. `go build ./...` OK.
+- `go test ./internal/reverter -run TestOwnerSurvivesKill9AndRevertsAtTTL -count=1 -v` →
+  **PASS (5.13s)**. Output: "cli reaped", "owner pid 1063990 still live after revert".
+- Full package: `go test ./internal/reverter -count=1` → **ok 14.246s** (no -short; the AC-5 test
+  spawns real processes and is skipped under -short, so it really ran).
+
+### Live detach-mode measurement (production code path, not a mock)
+
+Drove the compiled test binary's `__cli` branch (TestMain intercept → same
+Open/Arm/Land/Detach/defaultDetach production path) by hand against /tmp scratch:
+
+- Journal `hold_expired` record: `"mode":"systemd-run"` — **this box's user manager execs
+  mischief-owner units cleanly; no fallback taken**.
+- CLI killed -9 mid-hold (rc 0 on kill); owner pid 1155186 (≠ cli pid 1154882) wrote
+  `revert_proof` at ts=+5s: outcome "reverted", reason "ttl_expiry", role "owner",
+  detail "check: same", duration 244µs. target.live restored to PRE-FAULT-STATE byte-exact.
+- Discriminator probe (fresh transient unit, /bin/sleep target):
+  LoadState=loaded ActiveState=active SubState=running ExecMainPID=1183043 ExecMainStatus=0 —
+  the healthy contrast to the agent's 203/EXEC class. No leftover mischief-* units after runs.
+
+### AC-2 leg — 203/EXEC regression battery (fixup's own tests) on dev box
+
+All PASS, `-count=1 -v`: TestUnitVerdictTable, TestParseUnitProbeMalformedShow,
+TestSystemdRunDeadOwnerIsFailure, TestSystemdRunShowFailureIsNotSuccess,
+TestSystemdRunLiveOwnerStillSucceeds, TestDetachForcedSystemdRunFailureDoesNotShapeSwitch,
+TestProbeBinaryShowExecFails, TestRealSystemdRunLiveUnitEndToEnd,
+TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner, TestNaturalPathFallsBackToSetsidOnDeadUnitEndToEnd.
+
+### Reconciling with the agent side (why the row stays open, and where it actually lives)
+
+- Fixup fe5208f IS an ancestor of this head AND of the on-agent mechanism probe 8d04bcf —
+  the recurrence runs at trees that contain the fix.
+- DF-66's on-agent report (docs/dogfood/2026-10-21-on-agent-mechanism.md, bunker-mvp c978c347,
+  head 95ee796) names the measured agent-side shape: mischief-owner units die
+  `code=exited, status=203/EXEC` (show: load=not-found active=inactive sub=dead exec_status=0
+  pid=0) while a /bin/true control unit starts fine — exec TARGET path class, manager present.
+- On that same agent the AC-5 test passed 5/5 isolated and inside both full-suite legs — the
+  fallback machinery works where the manager cannot exec the unit. The battery red of AC-5 is
+  therefore NOT the exec-formation class; the run-28 battery today (bunker-mvp 6ba67b13, QA
+  head 33f4359, 19-row evidence JSONL) re-reproduced the red on a SECOND fresh agent in
+  ci-pass + chaos-resource under cap → suite-context timing/contention under the battery is
+  the leading residual, owned by open QA-MISCHIEF-005.
+- The ONLY test that deterministically 203/EXECs on-agent is TestRealSystemdRunLiveUnitEndToEnd
+  (unguarded real-systemd test) — filed MISCHIEF-DF-66, fix direction = named skip + control arm.
+
+### Worker conclusion
+
+No product code change made; none indicated by dev-box evidence. The fixup behaves as specified:
+healthy manager → verified systemd-run owner (journaled mode=systemd-run); degraded manager →
+loud 203/EXEC grading then setsid fallback (agent: AC-5 5/5). The recurrence red is a
+battery-context event on JIT agents (QA-MISCHIEF-005 scope) plus the unguarded real-systemd test
+(MISCHIEF-DF-66 scope). Evidence committed on wt/QA-MISCHIEF-002-R2 (this file); main-clone copy
+appended for the foreman's run history.
+
+ch:trace row=QA-MISCHIEF-002-R2 spec=docs/SPEC-PLAN.md#SPEC-04
+wave=mischief-foreman-2026-10-22-07-05-13.json#QA-MISCHIEF-002-R2
+test=internal/reverter/live_test.go::TestOwnerSurvivesKill9AndRevertsAtTTL
+evidence=.coding-hermes/dogfood-log.md witness=none:devbox-verify-only
+verdict=none:pending-foreman-trace commit=none:open
+## Run 30 — mischief-chaos-dogfood tick 2026-10-22-13-19-40 (dev box, HEAD 2e4f353) — 2026-10-22
+
+PREMISE: an adopting project can wire a chaos lane from the template, derive the
+project matrix, and file findings — held END TO END on HEAD 2e4f353 (fresh clone
+/tmp/df-mc-r30b, make bin 1.42s incl module fetch, sanction via /etc marker
+route NOT needed: env half MISCHIEF_SANCTION=1 used on this dev box).
+
+SURFACES DRIVEN: chaos check --lane on an instantiated template PASS (symlink
+evidence); chaos matrix 8/11 L1 (22ms); battery --quick 2 pass / 3 load-gate
+SKIPs / 0 fail, verdict recovered rc=0, 15.87s under live sibling load;
+plan ex-001 rc=0 (36ms) + ex-004 protected refusal rc=2 (DF-57 still pending:
+override flag exists in NO verb, re-verified on HEAD); sim I-004/I-003 AC-17
+redirect verified in simulator (429 burst + 5xx/200 malformed interleave, request
+logs checked); selftest --all SKIP-all under load gate (correct DF-28 behavior);
+go test ./... green 22 ok (32.5s; first run exit 1 — see finding).
+chaos finding probe: bogus verdict refused (closed vocabulary, CHAOS-001 fix
+proven live), bogus P5 refused by board vocabulary.
+
+FINDING FILED: MISCHIEF-DF-69 (P3) — the three sibling unsanctioned-refusal
+tests (TestPlanRefusesUnsanctionedHost, TestSelftestRefusesUnsanctionedHost,
+TestBatteryRefusesUnsanctionedHost) leak the ambient MISCHIEF_SANCTION env:
+`MISCHIEF_SANCTION=1 go test ./... -count=1 -short` exits 1 with all 3 FAIL
+phantom-red (Sanctioned() returns true on the env half alone); the env-clean
+rerun exits 0 (22 ok). MISCHIEF-CI-2 (closed) fixed only the arm twin. Same
+shell, same tree: 22 vs 21 ok. Sanction_gate tests set ONLY the marker-file
+override, never t.Setenv the env half (arm_test.go:83-84 is the fixed shape).
+
+BOARD PROBE ARTIFACT DISCLOSED: the second chaos-finding spot-check (valid
+verdict path) filed MSF-CHAOS-MISCHIEF-F7B794ACF0A8 on the REAL board — probe
+row reverted via `git restore tasks.jsonl` (byte-diff verified: only my probe
+row was present, 174->173). Two throwaway rows landed in /tmp scratch boards
+and were removed; nothing on this host's real board remains from probes.
+
+INSTALL LEG: SKIPPED-install-bunker — the premise is already proven this week
+on fresh agents (runs 7, 10, 12, 13, 28: bunker-mvp plane 8/8 evidence rows,
+clone+build 40-75s, selftest 13/8-9/0); no deploy-shape change has landed since
+2e4f353's code delta (fix commits to already-proven verbs). No repeat.
+
+PERF (Step 2b): plan ex-001 36ms, doctor 108ms, status 34ms, chaos matrix
+22ms, sim 50ms, battery 15.87s (6 landing cells at loadavg ~13-30 vs prior
+warm 0.76-2.04s on a quiet agent) — all process-startup/gate bound; nothing
+user-noticeable at quiet-host scale (prior hyperfine runs recorded 4-11ms
+medians). NO PERF row.
+
+READ-ONLY LANE: no product code touched, no pre-existing row edited, no fault
+landed on a real target (sim faults in the simulator; battery self-contained
+scratch run dir), no scheduler state, no foreman wake, no credential minted.
+NOTE: this commit also lands the uncommitted Run 29 entry (QA-MISCHIEF-002-R2
+dev-box verification) that was sitting in the working tree since 06:xx this
+morning — disclosed, unmodified.
+ch:trace row=MISCHIEF-DF-69 spec=README.md#safety (SPEC-13 sanction contract)
+test=cmd/mischief env-leak reproduction (mischief-CI-2 class) evidence=run 30
+(22-ok vs 21-ok A/B, commands in row) witness=dogfood tick 2026-10-22-13-19-40
+verdict=verified: defect reproduces, fix path named commit=<this commit>
