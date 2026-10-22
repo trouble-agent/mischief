@@ -17,6 +17,7 @@ import (
 // from disk, not from the sim's memory).
 func TestSimVerbEachShapeProvesInRequestLog(t *testing.T) {
 	writeSanctionMarker(t) // MISCHIEF-DF-67: sim now carries the SPEC-13 gate; the sanctioned posture is the plane's own shape
+	writeHealthyLoad(t)    // MISCHIEF-DF-28-R2: sim's landing path is now gated — the AC-8 gate reads the injected posture, not the box's /proc
 	for _, id := range simCoveredIDs {
 		t.Run(id, func(t *testing.T) {
 			log := filepath.Join(t.TempDir(), "sim-requests.log")
@@ -49,6 +50,7 @@ func TestSimVerbEachShapeProvesInRequestLog(t *testing.T) {
 // simulator (exit 0, faulted log entry present).
 func TestSimVerbRealGateRedirectWithoutOptIn(t *testing.T) {
 	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
+	writeHealthyLoad(t)    // MISCHIEF-DF-28-R2: the AC-8 gate reads the injected posture, not the box's /proc
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc := cmdSim([]string{"--shape", "I-012", "--log", log})
 	if rc != 0 {
@@ -74,6 +76,7 @@ func TestSimVerbRealGateRedirectWithoutOptIn(t *testing.T) {
 // decision line must say so (never a silent 200).
 func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
 	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
+	writeHealthyLoad(t)    // MISCHIEF-DF-28-R2: the AC-8 gate reads the injected posture, not the box's /proc
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, out := captureStdout(t, func() int {
 		return cmdSim([]string{"--shape", "I-012", "--log", log,
@@ -117,6 +120,7 @@ func TestSimVerbRealGateStubDecisionWithOptIn(t *testing.T) {
 // guard for the non-real decisions).
 func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
 	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
+	writeHealthyLoad(t)    // MISCHIEF-DF-28-R2: the AC-8 gate reads the injected posture, not the box's /proc
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	rc, out := captureStdout(t, func() int {
 		return cmdSim([]string{"--shape", "I-012", "--log", log, "--allow-real"})
@@ -149,6 +153,7 @@ func TestSimVerbRealGateMissingPieceStillNamesRefusal(t *testing.T) {
 // the operator surface.
 func TestSimVerbResourceTagAllowlist(t *testing.T) {
 	writeSanctionMarker(t) // MISCHIEF-DF-67 gate
+	writeHealthyLoad(t)    // MISCHIEF-DF-28-R2: the AC-8 gate reads the injected posture, not the box's /proc
 	admitted := []string{"aws:sandbox-lab"}
 	refused := []string{"aws:prod-db", "prod-fleet-main-host", "*", "   "}
 	for _, tag := range admitted {
