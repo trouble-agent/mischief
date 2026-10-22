@@ -147,3 +147,73 @@ func TestStatusSurface(t *testing.T) {
 		t.Fatalf("expiry %v is not in the future", h.Expiry)
 	}
 }
+
+// TestArmExpiryNeverBeforeAdvertisedTTL (MISCHIEF-DF-59): the fold derives the
+// hold's expiry from the arm record's whole-second timestamp plus the TTL, so
+// an arm at T+0.9s used to expire at T+30s with TTL 30s — a hold 0.9s SHORT of
+// what the operator declared. The fold now places expiry one second beyond
+// that arm second (the safe ceil on the second grid it can actually express),
+// so the hold NEVER expires before the advertised TTL has fully elapsed,
+// no matter where inside a second the arm landed.
+//
+// Boundary arms (DF-59: TTL 1s and TTL 30s): the hold must still be live
+// (never reverted, expiry not passed) at now + TTL measured from the REAL arm
+// instant, and its expiry must not overshoot the worst-case grid by more than
+// the documented 1s.
+func TestArmExpiryNeverBeforeAdvertisedTTL(t *testing.T) {
+	for _, ttl := range []time.Duration{time.Second, 30 * time.Second} {
+		t.Run(ttl.String(), func(t *testing.T) {
+			st, lf := newTestStore(t)
+			// Pin the arm instant at a sub-second offset (0.9s into the
+			// second): the worst case of the old truncation — floor(TS)
+			// loses exactly the 0.9s the operator counted on.
+			armAt := time.Now().Truncate(time.Second).Add(900 * time.Millisecond)
+			st.Now = func() time.Time { return armAt }
+			hold, _, _ := scratchHold(t, "P-DF59-BOUNDARY")
+			hold.TTL = ttl
+			id, err := lf.Arm(hold)
+			if err != nil {
+				t.Fatalf("arm: %v", err)
+			}
+
+			// The advertised containment point: one full TTL after the
+			// arm instant, sub-second part included. At that instant the
+			// hold MUST still be live — an expiry earlier than this is
+			// the truncation DF-59 forbids.
+			advertised := armAt.Add(ttl)
+			if !st.Now().Before(advertised.Add(time.Millisecond)) {
+				t.Fatalf("test clock drifted past the advertised boundary: now=%v advertised=%v", st.Now(), advertised)
+			}
+			s := lf.Status()
+			if len(s.Holds) != 1 || s.Holds[0].Status != StatusArmed {
+				t.Fatalf("hold already terminal at its advertised TTL: %+v", s.Holds)
+			}
+			if s.Holds[0].Expiry.Before(advertised.Add(time.Millisecond)) {
+				t.Fatalf("expiry %v is BEFORE the advertised containment point %v — hold expires short of its TTL", s.Holds[0].Expiry, advertised)
+			}
+
+			// Overshoot bound: expiry sits on the folded second grid, at
+			// most one second past Unix(floor(arm)) + TTL (never two).
+			grid := armAt.Truncate(time.Second).Add(ttl).Add(2 * time.Second)
+			if s.Holds[0].Expiry.After(grid) {
+				t.Fatalf("expiry %v overshoots the documented +1s grid bound %v", s.Holds[0].Expiry, grid)
+			}
+
+			// The re-fold (a fresh Open, the state every other process
+			// sees) must derive the SAME expiry — the boundary lives in
+			// the fold, not in one process's memory.
+			if err := st.Close(); err != nil {
+				t.Fatalf("close: %v", err)
+			}
+			st2, err := Open(st.Dir)
+			if err != nil {
+				t.Fatalf("reopen: %v", err)
+			}
+			defer st2.Close()
+			got := st2.holds[id].Expiry
+			if !got.Equal(s.Holds[0].Expiry) {
+				t.Fatalf("re-folded expiry %v != live expiry %v", got, s.Holds[0].Expiry)
+			}
+		})
+	}
+}
