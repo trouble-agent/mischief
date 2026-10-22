@@ -220,10 +220,11 @@ sudo ip netns del mc-probe-ns                      # revert proven
   to mean "host is clean", count `revert_failed` yourself (`status --json | jq '[.history[]|select(.outcome=="revert_failed")]|length'`).
 - The kill switch's **per-hold stdout line** always starts with the word `reverted`, whatever the outcome
   (`reverted <id> outcome=revert_failed …`, main.go:365) — the exit code and the summary line are honest
-  since DF-51, the leading word is not (MISCHIEF-DF-51-R2). Parse `outcome=`, not the verb.
-- `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
+  since DF-51, the leading word is not (MISCHIEF-DF-51-R2, closed). Parse `outcome=`, not the verb.
+  <!-- ch:trace row=MISCHIEF-DF-63-FIXUP spec=tools/check_row_drift.py#current-status test=tools/check_row_drift.py doc=skills/mischief-usage/SKILL.md prompt=/tmp/mischief-MISCHIEF-DF-63-FIXUP-brief.txt evidence=commit witness=none:docs-regression verdict=none:pending-foreman-judge commit=none:pending-foreman-trace memory=none:not-written -->
+ - `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
   `.holds|length` is 0; and a terminal hold keeps its arm-time `expiry` on the wire, so `expiry - now` is
-  POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2). Gate on `.status`, never on the expiry.
+  POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2, resolved). Gate on `.status`, never on the expiry.
 - **`arm` NOW evaluates the protected-target rail** (MISCHIEF-DF-58, closed by f794ed0/37310b3; re-verified
   live 2026-10-20 on HEAD 8e8fd4f). `arm --target process:scheduler` refuses rc=2 `protected target
   "scheduler" refused` and writes NOTHING — no run dir, no hold — the same verdict `plan` gives for the
