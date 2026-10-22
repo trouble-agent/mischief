@@ -1,0 +1,112 @@
+{
+  "tick_id": "mischief-foreman-2026-10-22-14-08-59",
+  "composed_at": "2026-10-22T14:08:59-05:00",
+  "finished_at": "2026-10-22T21:33:15-05:00",
+  "wave_num": 1,
+  "tasks": [
+    {
+      "id": "QA-MISCHIEF-005",
+      "priority": "P1",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-005",
+      "branch": "wt/QA-MISCHIEF-005",
+      "status": "failed",
+      "branch_tip": "dd2ed4d",
+      "base_state": "ancestor_of_current_main",
+      "gate": "PASS on empty/no-op branch; full main suite PASS; no implementation commit",
+      "summary": "Recovered as failed: worker stuck before delivery; acceptance remains unmet. Branch preserved as evidence."
+    },
+    {
+      "id": "MISCHIEF-DF-28-R2",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-28-R2",
+      "branch": "wt/MISCHIEF-DF-28-R2",
+      "status": "complete",
+      "commit_hash": "a5278e8",
+      "merge_commit": "2c61d96",
+      "verdict": "PASS 28e84c13 (tier-2)",
+      "base_state": "already_merged_ancestor_of_current_main",
+      "gate": "PASS on branch; merged-tree full suite PASS"
+    },
+    {
+      "id": "MISCHIEF-DF-57",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-57",
+      "branch": "wt/MISCHIEF-DF-57",
+      "status": "failed",
+      "branch_tip": "dd2ed4d",
+      "base_state": "ancestor_of_current_main",
+      "gate": "PASS on empty/no-op branch; full main suite PASS; no implementation commit",
+      "summary": "Recovered as failed: worker stuck before delivery; acceptance remains unmet. Branch preserved as evidence."
+    },
+    {
+      "id": "MISCHIEF-DF-54-R2",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-54-R2",
+      "branch": "wt/MISCHIEF-DF-54-R2",
+      "status": "complete",
+      "commit_hash": "9a7b26a",
+      "merge_commit": "428ceb9",
+      "verdict": "PASS 7f198a70 (tier-2)",
+      "base_state": "already_merged_ancestor_of_current_main",
+      "gate": "PASS on branch; merged-tree full suite PASS"
+    },
+    {
+      "id": "MISCHIEF-DF-69",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-69",
+      "branch": "wt/MISCHIEF-DF-69",
+      "status": "complete",
+      "commit_hash": "5acce5d",
+      "merge_commit": "0607e55",
+      "verdict": "PASS 75733777 (tier-2)",
+      "base_state": "already_merged_ancestor_of_current_main",
+      "gate": "PASS on branch; merged-tree full suite PASS"
+    },
+    {
+      "id": "MISCHIEF-DF-51-R2",
+      "priority": "P4",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-51-R2",
+      "branch": "wt/MISCHIEF-DF-51-R2",
+      "status": "complete",
+      "commit_hash": "a556a47",
+      "merge_commit": "d227f5b",
+      "verdict": "PASS 91018129 (tier-2)",
+      "base_state": "already_merged_ancestor_of_current_main",
+      "gate": "PASS on branch; merged-tree full suite PASS"
+    },
+    {
+      "id": "MISCHIEF-DF-46",
+      "priority": "P4",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-46",
+      "branch": "wt/MISCHIEF-DF-46",
+      "status": "failed",
+      "branch_tip": "dd2ed4d",
+      "base_state": "ancestor_of_current_main",
+      "gate": "PASS on empty/no-op branch; full main suite PASS; no implementation commit",
+      "summary": "Recovered as failed: worker stuck before delivery; acceptance remains unmet. Branch preserved as evidence."
+    },
+    {
+      "id": "MISCHIEF-RV-3",
+      "priority": "P4",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-3",
+      "branch": "wt/MISCHIEF-RV-3",
+      "status": "complete",
+      "commit_hash": "68af692",
+      "merge_commit": "36a43d1",
+      "verdict": "PASS (tier-2)",
+      "base_state": "already_merged_ancestor_of_current_main",
+      "gate": "PASS on branch; merged-tree full suite PASS"
+    }
+  ],
+  "summary": {
+    "dispatched": 8,
+    "completed": 5,
+    "failed_before_delivery": 3,
+    "merges_performed_this_recovery": 0,
+    "already_merged": 5,
+    "judges_reused": 5,
+    "pushes_required_this_recovery": 0,
+    "unpushed_commits": 0,
+    "recovery_note": "All five completed legs were already ancestors of current main; stale-base rule prevented re-merging. Three stuck legs had no implementation commit and were marked failed with reasons."
+  }
+}

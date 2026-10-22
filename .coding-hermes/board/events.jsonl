@@ -295,3 +295,6 @@
 {"actor": "foreman", "detail": "{\"status\":\"complete\"}", "event_type": "task_completed", "id": 223, "task_id": "INT-CI-8", "tick": null, "timestamp": "2026-10-22T13:08:13Z"}
 {"actor": "foreman", "detail": "{\"status\":\"pending\"}", "event_type": "task_updated", "id": 224, "task_id": "MISCHIEF-DF-63", "tick": null, "timestamp": "2026-10-22T17:19:47Z"}
 {"actor": "dogfood", "event_type": "task_created", "task_id": "MISCHIEF-DF-70", "tick": "mischief-chaos-dogfood-2026-10-22-20-19-13", "timestamp": "2026-10-22T21:25:10Z", "detail": {"status": "pending"}}
+{"actor": "foreman", "detail": "{\"status\":\"failed\"}", "event_type": "task_updated", "id": 225, "task_id": "QA-MISCHIEF-005", "tick": null, "timestamp": "2026-10-22T21:33:15Z"}
+{"actor": "foreman", "detail": "{\"status\":\"failed\"}", "event_type": "task_updated", "id": 226, "task_id": "MISCHIEF-DF-57", "tick": null, "timestamp": "2026-10-22T21:33:15Z"}
+{"actor": "foreman", "detail": "{\"status\":\"failed\"}", "event_type": "task_updated", "id": 227, "task_id": "MISCHIEF-DF-46", "tick": null, "timestamp": "2026-10-22T21:33:15Z"}
