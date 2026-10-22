@@ -44,9 +44,11 @@ func TestPlanRefusesUnsanctionedHost(t *testing.T) {
 	if err := os.WriteFile(exp, []byte("id: x\ntarget: {selector: \"host:.\", scratch: true}\nfaults:\n  - primitive: P\n    params: {}\n    ttl: 1s\n    landed_proof: {kind: k, check: c}\nprobe:\n  - {name: p, cmd: \"true\", expect: \"0\"}\nbudget: {recover_within: 1s}\nseed: 1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// the worker's test env named MISCHIEF_SANCTION_MARKER/HOST; the judged
 	// SPEC-13 package (7b29502) owns MISCHIEF_SANCTION_FILE — forced to a
 	// nonexistent file, the env value is empty in the test process.
+	// (Same idiom as arm_test.go: neutralize any ambient MISCHIEF_SANCTION=1
+	// exported by the caller — an empty value is neutral by contract.)
+	t.Setenv("MISCHIEF_SANCTION", "")
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	code, stderr := captureStderr(t, func() int { return run([]string{"plan", "-f", exp}) })
 	if code != 2 {

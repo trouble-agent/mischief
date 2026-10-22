@@ -20,6 +20,7 @@ import (
 // writeSanctionMarker (selftest_test.go) — the plane's own shape.
 
 func TestSelftestRefusesUnsanctionedHost(t *testing.T) {
+	t.Setenv("MISCHIEF_SANCTION", "") // ambient env must not admit (arm_test.go idiom)
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	dir := t.TempDir()
 	code, stderr := captureStderr(t, func() int {
@@ -37,6 +38,7 @@ func TestSelftestRefusesUnsanctionedHost(t *testing.T) {
 }
 
 func TestBatteryRefusesUnsanctionedHost(t *testing.T) {
+	t.Setenv("MISCHIEF_SANCTION", "") // ambient env must not admit (arm_test.go idiom)
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	dir := t.TempDir()
 	code, stderr := captureStderr(t, func() int {
@@ -67,6 +69,7 @@ func TestBatteryRefusesUnsanctionedHost(t *testing.T) {
 // host exited 0, printed the AC-17 landed-proof line and left a faulted
 // request log on disk (measured by the dogfood tick, 2026-10-21).
 func TestSimRefusesUnsanctionedHost(t *testing.T) {
+	t.Setenv("MISCHIEF_SANCTION", "") // ambient env must not admit (arm_test.go idiom)
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	code, stderr := captureStderr(t, func() int {
@@ -111,6 +114,7 @@ func TestSimProvesOnSanctionedHost(t *testing.T) {
 // sanctioned chaos host would derive. The summary line names the host
 // posture explicitly.
 func TestChaosMatrixPostureNamesHost(t *testing.T) {
+	t.Setenv("MISCHIEF_SANCTION", "") // posture stamp must be the unsanctioned arm (arm_test.go idiom)
 	t.Setenv("MISCHIEF_SANCTION_FILE", "/nonexistent/sanction-marker")
 	out := t.TempDir()
 	code, outTxt := captureStdout(t, func() int {
