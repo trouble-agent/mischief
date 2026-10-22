@@ -36,7 +36,72 @@ func TestUnknownVerbExit2(t *testing.T) {
 	}
 }
 
-// TestPlanRefusesUnsanctionedHost (the cmd-level sanction gate): on this
+// TestRevertAllPerHoldLineLeadsWithOutcome (MISCHIEF-DF-51-R2): the FIRST
+// word of a per-hold revert line is what an on-call human and a log scraper
+// read, so it must come from the measured outcome — never a hardcoded
+// success verb. A revert_failed hold leads with "not-reverted" (the old
+// contract printed "reverted … outcome=revert_failed", the failure word
+// after the success word); a green hold still leads with "reverted".
+func TestRevertAllPerHoldLineLeadsWithOutcome(t *testing.T) {
+	dir := t.TempDir()
+	good, _, _ := scratchCLIHold(t, "P-CLI-WORDGOOD")
+	bad, _, badBackup := scratchCLIHold(t, "P-CLI-WORDBAD")
+	armCLIHolds(t, dir, good, bad)
+	if err := os.Remove(badBackup); err != nil {
+		t.Fatalf("sabotage: %v", err)
+	}
+	code, out := captureStdout(t, func() int { return run([]string{"revert", "--all", "--dir", dir}) })
+	if code != 1 {
+		t.Fatalf("revert --all with a revert_failed proof: exit %d, want 1\nstdout=%s", code, out)
+	}
+	goodLine := holdLine(t, out, "fault=P-CLI-WORDGOOD")
+	if !strings.HasPrefix(goodLine, "reverted ") {
+		t.Fatalf("green hold's line does not lead with the success word: %q", goodLine)
+	}
+	badLine := holdLine(t, out, "fault=P-CLI-WORDBAD")
+	if !strings.HasPrefix(badLine, "not-reverted ") {
+		t.Fatalf("failed hold's line still claims the success word: %q", badLine)
+	}
+	if !strings.Contains(badLine, "outcome=revert_failed") {
+		t.Fatalf("failed hold's line lost its outcome field: %q", badLine)
+	}
+}
+
+// TestRevertHoldSingleLineLeadsWithOutcome (MISCHIEF-DF-51-R2): the same
+// first-word rule on the --hold path. The retry path already led with
+// "retried"; the plain path hardcoded "reverted" for every outcome.
+func TestRevertHoldSingleLineLeadsWithOutcome(t *testing.T) {
+	dir := t.TempDir()
+	bad, _, badBackup := scratchCLIHold(t, "P-CLI-HOLDWORD")
+	id := armCLIHolds(t, dir, bad)[0]
+	if err := os.Remove(badBackup); err != nil {
+		t.Fatalf("sabotage: %v", err)
+	}
+	code, out := captureStdout(t, func() int { return run([]string{"revert", "--hold", id, "--dir", dir}) })
+	if code != 1 {
+		t.Fatalf("revert --hold on a failing hold: exit %d, want 1\nstdout=%s", code, out)
+	}
+	line := holdLine(t, out, "P-CLI-HOLDWORD")
+	if !strings.HasPrefix(line, "not-reverted ") {
+		t.Fatalf("--hold failed line still claims the success word: %q", line)
+	}
+	if !strings.Contains(line, "outcome=revert_failed") {
+		t.Fatalf("--hold failed line lost its outcome field: %q", line)
+	}
+}
+
+// holdLine returns the per-hold revert line naming the given fault.
+func holdLine(t *testing.T, out, fault string) string {
+	t.Helper()
+	for _, ln := range strings.Split(out, "\n") {
+		if strings.Contains(ln, fault) && strings.Contains(ln, "outcome=") {
+			return ln
+		}
+	}
+	t.Fatalf("no per-hold revert line for %s:\n%s", fault, out)
+	return ""
+}
+
 // unsanctioned test host (no marker, no env), `mischief plan` exits 2
 // fail-closed and prints the refusal naming the host — nothing landed.
 func TestPlanRefusesUnsanctionedHost(t *testing.T) {
