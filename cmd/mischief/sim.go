@@ -50,6 +50,15 @@ import (
 // log; sanctioned hosts get the AC-17 redirect semantics unchanged.
 //
 // ch:trace row=MISCHIEF-DF-67 spec=docs/prd/mischief-v0.1.md#spec-13 wave=.coding-hermes/waves/mischief-foreman-2026-10-21-18-18-09.json#3 test=cmd/mischief/sanction_gate_test.go doc=docs/TEST-PLANE.md prompt=/tmp/mischief_brief_MISCHIEF-DF-67.txt evidence=docs/verification/MISCHIEF-DF-67.md witness=none:unsanctioned-scratch-only verdict=none:pending-foreman-judge commit=none:pending-foreman-trace memory=none:not-written
+//
+// ch:trace row=MISCHIEF-DF-65 spec=docs/SPEC-PLAN.md#SPEC-03 wave=mischief-foreman-2026-10-22-07-05-13.json#MISCHIEF-DF-65 test=cmd/mischief/sim_load_gate_test.go evidence=internal/backend_sim/load_gate.go witness=none:injected-readings-no-live-run
+// cmdSim — MISCHIEF-DF-65: the AC-8 load gate runs AFTER the usage and
+// policy refusals keep their own reasons and BEFORE anything arms, binds
+// or writes — the same last-admission-rail battery (DF-28) and selftest
+// run before their loops. A saturated host refuses exit 2 with the rails
+// refusal (the measured numbers vs the gate), the simulator never starts
+// and the request log is never created; a healthy host keeps the AC-17
+// redirect semantics unchanged.
 func cmdSim(args []string) int {
 	fs := flag.NewFlagSet("sim", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -123,6 +132,21 @@ func cmdSim(args []string) int {
 	// a sim-mode redirect.
 	if decision == backend_sim.DecideRefused {
 		fmt.Println(backend_sim.RefusalText(*shapeID, decision, detail))
+		return 2
+	}
+
+	// MISCHIEF-DF-65: the AC-8 load gate, the rails' LAST admission rail —
+	// the same check battery (DF-28) and selftest run before their loops,
+	// at the same doctor thresholds (load 12.0, PSI 50.0). It runs AFTER
+	// the usage refusals and the permanent-destroy policy refusal keep
+	// their own reasons (a mis-typed shape and a policy refusal are not a
+	// load-gate matter) and BEFORE anything arms, binds or writes: the
+	// request log below is a landed-proof claim, and a saturated host must
+	// never produce one. A breach refuses exit 2 with the rails refusal
+	// verbatim (reason load_gate, the measured numbers vs the gate); an
+	// unreadable measurement fails closed the same way.
+	if err := backend_sim.CheckLoadGate(); err != nil {
+		fmt.Fprintf(os.Stderr, "mischief sim: %s: %v\n", *shapeID, err)
 		return 2
 	}
 
