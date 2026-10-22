@@ -245,8 +245,8 @@ sudo ip netns del mc-probe-ns                      # revert proven
   empty) dir still answers `kill switch: 0 holds reverted, wall=0s` rc=0. Two adjacent states to know:
   a path that is a FILE, an unreadable dir, or `/root/…` falls through to the store and reports
   `reverter: state dir: mkdir …: not a directory|permission denied` (rc=1, stderr, nothing written); and
-- `status --json` over an absent dir prints those two TEXT lines instead of JSON, so
-  `status --json | jq` dies with a parse error exactly there (MISCHIEF-DF-61, still open).
+- `status --json` over an absent dir now emits one parseable JSON object (`{"run_dir":"...","state":"absent"}`)
+  so `status --json | jq .state` returns `absent` (MISCHIEF-DF-61, closed by 733208e).
 - The torn-journal ladder below was measured on 2026-10-17; DF-39-R2 / DF-40 / DF-41 are all closed rows
   now and the ladder has NOT been re-measured since. Re-probe before quoting it.
 
