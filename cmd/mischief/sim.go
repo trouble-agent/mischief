@@ -10,8 +10,41 @@ import (
 	"time"
 
 	"github.com/trouble-agent/mischief/internal/backend_sim"
+	"github.com/trouble-agent/mischief/internal/doctor"
+	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/sanction"
 )
+
+// simReadLoad is the AC-8 measurement seam (MISCHIEF-DF-28-R2; the
+// doctor's own package-level pattern — internal/battery.ReadLoad is the
+// precedent): production = rails.ReadLoad (the live /proc read); tests
+// pin it to an injected LoadReading so the suite never depends on the
+// box it runs on.
+var simReadLoad = rails.ReadLoad
+
+// simLoadGateCheck measures the host and consults the rails load gate at
+// the doctor's run thresholds (LoadThreshold 12.0, PSIThreshold 50.0 —
+// the same numbers battery/selftest refuse on, so the three fault-landers
+// agree on where the ceiling is). The gate is stateless and built per
+// call (the doctor's CheckLoad pattern). A non-nil error is the rails'
+// load_gate refusal: the measured numbers against the gate, verdict
+// aborted.
+func simLoadGateCheck() error {
+	reading, err := simReadLoad()
+	if err != nil {
+		return fmt.Errorf("load gate: %w", err)
+	}
+	gate, err := rails.NewLoadGate(rails.LoadGateConfig{
+		LoadThreshold: doctor.LoadThreshold,
+		PSIThreshold:  doctor.PSIThreshold,
+	})
+	if err != nil {
+		// unreachable with the doctor's constants (both arms enabled);
+		// a misconfigured gate refuses loudly, never silently ungates
+		return err
+	}
+	return gate.Check(reading)
+}
 
 // cmdSim implements the `mischief sim` verb — the layer-I cloud-shape
 // simulator as an operator surface (SPEC-09 / MSF-010).
@@ -50,6 +83,17 @@ import (
 // log; sanctioned hosts get the AC-17 redirect semantics unchanged.
 //
 // ch:trace row=MISCHIEF-DF-67 spec=docs/prd/mischief-v0.1.md#spec-13 wave=.coding-hermes/waves/mischief-foreman-2026-10-21-18-18-09.json#3 test=cmd/mischief/sanction_gate_test.go doc=docs/TEST-PLANE.md prompt=/tmp/mischief_brief_MISCHIEF-DF-67.txt evidence=docs/verification/MISCHIEF-DF-67.md witness=none:unsanctioned-scratch-only verdict=none:pending-foreman-judge commit=none:pending-foreman-trace memory=none:not-written
+//
+// cmdSim — MISCHIEF-DF-28-R2: the AC-8 load gate now also covers the sim
+// landing path (the rails' admission order sanction → destroy-class →
+// load → AC-17 decision). A saturated host refuses with the rails'
+// load_gate refusal verbatim — the measured numbers against the gate —
+// exit 2, before anything arms: no simulator start, no request log, no
+// landed-proof line. The gate uses the doctor's run thresholds (load
+// 12.0, PSI 50.0) — the same numbers battery/selftest refuse on, so all
+// three fault-landers agree on the ceiling. The measurement seam
+// (simReadLoad) is package-level: tests inject a LoadReading, the suite
+// never reads the box's live /proc (ambient-filesystem discipline).
 func cmdSim(args []string) int {
 	fs := flag.NewFlagSet("sim", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -118,11 +162,28 @@ func cmdSim(args []string) int {
 	}
 
 	// The permanent destroy refuses OUTRIGHT — simulator included — so the
-	// verb exits before the simulator starts: no request log created, no
-	// shape armed, no request landed. This is the documented refusal, not
-	// a sim-mode redirect.
+	// verb exits before the load gate is even consulted and before the
+	// simulator starts: no request log created, no shape armed, no
+	// request landed. This is the documented refusal, not
+	// a sim-mode redirect. (MISCHIEF-DF-28-R2 ordering: the load gate
+	// gates the LANDING path, not the destroy-class refusal — a permanent
+	// destroy names its own refusal on any host state, the
+	// companion-faults doctrine's "simulator included" promise.)
 	if decision == backend_sim.DecideRefused {
 		fmt.Println(backend_sim.RefusalText(*shapeID, decision, detail))
+		return 2
+	}
+
+	// MISCHIEF-DF-28-R2: the AC-8 load gate, same shape as battery and
+	// selftest (sim was the last fault-landing surface without one — at
+	// loadavg 27.8 battery refused and selftest skipped while sim landed
+	// a fault). Fail closed BEFORE anything arms: a saturated host gets
+	// the rails' load_gate refusal — the measured numbers against the
+	// gate — exit 2, no simulator start, no request log, no landed-proof
+	// line. The landed proof below is a landing claim; a gate-refused
+	// host must never produce one.
+	if err := simLoadGateCheck(); err != nil {
+		fmt.Fprintf(os.Stderr, "mischief sim: %v\n", err)
 		return 2
 	}
 

@@ -164,8 +164,10 @@ Usage:
 Safety floor: no default target; protected targets refuse at resolution;
 sanction-marker gate (SPEC-13) fail-closed on the landing verbs (plan, arm,
 selftest, battery, sim — unsanctioned hosts refuse exit 2); chaos matrix is
-evidence-plane and stamps its host posture into the artifact; load gate on
-every landing path.
+evidence-plane and stamps its host posture into the artifact; load gate (AC-8,
+loadavg 12.0 / PSI io 50.0 — the doctor's run thresholds) fail-closed on the
+fault-landing verbs (selftest, battery, sim — a saturated host refuses exit 2
+with the measured numbers against the gate, nothing lands).
 `)
 }
 

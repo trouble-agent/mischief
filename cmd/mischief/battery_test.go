@@ -17,13 +17,14 @@ import (
 // usage refusals, --dry-run, the live --quick run's artefacts, and the
 // findings self-check.
 
-// writeHealthyLoad pins BOTH landing paths' ReadLoad seams (battery +
-// selftest) to an injected healthy reading (MISCHIEF-DF-28; the same
-// posture writeSanctionMarker provides for the sanction gate): the
-// live-verb tests measure the land+revert machinery, not the box's real
-// /proc, and a saturated CI host must not red them — the gate's refusal
-// arm is covered by the packages' own injected-reading tests
-// (internal/battery + internal/selftest load_gate_test.go).
+// writeHealthyLoad pins ALL THREE fault-landing paths' ReadLoad seams
+// (battery + selftest + sim) to an injected healthy reading (MISCHIEF-DF-28,
+// sim joined in MISCHIEF-DF-28-R2; the same posture writeSanctionMarker
+// provides for the sanction gate): the live-verb tests measure the
+// land+revert machinery, not the box's real /proc, and a saturated CI host
+// must not red them — the gate's refusal arm is covered by the packages' own
+// injected-reading tests (internal/battery + internal/selftest
+// load_gate_test.go, cmd/mischief/sim_load_gate_test.go).
 func writeHealthyLoad(t *testing.T) {
 	t.Helper()
 	oldBat := battery.ReadLoad
@@ -36,6 +37,11 @@ func writeHealthyLoad(t *testing.T) {
 		return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil
 	}
 	t.Cleanup(func() { selftest.ReadLoad = oldSelf })
+	oldSim := simReadLoad
+	simReadLoad = func() (rails.LoadReading, error) {
+		return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil
+	}
+	t.Cleanup(func() { simReadLoad = oldSim })
 }
 
 // TestBatteryVerbRequiresMode: bare battery is the usage refusal (there is
