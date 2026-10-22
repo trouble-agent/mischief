@@ -294,3 +294,4 @@
 {"actor": "foreman", "detail": "{\"tick\":\"mischief-foreman-2026-10-21-18-18-09\",\"pid\":4108910,\"worktree\":\"/home/kara/worktrees/mischief-MISCHIEF-DF-67\",\"branch\":\"wt/MISCHIEF-DF-67\",\"model\":\"glm-5.3-flash\",\"provider\":\"zai-glm-default\"}", "event_type": "task_dispatched", "id": 222, "task_id": "MISCHIEF-DF-67", "tick": null, "timestamp": "2026-10-21T19:08:06Z"}
 {"actor": "foreman", "detail": "{\"status\":\"complete\"}", "event_type": "task_completed", "id": 223, "task_id": "INT-CI-8", "tick": null, "timestamp": "2026-10-22T13:08:13Z"}
 {"actor": "foreman", "detail": "{\"status\":\"pending\"}", "event_type": "task_updated", "id": 224, "task_id": "MISCHIEF-DF-63", "tick": null, "timestamp": "2026-10-22T17:19:47Z"}
+{"actor": "dogfood", "event_type": "task_created", "task_id": "MISCHIEF-DF-70", "tick": "mischief-chaos-dogfood-2026-10-22-20-19-13", "timestamp": "2026-10-22T21:25:10Z", "detail": {"status": "pending"}}
