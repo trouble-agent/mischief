@@ -1,8 +1,8 @@
 # mischief
 
 **Fault injection for a fleet of Linux daemons.** Declare a fault, land it in a named
-target, **prove it landed**, hold it under a TTL owned by a reverting watchdog that
-outlives the CLI, and get a verdict on whether the target recovered.
+target, **prove it landed**, hold it under a TTL that the serve daemon's reverting
+watchdog reverts, and get a verdict on whether the target recovered.
 
 > **Status: ACTIVE DEVELOPMENT.** Name and repo home are decided (MSF-001): `mischief`, at
 > [`trouble-agent/mischief`](https://github.com/trouble-agent/mischief), private-first. Sibling to
@@ -249,9 +249,11 @@ declare → plan → arm → LAND → prove landed → hold → observe → reve
 The `arm` verb is the write-ahead half of the loop (SPEC-04): it records a
 reverter hold — fault id, target, the inverse action, the measured
 post-revert check, and a TTL — into the run dir's journal, fsynced BEFORE the
-fault may land. The serve daemon (or a detached TTL owner) reverts the hold
-at TTL expiry from the journal bytes alone; `mischief revert --all` is the
-kill switch.
+fault may land. **The serve daemon reverts the hold at TTL expiry from the
+journal bytes alone — run `mischief serve`, or nothing reverts when the TTL
+expires** (no detached owner process is shipped: the owner machinery in
+`internal/reverter/owner.go` is reachable only as `mischief __owner` and no
+verb spawns it). `mischief revert --all` is the kill switch.
 
 ```sh
 mkdir -p /tmp/mischief-scratch
@@ -292,8 +294,9 @@ bin/mischief status --dir ~/.mischief/runs/default      # the hold is still arme
 ```
 
 The hold's measured check and its recorded reverse action decide the outcome:
-the serve daemon (or a detached TTL owner) reverts at TTL expiry, and
-`mischief revert --all` is the kill switch. The full contract — what to write,
+the serve daemon reverts at TTL expiry — with no daemon running the fault
+stays landed — and `mischief revert --all` is the kill switch. The full
+contract — what to write,
 what proof lines to expect — is spelled out in `skills/mischief-usage/`
 (`# LAND the fault yourself (arm writes the hold only; printf FAULTED > file, etc.)`).
 
@@ -308,8 +311,9 @@ recovery path, so they are worth knowing before you need them:
 ## Safety, in one breath
 
 No setuid. Rootless-first (`systemd-run --user` scopes, LD_PRELOAD, seccomp, userspace
-proxy), a narrow `sudo` allowlist for host-scoped faults, TTL + detached reverter, boot
-reconcile, one kill switch (`mischief revert --all`), a load gate, and a protected-target
+proxy), a narrow `sudo` allowlist for host-scoped faults, TTL revert by the
+serve daemon, boot reconcile, one kill switch (`mischief revert --all`), a load
+gate, and a protected-target
 list that keeps the fleet's control planes out of the automatic path.
 
 Isolation contract (SPEC-13): mischief's own runs — development, selftest, battery —

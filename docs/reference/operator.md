@@ -22,12 +22,17 @@ Where the behavior lives: `internal/reverter/owner.go` (reverter variables) and
 
 ---
 
-## Reverter: detached TTL owner
+## Reverter: TTL revert path and the owner request channel
 
-The reverter arms a hold, spawns a detached TTL owner (a watchdog that
-outlives the CLI — systemd-run transient service when the user manager is
-reachable, otherwise a setsid child), and that owner sleeps until the expiry
-and performs the measured revert. The first three variables are the **env
+The reverter arms a hold and records the expiry in the journal. **The shipped
+revert path is the serve daemon**: `mischief serve` watches the journal and,
+when a hold's TTL expires, performs the measured revert — run the daemon, or
+nothing reverts. The machinery to instead spawn a detached owner process (a
+watchdog that outlives the CLI — systemd-run transient service when the user
+manager is reachable, otherwise a setsid child) that sleeps until the expiry
+and performs the measured revert exists and is reachable as `mischief
+__owner`, but no shipped verb calls it (`Lifecycle.Detach` has no production
+caller). The first three variables are the **env
 fallback channel** for the owner request: the argv flags (`__owner -dir …
 -hold … -expiry …`) are primary, the env only fills flags the parser finds
 missing. The journal is the durable source of truth — a stale value here can
