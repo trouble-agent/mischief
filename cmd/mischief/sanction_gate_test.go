@@ -93,6 +93,7 @@ func TestSimRefusesUnsanctionedHost(t *testing.T) {
 // with a reason-bearing marker (the plane's own provisioning shape) the
 // verb still lands its proof — fail-closed, not fail-everything.
 func TestSimProvesOnSanctionedHost(t *testing.T) {
+	writeHealthyLoad(t) // MISCHIEF-DF-28-R2: inject a low load so the gate doesn't block
 	writeSanctionMarker(t)
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	code, stdout := captureStdout(t, func() int {
