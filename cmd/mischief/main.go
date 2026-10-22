@@ -42,6 +42,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -145,7 +146,7 @@ func usage(w *os.File) {
 
 Usage:
   mischief plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  (writes nothing without --journal-dir)
-  mischief status    [--dir D] [--all]  (active holds: armed/stuck; --all lists terminal holds too)
+  mischief status    [--dir D] [--all]  (active holds: armed/stuck; a revert_failed fault reads as exit 1 + a counter; --all lists terminal holds too)
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
   mischief revert    (--all | --hold <id> [--retry]) [--dir D]
   mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
@@ -254,6 +255,12 @@ func cmdStatus(args []string) int {
 			return 1
 		}
 		os.Stdout.Write(append(b, '\n'))
+		// MISCHIEF-DF-54-R2: the exit grade rides the same liveness rule
+		// the text mode and the daemon grade (the document is emitted
+		// first — the document IS the report; the exit code is the grade).
+		if st.MayBeLive() {
+			return 1
+		}
 		return 0
 	}
 	fmt.Printf("run_dir: %s\n", *dir)
@@ -274,9 +281,34 @@ func cmdStatus(args []string) int {
 		}
 		fmt.Println(line)
 	}
+	// MISCHIEF-DF-54-R2: terminal revert_failed holds stay off the active
+	// listing (they owe no inverse — the DF-54 contract), but the FACT they
+	// record is "the fault may still be live", and it is exactly the fact
+	// an operator checks next. The count is carried on EVERY fold mode (it
+	// does not need --all), and the daemon grades the same condition
+	// ok:false from the same journal rows — the two surfaces now answer
+	// identically. Empty set → nothing printed (a clean run stays `holds:
+	// 0` clean, no extra line). Non-empty → the counter line naming the
+	// hold ids (the rows themselves stay `--all`'s surface — the default
+	// listing contract is unchanged), the full proof history below, a
+	// stderr pointer at the recovery verb, and a NON-ZERO exit in BOTH
+	// modes: a script gating on the exit code must read "a fault may
+	// still be live" the same way it reads one from the kill switch (the
+	// same condition, the same grade — MISCHIEF-DF-51's premise).
+	if n := len(st.RevertFailedHolds); n > 0 {
+		ids := make([]string, 0, n)
+		for _, h := range st.RevertFailedHolds {
+			ids = append(ids, h.HoldID)
+		}
+		fmt.Printf("revert_failed: %d (a fault may still be live) hold_ids: %s\n", n, strings.Join(ids, " "))
+	}
 	fmt.Printf("proofs: %d\n", len(st.History))
 	for _, pr := range st.History {
 		fmt.Printf("  %-16s %-14s %s role=%s reason=%s detail=%s\n", pr.HoldID, pr.Outcome, pr.FaultID, pr.Role, pr.Reason, pr.Detail)
+	}
+	if st.MayBeLive() {
+		fmt.Fprintln(os.Stderr, "status: a measured revert FAILED and the fault may still be live — re-run with `mischief revert --hold <id> --retry` after healing the cause, or `mischief revert --all` to sweep every hold")
+		return 1
 	}
 	return 0
 }
