@@ -334,7 +334,7 @@ func cmdRevert(args []string) int {
 	if *all {
 		proofs, wall, err := lf.RevertAll(ctx, "kill_switch")
 		for _, pr := range proofs {
-			fmt.Printf("reverted %-16s outcome=%s fault=%s detail=%s (%s)\n", pr.HoldID, pr.Outcome, pr.FaultID, pr.Detail, pr.Duration.Round(time.Millisecond))
+			fmt.Printf("%s %-16s outcome=%s fault=%s detail=%s (%s)\n", revertLineWord(pr.Outcome), pr.HoldID, pr.Outcome, pr.FaultID, pr.Detail, pr.Duration.Round(time.Millisecond))
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "revert:", err)
@@ -372,7 +372,7 @@ func cmdRevert(args []string) int {
 	if *retry {
 		fmt.Printf("retried %-16s outcome=%s detail=%s duration=%s\n", pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
 	} else {
-		fmt.Printf("reverted %-16s outcome=%s detail=%s duration=%s\n", pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
+		fmt.Printf("%s %-16s outcome=%s detail=%s duration=%s\n", revertLineWord(pr.Outcome), pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
 	}
 	if pr.Outcome != reverter.OutcomeReverted {
 		return 1
@@ -392,6 +392,20 @@ func countRevertFailures(proofs []reverter.Proof) int {
 		}
 	}
 	return n
+}
+
+// revertLineWord is the leading verb of a per-hold revert line (MISCHIEF-
+// DF-51-R2): the first word is what an on-call reader and a log scraper see,
+// so it must not claim success for a failed outcome. A measured
+// "reverted" keeps its word; every non-green outcome — revert_failed, or
+// any value outside the closed vocabulary — leads with the failure word
+// "not-reverted". The outcome itself still rides the line unchanged, so
+// existing fields stay greppable.
+func revertLineWord(o reverter.Outcome) string {
+	if o == reverter.OutcomeReverted && o.Valid() {
+		return "reverted"
+	}
+	return "not-reverted"
 }
 
 // ── doctor ───────────────────────────────────────────────────────────────────
