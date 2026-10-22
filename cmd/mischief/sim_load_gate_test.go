@@ -37,6 +37,18 @@ func pinSimLoad(t *testing.T, r rails.LoadReading, err error) {
 	t.Cleanup(func() { backend_sim.ReadLoad = old })
 }
 
+// pinHealthySimLoad is the pre-existing verb tests' posture (the
+// battery_test.go writeHealthyLoad shape): the tests that reach the
+// landing path measure the AC-17/usage/sanction machinery, not the box's
+// real /proc, and a saturated CI host must not red them — MISCHIEF-DF-65
+// wired the load gate under every cmdSim landing, so a test that reaches
+// the sim pins a healthy injected reading (the gate's refusal arms are
+// covered by the injected-reading tests above).
+func pinHealthySimLoad(t *testing.T) {
+	t.Helper()
+	pinSimLoad(t, rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil)
+}
+
 // TestSimVerbRefusesSaturatedHost: over the load ceiling ⇒ exit 2 with
 // the rails refusal naming the measured numbers vs the gate, and NOTHING
 // arms, binds or writes — the request log is never created (the sim's

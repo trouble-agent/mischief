@@ -91,6 +91,7 @@ func TestSimRefusesUnsanctionedHost(t *testing.T) {
 // verb still lands its proof — fail-closed, not fail-everything.
 func TestSimProvesOnSanctionedHost(t *testing.T) {
 	writeSanctionMarker(t)
+	pinHealthySimLoad(t) // MISCHIEF-DF-65: cmdSim lands behind the load gate — pin a healthy reading
 	log := filepath.Join(t.TempDir(), "sim-requests.log")
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"sim", "--shape", "I-003", "--log", log})
