@@ -44,8 +44,21 @@ func TestStatusJSONSurface(t *testing.T) {
 		t.Fatalf("status --json on an empty run dir: exit %d, want 0\n%s", code, out)
 	}
 	empty := decodeJSONObject(t, out)
-	assertKeys(t, "empty status --json", empty, []string{"boot_id", "holds", "history"})
+	// MISCHIEF-DF-54-R2: the top level gained revert_failed_holds (the
+	// liveness signal) — always present, [] when empty (the empty run dir
+	// proves the non-null rule right here).
+	assertKeys(t, "empty status --json", empty, []string{"boot_id", "history", "holds", "revert_failed_holds"})
 	assertNoPascalCase(t, "empty status --json", empty)
+	if holds, ok := empty["holds"].([]any); !ok {
+		t.Errorf("empty status --json holds: got %#v, want a JSON array (DF-54-R2: [] not null)", empty["holds"])
+	} else if len(holds) != 0 {
+		t.Errorf("empty status --json holds: got %d rows, want 0", len(holds))
+	}
+	if rf, ok := empty["revert_failed_holds"].([]any); !ok {
+		t.Errorf("empty status --json revert_failed_holds: got %#v, want a JSON array (DF-54-R2: [] not null)", empty["revert_failed_holds"])
+	} else if len(rf) != 0 {
+		t.Errorf("empty status --json revert_failed_holds: got %d rows, want 0", len(rf))
+	}
 
 	// ── (2) arm a hold through the real verb ─────────────────────────────
 	code, out = captureStdout(t, func() int { return run(armTestArgs(t, dir)) })
@@ -63,7 +76,9 @@ func TestStatusJSONSurface(t *testing.T) {
 		t.Fatalf("status --json after arm: exit %d, want 0\n%s", code, out)
 	}
 	doc := decodeJSONObject(t, out)
-	assertKeys(t, "status --json", doc, []string{"boot_id", "holds", "history"})
+	// DF-54-R2: revert_failed_holds joined the top level (the liveness
+	// signal); an armed hold is live but NOT revert-failed, so it stays [].
+	assertKeys(t, "status --json", doc, []string{"boot_id", "history", "holds", "revert_failed_holds"})
 	assertNoPascalCase(t, "status --json after arm", doc)
 
 	holds, ok := doc["holds"].([]any)
@@ -228,7 +243,7 @@ func TestStatusJSONAbsentRunDir(t *testing.T) {
 			t.Fatalf("status --json on a present-empty run dir: exit %d, want 0\n%s", code, out)
 		}
 		doc := decodeJSONObject(t, out)
-		assertKeys(t, "present-empty status --json", doc, []string{"boot_id", "holds", "history"})
+		assertKeys(t, "present-empty status --json", doc, []string{"boot_id", "history", "holds", "revert_failed_holds"})
 		if state, present := doc["state"]; present {
 			t.Errorf("present-empty status --json grew a state key: %#v (state is the absent guard's key)", state)
 		}

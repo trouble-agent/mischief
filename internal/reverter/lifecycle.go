@@ -479,10 +479,27 @@ type Status struct {
 	// proof count and never reads as a live hold. The complete listing is
 	// StatusAll (`status --all`).
 	Holds []HoldStatusEntry
+	// RevertFailedHolds is the terminal holds whose LATEST measured revert
+	// is revert_failed (MISCHIEF-DF-54-R2): the fault such a hold names may
+	// STILL be live — the same condition that flips the daemon's
+	// health.json ok:false — so every status surface (text, --json, the
+	// exit code) derives from THIS one field, folded from the same journal
+	// state the listing is, and the CLI can never disagree with the daemon
+	// about a possibly-live fault. A successful retry re-folds the hold to
+	// reverted, which empties this set (the fold keeps the latest outcome).
+	RevertFailedHolds []HoldStatusEntry
 	// History is every measured proof ever appended to the journal
 	// (insertion order).
 	History []Proof
 }
+
+// MayBeLive reports whether the fold carries a fault that may still be
+// live: one or more terminal revert_failed holds. This is the ONE
+// liveness rule the CLI's exit codes, the text counter and the JSON
+// counter all read — the daemon's ok:false flip (internal/daemon/daemon.go)
+// derives from the same fold's revert_failed rows (StatusAll), so both
+// surfaces answer the same fold the same way.
+func (s Status) MayBeLive() bool { return len(s.RevertFailedHolds) > 0 }
 
 // HoldStatusEntry is one hold's Status row. Marshalled through
 // holdStatusWire (MISCHIEF-DF-53): Expiry/StuckAt are pointers on the wire
@@ -519,16 +536,27 @@ type HoldStatusEntry struct {
 // HoldStatusEntry / Proof without a mirror key fails that test loud, which is
 // the point of keeping the mirrors in one block.
 
-// statusWire mirrors Status.
+// statusWire mirrors Status. RevertFailedHolds carries the same rows the
+// terminal revert_failed rows are (MISCHIEF-DF-54-R2) — the machine
+// surface's liveness signal, present at the top level so a consumer
+// answers "may a fault still be live?" from ONE key instead of folding
+// history themselves. Holds is always a non-nil slice so the healthy
+// state renders [] instead of the pre-fix null.
 type statusWire struct {
-	BootID  string           `json:"boot_id"`
-	Holds   []holdStatusWire `json:"holds"`
-	History []proofWire      `json:"history"`
+	BootID            string           `json:"boot_id"`
+	Holds             []holdStatusWire `json:"holds"`
+	RevertFailedHolds []holdStatusWire `json:"revert_failed_holds"`
+	History           []proofWire      `json:"history"`
 }
 
 // holdStatusWire mirrors HoldStatusEntry. Expiry/StuckAt are pointers so an
 // unset timestamp is null; the key is always present, so a consumer reads
-// `.holds[].stuck_at` without a missing-key branch.
+// `.holds[].stuck_at` without a missing-key branch. Expiry is NULL for any
+// non-active row (MISCHIEF-DF-54-R2): the row's arm-time expiry would
+// otherwise render as a future-looking countdown (the residual the text
+// row's ttl_remaining gate removed in DF-54) — the wire keeps the key (the
+// key set stays fixed) but nulls the value, so `expiry - now` can never
+// read "still live" for a finished hold.
 type holdStatusWire struct {
 	HoldID  string     `json:"hold_id"`
 	FaultID string     `json:"fault_id"`
@@ -556,24 +584,28 @@ type proofWire struct {
 }
 
 // MarshalJSON renders Status as the snake_case wire document the status verb
-// emits (MISCHIEF-DF-53). A nil slice still renders as JSON null — exactly
-// the pre-fix encoding for an empty fold, because this change is keys and
-// timestamps only.
+// emits (MISCHIEF-DF-53). Every slice is non-nil on the wire: an empty fold
+// renders [] (not the null a nil slice marshalles to — MISCHIEF-DF-54-R2,
+// `jq '.holds[]'` must iterate instead of crashing), so a consumer never
+// needs a null branch.
 func (s Status) MarshalJSON() ([]byte, error) {
-	var holds []holdStatusWire
+	holds := make([]holdStatusWire, 0)
 	for _, h := range s.Holds {
-		holds = append(holds, holdStatusWire{
-			HoldID:  h.HoldID,
-			FaultID: h.FaultID,
-			Target:  h.Target,
-			Status:  h.Status,
-			Expiry:  wireTime(h.Expiry),
-			StuckAt: wireTime(h.StuckAt),
-			LandPID: h.LandPID,
-			OwnPID:  h.OwnPID,
-		})
+		hold, err := holdWire(h)
+		if err != nil {
+			return nil, err
+		}
+		holds = append(holds, hold)
 	}
-	var history []proofWire
+	rf := make([]holdStatusWire, 0)
+	for _, h := range s.RevertFailedHolds {
+		row, err := holdWire(h)
+		if err != nil {
+			return nil, err
+		}
+		rf = append(rf, row)
+	}
+	history := make([]proofWire, 0)
 	for _, p := range s.History {
 		history = append(history, proofWire{
 			HoldID:        p.HoldID,
@@ -587,7 +619,29 @@ func (s Status) MarshalJSON() ([]byte, error) {
 			Reason:        p.Reason,
 		})
 	}
-	return json.Marshal(statusWire{BootID: s.BootID, Holds: holds, History: history})
+	return json.Marshal(statusWire{BootID: s.BootID, Holds: holds, RevertFailedHolds: rf, History: history})
+}
+
+// holdWire renders one hold row onto the wire. Expiry is null when the row
+// is not ACTIVE (MISCHIEF-DF-54-R2 — a terminal row's arm-time expiry must
+// not publish a countdown) or unset; StuckAt keeps the unset-is-null rule.
+// The wire's own liveness vocabulary is Status.Active — the one predicate
+// the text rows' ttl_remaining gate and the daemon's TTL math already share.
+func holdWire(h HoldStatusEntry) (holdStatusWire, error) {
+	expiry := wireTime(h.Expiry)
+	if !h.Status.Active() {
+		expiry = nil
+	}
+	return holdStatusWire{
+		HoldID:  h.HoldID,
+		FaultID: h.FaultID,
+		Target:  h.Target,
+		Status:  h.Status,
+		Expiry:  expiry,
+		StuckAt: wireTime(h.StuckAt),
+		LandPID: h.LandPID,
+		OwnPID:  h.OwnPID,
+	}, nil
 }
 
 // wireTime maps a domain timestamp onto the wire: the zero time is JSON null
@@ -623,6 +677,8 @@ func (l *Lifecycle) foldStatus(activeOnly bool) Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := Status{BootID: s.BootID}
+	holds := make([]HoldStatusEntry, 0)
+	revertFailed := make([]HoldStatusEntry, 0)
 	ids := make([]string, 0, len(s.holds))
 	for id := range s.holds {
 		ids = append(ids, id)
@@ -630,10 +686,7 @@ func (l *Lifecycle) foldStatus(activeOnly bool) Status {
 	sort.Strings(ids)
 	for _, id := range ids {
 		st := s.holds[id]
-		if activeOnly && !st.Status.Active() {
-			continue
-		}
-		out.Holds = append(out.Holds, HoldStatusEntry{
+		entry := HoldStatusEntry{
 			HoldID:  id,
 			FaultID: st.Arm.FaultID,
 			Target:  st.Arm.Target,
@@ -642,8 +695,23 @@ func (l *Lifecycle) foldStatus(activeOnly bool) Status {
 			StuckAt: st.StuckAt,
 			LandPID: st.LandPID,
 			OwnPID:  st.OwnPID,
-		})
+		}
+		if st.Status == StatusRevertFailed {
+			// MISCHIEF-DF-54-R2: a terminal revert_failed hold records
+			// the FACT that its fault may still be live — the condition
+			// the daemon grades ok:false from the same rows. It is
+			// collected on EVERY fold (active-only or complete) so the
+			// default status surface and the complete one carry the same
+			// liveness signal and can never disagree about it.
+			revertFailed = append(revertFailed, entry)
+		}
+		if activeOnly && !st.Status.Active() {
+			continue
+		}
+		holds = append(holds, entry)
 	}
+	out.Holds = holds
+	out.RevertFailedHolds = revertFailed
 	out.History = append([]Proof(nil), s.history...)
 	return out
 }
