@@ -67,7 +67,7 @@ bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: TTL fold + boot re
 # a hold armed while serve is ALREADY running IS folded and reverted at TTL — an arm
 # issued ~0.8s after serve start was reverted on the next fold tick. Do not restart serve
 # around every arm.
-# THE FOLD IS A ~5s TICK (measured; MISCHIEF-DF-59): the revert lands at declared-TTL + up
+# THE FOLD IS A ~5s TICK (measured; MISCHIEF-DF-59 fixed): the revert lands at declared-TTL + up
 # to one tick (+4.2s measured on BOTH a 5s and a 10s TTL) and can land ~0.7s EARLY (the
 # expiry clock truncates the arm timestamp to whole seconds). Never conclude "the watchdog
 # never reverted" from a window shorter than ttl + 5s — the product was right and the
