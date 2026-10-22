@@ -247,6 +247,13 @@ exit 126
 // active/running. This proves the gate does not break the proven shape on a
 // healthy host; the pam_namespace leg is re-proven by the foreman on a
 // bunker agent.
+//
+// Capability guard (MISCHIEF-DF-66): the leg is NOT a blanket skip — the
+// user-manager runtime dir existing is cheap and keeps the leg running on
+// degraded-but-working hosts; the exec-formation class measured ON the
+// detach itself (e.g. 203/EXEC inside a private /tmp namespace) is a NAMED
+// capability skip, not a FAIL, while a unit that started and then
+// misbehaved still fails the leg (the negative control in live_test.go).
 func TestRealSystemdRunLiveUnitEndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a real systemd user unit; skipped in -short")
@@ -257,23 +264,20 @@ func TestRealSystemdRunLiveUnitEndToEnd(t *testing.T) {
 	if _, err := os.Stat(os.Getenv("XDG_RUNTIME_DIR") + "/systemd"); err != nil {
 		t.Skipf("no user manager runtime dir: %v", err)
 	}
-	_, lf := newTestStore(t)
-	t.Setenv(detachModeOverrideEnv, "systemd-run")
-	hold, _, _ := scratchHold(t, "P-QAM2-REAL")
-	hold.TTL = 45 * time.Second // killed by the test before it fires
-	id, err := lf.Arm(hold)
-	if err != nil {
-		t.Fatalf("arm: %v", err)
-	}
-	res, err := lf.Detach(id, hold.TTL)
-	if err != nil {
-		t.Fatalf("real systemd-run detach failed (liveness gate rejected a real unit): %v", err)
+	id, lf, res, derr := runRealSystemdOwnerLeg(t)
+	if derr != nil {
+		if IsExecFormationError(derr) {
+			// MISCHIEF-DF-66 AC-1: the measured exec-formation class
+			// (a host whose user manager cannot exec the test binary)
+			// is a NAMED capability skip — never the FAIL the
+			// bunker-mvp battery red read as a product regression.
+			capabilityUnavailabileSkip(t, derr)
+		}
+		t.Fatalf("real systemd-run detach failed (liveness gate rejected a real unit): %v", derr)
 	}
 	if res.Mode != "systemd-run" || res.Unit == "" {
 		t.Fatalf("result %+v, want the systemd-run shape", res)
 	}
-	// the unit really is running under the user manager (an independent
-	// read, not the verdict under test)
 	out, err := exec.Command("systemctl", "--user", "show", "-p", "ActiveState", "-p", "SubState", "--", res.Unit).CombinedOutput()
 	if err != nil {
 		t.Fatalf("show %s: %v: %s", res.Unit, err, strings.TrimSpace(string(out)))

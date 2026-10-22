@@ -55,6 +55,15 @@ const ownerProbeTimeout = 3 * time.Second
 // errors.Is; the message names the status and the unit.
 var errOwnerExecClass = errors.New("owner unit exited immediately (systemd exec-formation class, e.g. 203/EXEC)")
 
+// IsExecFormationError classifies err as the measured systemd exec-formation
+// class (MISCHIEF-DF-66): the start job was accepted, the owner unit was
+// observed NOT running, and the failure carried the class marker
+// (errOwnerExecClass) rather than a plain ErrNoOwner (probe-unavailable) —
+// the probe itself failing is a different class and stays false here.
+// Detach callers and the live leg's capability guard classify through this
+// helper, not by string matching.
+func IsExecFormationError(err error) bool { return errors.Is(err, errOwnerExecClass) }
+
 // defaultDetach spawns the TTL owner OUTSIDE the CLI's fate (AC-5). Two
 // shapes, in order of preference:
 //
