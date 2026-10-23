@@ -94,18 +94,6 @@ func New(store *Store) *Lifecycle {
 	return &Lifecycle{store: store, exec: scratchExec{}, detach: defaultDetach}
 }
 
-// ValidateUndo is the exported arm-side undo probe: for a restore-file
-// inverse it performs the SAME read the executor performs at revert time
-// (scratchExec.execAction's os.ReadFile of the backup), so a caller that
-// pre-checks the hold cannot drift from what the undo will actually do. An
-// absent backup param is the same unreadable class (a paramless restore
-// touches nothing). Kinds other than restore-file are outside the probe
-// (nil: unknown kinds are graded by exec.go at revert, fail-closed there —
-// the CLI's Hold pre-validation catches them first).
-func ValidateUndo(d Decl) error {
-	return validateInverseUndo(d)
-}
-
 // validateInverseUndo is the arm-side probe behind Arm's refusal: for a
 // restore-file inverse it performs the SAME read the executor performs at
 // revert time (scratchExec.execAction's os.ReadFile of the backup), so the

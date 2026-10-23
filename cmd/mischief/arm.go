@@ -108,6 +108,29 @@ func cmdArm(args []string) int {
 		return 2
 	}
 
+	// MISCHIEF-DF-72: validate the declaration while the run dir is still
+	// untouched. reverter.Open MINTS the run dir (it MkdirAll's dir and
+	// installs boot.json), so a refusal discovered only inside
+	// Lifecycle.Arm — an unknown or cross-slot decl kind (the same
+	// fail-closed grade a revert would give), or an inverse whose restore
+	// backup is unreadable (MISCHIEF-DF-23's probe) — used to leave a
+	// freshly minted boot.json + empty reverter.jsonl behind a refusal
+	// whose message says nothing was written. The declaration is a pure
+	// function of the flags, so a pre-open validation cannot contradict
+	// Arm's own check (the same Hold.Validate + inverse-undo probes,
+	// applied one phase earlier).
+	pending := reverter.Hold{
+		FaultID: *fault,
+		Target:  *target,
+		Inverse: inv,
+		Check:   chk,
+		TTL:     *ttl,
+	}
+	if err := reverter.ValidateForArm(pending); err != nil {
+		fmt.Fprintln(os.Stderr, "arm:", err)
+		return 2
+	}
+
 	// MISCHIEF-DF-58: the protected-target rail covers the arm path. Plan
 	// refuses a protected selector at resolution (AC-7); arm — the
 	// write-ahead half of the same loop — must agree, or a fleet control
@@ -132,44 +155,13 @@ func cmdArm(args []string) int {
 		return 2
 	}
 
-	hold := reverter.Hold{
-		FaultID: *fault,
-		Target:  *target,
-		Inverse: inv,
-		Check:   chk,
-		TTL:     *ttl,
-	}
-
-	// MISCHIEF-DF-71: the kind refusals are USAGE refusals, not storage
-	// failures — they are validated HERE, before the store is even opened,
-	// and exit 2 like every other arm refusal (missing flags, unknown fault
-	// id, protected target, sanction gate — all 2; the same exit contract the
-	// usage skill documents: rails.MapExit(nil↔0, refusal↔2, other↔1)).
-	// Before this pre-validation an unknown kind surfaced rc=1 through
-	// Lifecycle.Arm (the storage-failure slot), contradicting the skill's
-	// "refuses rc=2 naming the field, nothing written" — and the refusal
-	// still minted the store (boot.json) first, so "nothing was written" was
-	// false too (MISCHIEF-DF-72's direction A). Holding both: the hold's
-	// closed-vocabulary, cross-slot and empty-param invariants (Hold.Validate
-	// — the DF-29/29-R2 gates) plus the DF-23 undo readability probe are
-	// graded BEFORE reverter.Open touches the run dir, so a refused arm
-	// writes literally nothing.
-	if err := hold.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "arm: %v\n", err)
-		return 2
-	}
-	if err := reverter.ValidateUndo(inv); err != nil {
-		fmt.Fprintf(os.Stderr, "arm: %v\n", err)
-		return 2
-	}
-
 	store, err := reverter.Open(*dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arm:", err)
 		return 1
 	}
 	defer store.Close()
-	id, err := reverter.New(store).Arm(hold)
+	id, err := reverter.New(store).Arm(pending)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arm:", err)
 		return 1
