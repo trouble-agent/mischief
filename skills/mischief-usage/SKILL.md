@@ -26,7 +26,11 @@ revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = t
 arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
 serve     --dir D             # reverter daemon: TTLs + boot reconcile + health.json
 doctor    [--catalog-dir D] [--json] [--self-check]         # exit 1 = a check FAILED
-battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
+battery   [--quick] [--project P] [--primitive ID] [--out D] [--dir D] [--file-rows] [--dry-run]
+                              # battery.jsonl (the run journal, per-event evidence) ALWAYS follows --dir,
+                              # NOT --out; --out only moves matrix.json/.md (+ findings.jsonl). Preserving
+                              # artefact + evidence together: pass --dir (and leave --out off, or point
+                              # both at the same dir).
 chaos     matrix --project P [--tier-max N] [--out D]
         | check --lane F
         | finding --project P --board D --title T --reason R
