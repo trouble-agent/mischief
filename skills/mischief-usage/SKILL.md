@@ -196,7 +196,8 @@ sudo ip netns del mc-probe-ns                      # revert proven
   (MISCHIEF-DF-29 and the 29-R2 re-cur, both closed): an unknown kind — or a
   kind from the wrong slot — refuses rc=2 naming the field, and writes
   LITERALLY nothing (not even boot.json: the hold is pre-validated before the
-  store mint, MISCHIEF-DF-71/72). Stick to the two kinds per decl above;
+  store mint — MISCHIEF-DF-71 and MISCHIEF-DF-72, both closed). Stick to the
+  two kinds per decl above;
   anything else is a usage refusal, not a journalable arm — measured 2026-10-23
   on main: `arm --inverse-kind bogus-kind` -> rc=2.
   The undo-readability probe (a restore-file inverse whose backup is unreadable)
