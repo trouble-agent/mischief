@@ -848,6 +848,10 @@ func TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner(t *testing.T) {
 // the show), so it still fails with the verified 203/EXEC class; the
 // setsid leg fork/execs it and fails.
 func TestFallbackFailureJoinsSystemdExecClass(t *testing.T) {
+	// Neutralize the operator pin: an ambient MISCHIEF_REVERTER_DETACH_MODE
+	// would pin a single shape, so shape-1's exec-formation error would never
+	// join with the fallback's (or vice versa). Empty value = natural path.
+	t.Setenv(detachModeOverrideEnv, "")
 	st, lf := newTestStore(t)
 	prevSelf := selfExe
 	selfExe = func() (string, error) {
