@@ -90,3 +90,18 @@ Verified NOT to be a finding: `docs/CATALOG.md`'s Go snippets name only symbols 
 for an internal package, so an outside module cannot compile them by design, not by rot.
 
 ch:trace row=DOC-22 spec=docs/FAULT-CATALOG.md#layer-i wave=none:standalone-audit test=none:documentation-audit doc=.coding-hermes/audits/mischief-docs-2026-10-23.md prompt=~/.hermes/skills/coding-hermes-docs/SKILL.md evidence=.coding-hermes/audits/mischief-docs-2026-10-23.md witness=none:tick-surface-diff verdict=none:nothing-to-judge commit=none:audit-artifact-not-code memory=none:not-written
+
+## Third pass — the stranger-facing surface (security policy)
+
+Surfaces exercised, all on HEAD deff0a1 with the repo's own binary:
+
+| surface | command run | result |
+|---|---|---|
+| SECURITY.md build identifier | `go build -o /tmp/mischief-unstamped ./cmd/mischief && /tmp/mischief-unstamped version` → `mischief unknown`; `grep -rn '0.0.0-dev'` over the repo → one hit, the sentence itself | SECURITY.md:20's `0.0.0-dev` is produced by no build path (DOC-23) |
+| SECURITY.md fallback channel | `~/trouble/SECURITY.md` exists and names a maintainer address | the "mail via the trouble sibling" route resolves — NO finding |
+| SECURITY.md supported version | `gh release list --repo trouble-agent/mischief --limit 3` → `v0.1.0  Latest` | "v0.1.0 is the current supported release" is true — NO finding |
+| operator.md shim claims | `grep -n 'EIO\|ENOSPC\|ETIMEDOUT' internal/backend_signal/rule.go` → the nine-name errno list; `DeriveProofPath` (rule.go:226-229) → `mc-proof-<hash16>.jsonl` | the errno vocabulary, budget default `-1` and proof-path derivation all match the doc — NO finding |
+| operator.md owner claims | `internal/reverter/owner.go` expiry parsed as int64 nanoseconds; `__owner` present in the dispatch | matches the doc — NO finding |
+| TEST-PLANE exit-code contract | read `scripts/bunker-plane.sh`: the `exit 20/30/90` codes live inside the uploaded REMOTE heredocs and are folded into `row`/`finish`, the driver itself ends 0/1/2/3 | the documented exit contract is true — NO finding |
+
+ch:trace row=DOC-23 spec=SECURITY.md#reporting-a-vulnerability wave=none:standalone-audit test=none:documentation-audit doc=.coding-hermes/audits/mischief-docs-2026-10-23.md prompt=~/.hermes/skills/coding-hermes-docs/SKILL.md evidence=.coding-hermes/audits/mischief-docs-2026-10-23.md witness=none:tick-surface-diff verdict=none:nothing-to-judge commit=none:audit-artifact-not-code memory=none:not-written
