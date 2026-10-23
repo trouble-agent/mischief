@@ -26,11 +26,7 @@ revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = t
 arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
 serve     --dir D             # reverter daemon: TTLs + boot reconcile + health.json
 doctor    [--catalog-dir D] [--json] [--self-check]         # exit 1 = a check FAILED
-battery   [--quick] [--project P] [--primitive ID] [--out D] [--dir D] [--file-rows] [--dry-run]
-                              # battery.jsonl (the run journal, per-event evidence) ALWAYS follows --dir,
-                              # NOT --out; --out only moves matrix.json/.md (+ findings.jsonl). Preserving
-                              # artefact + evidence together: pass --dir (and leave --out off, or point
-                              # both at the same dir).
+battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
 chaos     matrix --project P [--tier-max N] [--out D]
         | check --lane F
         | finding --project P --board D --title T --reason R
@@ -194,14 +190,9 @@ sudo ip netns del mc-probe-ns                      # revert proven
   before anything is written.
 - `arm` validates inverse/check KINDS at arm time against the kind's own slot
   (MISCHIEF-DF-29 and the 29-R2 re-cur, both closed): an unknown kind — or a
-  kind from the wrong slot — refuses rc=2 naming the field, and writes
-  LITERALLY nothing (not even boot.json: the hold is pre-validated before the
-  store mint — MISCHIEF-DF-71 and MISCHIEF-DF-72, both closed). Stick to the
-  two kinds per decl above;
-  anything else is a usage refusal, not a journalable arm — measured 2026-10-23
-  on main: `arm --inverse-kind bogus-kind` -> rc=2.
-  The undo-readability probe (a restore-file inverse whose backup is unreadable)
-  is the SAME class: rc=2, path named, nothing minted.
+  kind from the wrong slot — refuses rc=2 naming the field, nothing written.
+  Stick to the two kinds per decl above; anything else is a usage refusal,
+  not a journalable arm.
 - `serve`'s `boot_id` (what `status` prints and what arm records carry) comes from the
   run dir's `boot.json`, not the host's `/proc/sys/kernel/random/boot_id` — an arm record
   stamped with the host id grades false-stuck on the same boot. That run-dir value is

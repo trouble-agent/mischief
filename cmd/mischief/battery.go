@@ -18,23 +18,15 @@ import (
 //
 // Runs the fault × target matrix, grades every cell through the SPEC-05
 // verdict engine on the selftest harness's measured land+revert proofs,
-// and emits (MISCHIEF-DF-73: the artefact and the journal are SEPARATE
-// surfaces — the journal follows --dir, never --out):
+// and emits under --out (default: the run dir):
 //
-//	--out <dir> (default: the run dir, i.e. --dir):
-//	  matrix.json / matrix.md — the fault × detection × recovery artefact
-//	                            (S-5); the --quick artefact names the five
-//	                            bunker-qa.sh cells each quick cell replaces
-//	  findings.jsonl          — AC-18 board rows for every adverse
-//	                            verdict, in the mischief board's row
-//	                            vocabulary, the journal path riding in
-//	                            `reasoning` (--file-rows only)
-//	--dir <dir> (the run dir):
-//	  battery.jsonl           — the run journal (SPEC-02 record format);
-//	                            an operator preserving only --out gets the
-//	                            matrix but NOT the per-event evidence —
-//	                            pass --dir (or rely on --out's default) to
-//	                            keep artefact and journal together
+//	matrix.json / matrix.md — the fault × detection × recovery artefact
+//	                          (S-5); the --quick artefact names the five
+//	                          bunker-qa.sh cells each quick cell replaces
+//	battery.jsonl           — the run journal (SPEC-02 record format)
+//	findings.jsonl          — AC-18 board rows for every adverse verdict,
+//	                          in the mischief board's row vocabulary,
+//	                          the journal path riding in `reasoning`
 //
 // --quick runs the reduced parity matrix: exactly the five legacy bash
 // chaos cells (chaos-disconnect, chaos-shutdown, chaos-corruption,
@@ -65,7 +57,7 @@ func cmdBattery(args []string) int {
 	projects := fs.String("project", "", "owning project(s), comma-separated (REQUIRED for full matrix; use --quick for the parity matrix)")
 	prims := fs.String("primitive", "", "primitive id(s), comma-separated (REQUIRED for full matrix; use --quick for the parity matrix)")
 	out := fs.String("out", "", "artefact dir (default: the run dir)")
-	dir := fs.String("dir", defaultRunDir(), "run dir (journal + artefact home); battery.jsonl ALWAYS lands here — --out only moves the matrix/findings artefacts")
+	dir := fs.String("dir", defaultRunDir(), "run dir (journal + artefact home)")
 	fileRows := fs.Bool("file-rows", false, "emit findings.jsonl (AC-18 board rows for adverse verdicts)")
 	catalogDir := fs.String("catalog-dir", "", "catalog dir (default: catalog/faults from cwd upward)")
 	dryRun := fs.Bool("dry-run", false, "print the resolved matrix and exit (nothing executes)")
@@ -143,13 +135,11 @@ func cmdBattery(args []string) int {
 		return 2
 	}
 
-	// Journal first (MISCHIEF-DF-73: the journal ALWAYS follows --dir —
-	// the run dir's journal home, not --out — so the per-event evidence
-	// lives wherever the operator pointed the run dir; findings' reasoning
-	// carries the journal path (AC-18), so the path must exist before rows
-	// are rendered. The run id is already stamped on the result by the
-	// runner (Run derives it from the finished result); re-derive here and
-	// assert the same value — a mismatch would break the AC-9 correlation.
+	// Journal first: the findings' reasoning carries the journal path
+	// (AC-18), so the path must exist before rows are rendered. The run
+	// id is already stamped on the result by the runner (Run derives it
+	// from the finished result); re-derive here and assert the same
+	// value — a mismatch would break the AC-9 correlation.
 	runID := battery.RunResultRunID(res)
 	if res.RunID != runID {
 		fmt.Fprintln(os.Stderr, "battery: run id drifted between the runner and the CLI derivation:", res.RunID, runID)

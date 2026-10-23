@@ -251,6 +251,23 @@ func (h *Hold) Validate() error {
 	return nil
 }
 
+// ValidateForArm validates a Hold exactly as Lifecycle.Arm does before it
+// would write anything: Hold.Validate (the closed decl vocabularies, the
+// cross-slot refuses, positive TTL) plus the MISCHIEF-DF-23 inverse-undo
+// probe (a restore-file inverse whose backup is unreadable can only grade
+// revert_failed later). It is exported for callers that must refuse a bad
+// declaration BEFORE opening the store — the CLI arm verb is the canonical
+// case (MISCHIEF-DF-72: reverter.Open mints the run dir, so a refusal found
+// only after Open leaves a freshly minted boot.json + empty reverter.jsonl
+// behind a "nothing was written" refusal). The error text matches Arm's
+// ("reverter: arm: ...").
+func ValidateForArm(h Hold) error {
+	if err := h.Validate(); err != nil {
+		return fmt.Errorf("reverter: arm: %w", err)
+	}
+	return validateInverseUndo(h.Inverse)
+}
+
 // ID is the hold's content-derived id (hex(sha256)[:16], the journal RunID
 // convention): a pure function of the declared content — fault, target, TTL
 // in nanoseconds, and both decls' canonical text.

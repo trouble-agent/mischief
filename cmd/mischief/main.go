@@ -156,7 +156,7 @@ Usage:
   mischief uninstall [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
   mischief audit     [--prefix P] [--json]
   mischief retention [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
-  mischief battery   [--quick] [--project P] [--primitive ID] [--out D] [--dir D] [--file-rows] [--dry-run]   # battery.jsonl follows --dir, not --out
+  mischief battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief chaos     matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
   mischief plane     parse-agent-id | record | selftest-verdict | fold   (bunker test-plane evidence CLI)
