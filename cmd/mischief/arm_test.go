@@ -307,3 +307,93 @@ func TestArmOutputNamesOnlySupportedRevertRoute(t *testing.T) {
 		t.Fatalf("arm output advertises the unreachable Detach path: %q", out)
 	}
 }
+
+// TestArmKindRefusalExitContract (MISCHIEF-DF-71): arm's kind validations are
+// USAGE refusals, graded exit 2 naming the offending field — the same
+// contract the usage skill (skills/mischief-usage/SKILL.md) documents and the
+// same code every sibling refusal exits (missing flags 2, unknown fault id 2,
+// protected target 2, sanction gate 2). Regression: the shipped binary used
+// to surface these through Lifecycle.Arm's storage-failure slot as rc=1
+// AND minted the store first, so the doc's "nothing written" was false
+// (MISCHIEF-DF-72's discriminator B). All three discriminator shapes must
+// exit 2, name the field, and leave the fresh run dir COMPLETELY empty
+// (not even boot.json — pre-validation runs before reverter.Open).
+func TestArmKindRefusalExitContract(t *testing.T) {
+	writeSanctionMarker(t) // sanctioned posture: the kind gate, not the sanction gate, must produce the refusal
+	cases := []struct {
+		name     string
+		invKind  string
+		invPars  string
+		chkKind  string
+		chkPars  string
+		wantText string
+	}{
+		{
+			name:     "unknown inverse kind",
+			invKind:  "bogus-kind",
+			invPars:  "path=x,backup=y",
+			chkKind:  "file-matches-backup",
+			chkPars:  "path=x,backup=y",
+			wantText: "unknown",
+		},
+		{
+			name:     "check kind in inverse slot",
+			invKind:  "file-matches-backup",
+			invPars:  "path=x,backup=y",
+			chkKind:  "file-matches-backup",
+			chkPars:  "path=x,backup=y",
+			wantText: "belongs in the check slot",
+		},
+		{
+			name:     "inverse kind in check slot",
+			invKind:  "restore-file",
+			invPars:  "path=x,backup=y",
+			chkKind:  "remove-file",
+			chkPars:  "path=x",
+			wantText: "belongs in the inverse slot",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			// scratch backup so a control arm with these args would pass
+			// DF-23's readability probe and the refusal can only be the kind
+			// gate.
+			scratch := t.TempDir()
+			backup := filepath.Join(scratch, "backup")
+			if err := os.WriteFile(backup, []byte("pristine\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			args := []string{
+				"arm",
+				"--fault", "S-001",
+				"--target", "scratch:/tmp/mischief-arm-test",
+				"--ttl", "10s",
+				"--inverse-kind", tc.invKind,
+				"--inverse-params", tc.invPars,
+				"--check-kind", tc.chkKind,
+				"--check-params", tc.chkPars,
+				"--dir", dir,
+			}
+			code, stderr := captureStderr(t, func() int { return run(args) })
+			if code != 2 {
+				t.Fatalf("%s: exit %d, want 2 (DF-71 usage-refusal contract)", tc.name, code)
+			}
+			if !strings.Contains(stderr, tc.wantText) {
+				t.Fatalf("%s: refusal does not name the field (%q): %s", tc.name, tc.wantText, stderr)
+			}
+			if ents, _ := os.ReadDir(dir); len(ents) != 0 {
+				t.Errorf("%s: refused arm wrote into the run dir (want LITERALLY nothing, not even boot.json): %v", tc.name, ents)
+			}
+		})
+	}
+
+	// positive control: the same shape with both kinds in their own slots
+	// still arms (rc=0) — the contract change did not regress the admitted
+	// path.
+	dir := t.TempDir()
+	code, out := captureStdout(t, func() int { return run(armTestArgs(t, dir)) })
+	if code != 0 || !strings.Contains(out, "armed ") {
+		t.Fatalf("positive control: exit %d out=%q, want 0 + armed", code, out)
+	}
+}

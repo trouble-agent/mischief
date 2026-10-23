@@ -139,6 +139,30 @@ func cmdArm(args []string) int {
 		Check:   chk,
 		TTL:     *ttl,
 	}
+
+	// MISCHIEF-DF-71: the kind refusals are USAGE refusals, not storage
+	// failures — they are validated HERE, before the store is even opened,
+	// and exit 2 like every other arm refusal (missing flags, unknown fault
+	// id, protected target, sanction gate — all 2; the same exit contract the
+	// usage skill documents: rails.MapExit(nil↔0, refusal↔2, other↔1)).
+	// Before this pre-validation an unknown kind surfaced rc=1 through
+	// Lifecycle.Arm (the storage-failure slot), contradicting the skill's
+	// "refuses rc=2 naming the field, nothing written" — and the refusal
+	// still minted the store (boot.json) first, so "nothing was written" was
+	// false too (MISCHIEF-DF-72's direction A). Holding both: the hold's
+	// closed-vocabulary, cross-slot and empty-param invariants (Hold.Validate
+	// — the DF-29/29-R2 gates) plus the DF-23 undo readability probe are
+	// graded BEFORE reverter.Open touches the run dir, so a refused arm
+	// writes literally nothing.
+	if err := hold.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "arm: %v\n", err)
+		return 2
+	}
+	if err := reverter.ValidateUndo(inv); err != nil {
+		fmt.Fprintf(os.Stderr, "arm: %v\n", err)
+		return 2
+	}
+
 	store, err := reverter.Open(*dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arm:", err)
