@@ -149,3 +149,21 @@ untar, `mkdir -p ~/.local/bin` then `install -m 0755`, put the shipped
 location), for catalog verbs stage the matching TAG's catalog tree, and run
 the L1 sanction recipe with a reason-bearing marker file. Timings on a bare
 agent: download 0.53 s + 0.45 s, selftest cold 0.53-0.65 s, plan 0.01 s.
+
+## 2026-10-23 — run 31 (tick mischief-dogfood-2026-10-23-04-45-49)
+
+Loop proven end-to-end on HEAD 162bc20d: arm→land→serve→TTL-revert with journal proof
+(219µs measured revert duration at 15s TTL + ~5s tick); revert --retry ladder rc contract
+(1→1→0) exercised; battery/chaos/sim/selftest/retention/plan-journal all driven as the
+README/usage-skill document them. Fresh-box leg on bunker-mvp agent 6d7d3843 via the
+git-archive substitute (forge fetch unproven — private repo + agent-key transport; no
+credentials minted); `make bin` 4s warm / 38s incl. toolchain auto-download; smoke +
+sanction refusals + arm/revert rc exactly as documented. New rows MISCHIEF-DF-71 (usage-skill
+sells rc=2 for arm kind refusals; product exits 1 — matches 29-R2's own control evidence),
+DF-72 (arm usage refusals mint boot.json despite 'nothing was written'), DF-73 (battery
+journal pinned to default run dir, --out does not take it), DF-74 (sim I-004 proof mixes
+fault families without per-line attribution). Premise checks: QA-MISCHIEF-005 and QA-006
+tests PASS at native HEAD (full go test ./... RC=0) — evidence, not row edits: foreman's.
+Probe artifacts: bin rebuilt (make bin, 162bc20d64bb) — disclosed; go test build cache;
+~/.mischief/runs/default/battery.jsonl +2 runs, selftest.jsonl appended (product's own
+default store, read-only surface); /tmp scratch swept.

@@ -496,3 +496,61 @@ ch:trace row=MISCHIEF-DF-69 spec=README.md#safety (SPEC-13 sanction contract)
 test=cmd/mischief env-leak reproduction (mischief-CI-2 class) evidence=run 30
 (22-ok vs 21-ok A/B, commands in row) witness=dogfood tick 2026-10-22-13-19-40
 verdict=verified: defect reproduces, fix path named commit=<this commit>
+
+## Run 31 — 2026-10-23 04:45Z (tick mischief-dogfood-2026-10-23-04-45-49, model glm-5.3-flash)
+
+PRODUCT: mischief @ HEAD 162bc20d64bb (bin REBUILT — pre-tick bin 5233f4f43387 was stale
+since Oct 20; `make bin` before use is the rule). Verdict: **SHIPPABLE**.
+
+REAL USE (sanctioned scratch /tmp/mc-df31.loCVVm, swept after): plan ex-001 7ms zero-side-effects
+(AC-1 hold) + --journal-dir opt-in honored; flagship loop arm(9ms)→hand-land FAULTED→serve
+(watchdog, health.json ok)→TTL 15s+~4s tick→revert_proof outcome=reverted reason=ttl_expiry
+detail=check: same duration=219µs→target restored; second arm AFTER serve start folded too
+(DF-30 re-proven, env-leak accident); refusals: unsanctioned rc=2 clean text, protected
+target rc=2 (still names the nonexistent override flag = DF-57 live at HEAD), unknown-kind
+rc=1 + wrong-slot rc=1 (usage skill claims rc=2 → NEW MISCHIEF-DF-71; 29-R2's own control
+evidence already recorded rc=1 — coaching wrong then and now), boot.json minted on kind
+refusal despite 'nothing was written' → NEW MISCHIEF-DF-72 (discriminator triple: sanction
+gate mints nothing, kind refusal mints boot.json+empty journal, valid arm identical shape);
+revert --retry ladder 1→1→0 with content restore (skill's mv+chmod 644 coaching correct);
+status --json absent-dir parseable; doctor 4ms; battery --quick 5/5 rc=0 1.9s; selftest --all
+green-or-skip rc=0 (10.2s; two capability_unavailable REFUSED at L1 as designed); retention
+--dry-run honest; chaos matrix 8/11 executable; sim AC-17 fallback + per-line request log
+(pinned --log appends = DF-70 live; I-004 proof mixes fault families → NEW MISCHIEF-DF-74);
+battery journal ALWAYS lands in ~/.mischief/runs/default regardless of --out → NEW
+MISCHIEF-DF-73 (evidence split across run-dir bases).
+
+PREMISE CHECKS (board-vs-reality): full `go test ./... -count=1` GREEN at HEAD (RC=0, 21
+pkgs) — QA-MISCHIEF-005's failing-test premise (TestOwnerSurvivesKill9AndRevertsAtTLL ok
+5.85s) and QA-MISCHIEF-006's env-knob red both fail to reproduce; evidence for the foreman,
+rows NOT edited (lane contract). `make row-drift` PASS (31 refs) = DF-63's check works;
+DF-63's checklist AC landed on HEAD mid-tick (162bc20) — reconciled, nothing to re-do.
+
+INSTALL LEG (fresh machine): bunker-mvp ONLINE 8/50 → agent 6d7d3843 spawned (ttl 1h).
+Cross-host ssh clone refused (agent-key transport, publickey — correct isolation); origin
+is private-first → SUBSTITUTED with `git archive HEAD` tarball (git-archive named-as-such:
+forge fetch NOT proven, build+smoke proven): `make bin` 38s first-touch (go1.26.9
+auto-download + module fetches) / 4s warm; smoke version/doctor/status-absent rc=0;
+unsanctioned plan refusal rc=2 with SPEC-13 text (rc=2 EXACTLY — the refusal family the
+rc=1 rows should align with, contrast DF-71); sanctioned arm rc=0 + revert --all rc=0
+'1 holds reverted, wall=1ms'. Teardown: destroy rc=0 TEARDOWN-GONE, key removed, list
+re-check empty. Two earlier leg-script failures were MY rm-glob bugs (disclosed), not
+product behavior. No credentials minted, no visibility touched.
+
+PERF (2b): plan 4-7ms, arm 9ms, doctor 4ms, status instant, revert --all ~ms, battery 1.9s,
+selftest 10.2s (per-primitive landing proofs), matrix build ~0.5s. Nothing user-noticeable;
+the only multi-second surfaces are the deliberate L0 landing suites. NO PERF row.
+
+FINDINGS FILED: MISCHIEF-DF-71 (P5 rc-contract/coaching drift), DF-72 (P4 refusal
+write-contract), DF-73 (P4 battery journal base), DF-74 (P5 sim proof-shape attribution).
+board_next_id minted; grep-verified free; boardctl validate OK after append (229 legacy
+warnings, 0 errors); row-drift PASS.
+
+LEFT IN REPO: docs/dogfood/2026-10-23-df31-integration.md, diagnostics.md run-31 entry,
+this log entry, 4 board rows. PROBE ARTIFACTS: bin/mischief rebuilt to 162bc20d64bb
+(disclosed, working tree otherwise clean); ~/.mischief/runs/default/ +2 battery runs +
+selftest rows (product's own default store); host /tmp scratch swept (mc-df31 residue gone;
+/tmp/mc-df31-pids holds only my scripts/evidence, no product state). No code changed,
+no pre-existing row edited, no scheduler state, no foreman wake (lane contract).
+
+ch:trace row=MISCHIEF-DF-71 spec=README.md#safety (SPEC-13 refusal family) test=cmd/mischief arm kind-refusal rc reproduction + 29-R2 filed control evidence evidence=runs 31 (main host + fresh box; commands in rows DF-71/72) witness=dogfood tick mischief-dogfood-2026-10-23-04-45-49 verdict=filed-for-foreman commit=<pending>
