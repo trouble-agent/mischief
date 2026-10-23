@@ -67,3 +67,26 @@ foreign hooks unless bypassed with `git -c core.hooksPath=.git/hooks`. Board com
 tick used the repo's own hooks.
 
 ch:trace row=DOC-11 spec=docs/LANES.md#the-lane-set wave=none:standalone-audit test=none:documentation-audit doc=.coding-hermes/audits/mischief-docs-2026-10-23.md prompt=~/.hermes/skills/coding-hermes-docs/SKILL.md evidence=.coding-hermes/audits/mischief-docs-2026-10-23.md witness=none:tick-surface-diff verdict=none:nothing-to-judge commit=none:audit-artifact-not-code memory=none:not-written
+
+## Supplementary pass — the surface the first pass deferred (same tick, second session)
+
+The first pass (above) filed DOC-11..DOC-19 and deferred `skills/mischief-usage/SKILL.md`
+to the MISCHIEF-DF-63 class. That deferral was wrong: DF-63's guard
+(`tools/check_row_drift.py`) resolves row-status references, it does not compare the CLI
+table against the binary. The skill is the agent-facing entry doc, so it was audited here.
+
+| surface | command run | result |
+|---|---|---|
+| skill CLI table vs shipped flags | `for v in plan status arm doctor selftest battery uninstall audit sim; do ./bin/mischief "$v" --help …; done` + the same for chaos/plane subverbs | 26 accepted flags absent from `skills/mischief-usage/SKILL.md` lines 17-40 (DOC-20) |
+| the skill's "`--help` does not list it" claim | `./bin/mischief --help \| grep -n selftest`; `grep -n 'mischief selftest' cmd/mischief/{main,help_test}.go` | help lists `selftest` at main.go:153, asserted by help_test.go:99 — the skill's line 109 is false (DOC-21) |
+| shipped-loader boundary | `ls catalog/faults/*.yaml \| wc -l` → 11; `doctor` → "loaded (11 primitives …)"; `selftest --primitive I-003` → rc=2 not-in-catalog | the skill sells 104 primitives and never states the 11-id loader floor (DOC-22); README-15 covers README only |
+| CHAOS-LANE.md recipe | instantiated `templates/chaos-lane.yaml` into a scratch lane with the doc's own `sed`, symlinked the board, ran `chaos check --lane` | rc=0 "template contract OK" — the documented recipe works, NO finding |
+| CHAOS-LANE.md matrix step | `chaos matrix --project mischief --tier-max 1 --out <scratch>` | rc=0, wrote `matrix.json` + `matrix.md` — NO finding |
+| battery parity (skill's documented run) | `MISCHIEF_SANCTION=1 ./bin/mischief battery --quick --dry-run --out S --dir S` | 5 cells q1..q5 (N-012, I-002, F-009, R-001, F-009), rc=0 — matches BATTERY-PARITY.md |
+| re-triage budget | open rows with id `DOC-*`/`README-*` and priority P1-P3 | none (every open doc row is P4/P5, all post-ruling) — unspent again |
+
+Verified NOT to be a finding: `docs/CATALOG.md`'s Go snippets name only symbols that exist in
+`internal/catalog` (the first pass checked field/function names); they are package examples
+for an internal package, so an outside module cannot compile them by design, not by rot.
+
+ch:trace row=DOC-22 spec=docs/FAULT-CATALOG.md#layer-i wave=none:standalone-audit test=none:documentation-audit doc=.coding-hermes/audits/mischief-docs-2026-10-23.md prompt=~/.hermes/skills/coding-hermes-docs/SKILL.md evidence=.coding-hermes/audits/mischief-docs-2026-10-23.md witness=none:tick-surface-diff verdict=none:nothing-to-judge commit=none:audit-artifact-not-code memory=none:not-written
