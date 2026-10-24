@@ -5,9 +5,11 @@
   "base_sha": "9dc6a14d0482c28d928c15f9f02518fc301af4f5",
   "wave_budget": 10,
   "tasks": [
-    {"id":"INT-CI-9","worktree":"/home/kara/worktrees/mischief-INT-CI-9","branch":"wt/INT-CI-9","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
-    {"id":"DOC-19","worktree":"/home/kara/worktrees/mischief-DOC-19","branch":"wt/DOC-19","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
-    {"id":"DOC-23","worktree":"/home/kara/worktrees/mischief-DOC-23","branch":"wt/DOC-23","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
-    {"id":"DOC-24","worktree":"/home/kara/worktrees/mischief-DOC-24","branch":"wt/DOC-24","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"}
-  ]
+    {"id":"INT-CI-9","worktree":"/home/kara/worktrees/mischief-INT-CI-9","branch":"wt/INT-CI-9","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"already_merged","merged_sha":"c766ccb754bdbd73bfdaeda397b209022634059f"},
+    {"id":"DOC-19","worktree":"/home/kara/worktrees/mischief-DOC-19","branch":"wt/DOC-19","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"already_merged","merged_sha":"e68e0cf1e7e56b12f814cea9390989e48745b29c"},
+    {"id":"DOC-23","worktree":"/home/kara/worktrees/mischief-DOC-23","branch":"wt/DOC-23","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"already_merged","merged_sha":"09283678bb5944106ac0aab916919fb15ba0dc08"},
+    {"id":"DOC-24","worktree":"/home/kara/worktrees/mischief-DOC-24","branch":"wt/DOC-24","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"already_merged","merged_sha":"d50495f51f57d054cc38a72db7dc3f238557b98a"}
+  ],
+  "finished_at": "2026-10-24T08:20:20Z",
+  "recovery_note": "All four manifest legs were already merged before recovery: current main 22be954 contains each implementation merge, branch tips are ancestors of main, worktrees are absent, board rows are complete, GitReins verdicts exist, and exact-head CI is successful. No branch merge or fixup was needed."
 }
