@@ -17,7 +17,9 @@ Please do not open a public issue for a suspected vulnerability.
 Include, as far as you can:
 
 - the commit or release the issue applies to (`mischief version` prints the
-  stamped git sha; `0.0.0-dev` means an unstamped build from a tagless tree),
+  stamped git sha; an unstamped plain `go build` reports `mischief unknown`),
+  and whether the build is stamped or unstamped. Please include the full
+  output of `mischief version` in your report,
 - the primitive/backend involved (e.g. `S-001` LD_PRELOAD shim, `docker` backend),
 - what the tool did vs. what its journal and verdict claimed.
 
