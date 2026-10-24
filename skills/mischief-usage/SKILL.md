@@ -234,8 +234,7 @@ sudo ip netns del mc-probe-ns                      # revert proven
   `rails.selectorNames`), while unrelated names (`process:hermes-api`, `process:loadbalancer`,
   `container:mischief-scratch`) arm normally rc=0. Because the remediation the refusal names does not
   exist (next bullet), a legitimately-named `…-gateway-…` workload is not faultable at all in v0.1.
-- The protected-target refusal names a remediation that does not exist (MISCHIEF-DF-57): *"an operator may
-  pass the explicit override flag, and the run then records it in the journal"* — no verb ships such a flag
+The protected-target refusal is fail-closed and does not expose an override flag in v0.1 (MISCHIEF-DF-57 is closed).
   (`plan`: `-catalog-dir -f -journal-dir -json -plan-only-sanction-skip -scratch-dir`; `arm`: `-catalog-dir
   -check-kind -check-params -dir -fault -inverse-kind -inverse-params -target -ttl`) and no doc names one.
   A protected target is therefore not faultable at all in v0.1, despite the message.
