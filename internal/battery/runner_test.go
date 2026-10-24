@@ -1,6 +1,7 @@
 package battery
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -344,6 +345,61 @@ func TestUnanimousAggregate(t *testing.T) {
 	last := recs[len(recs)-1]
 	if last.Verdict != journal.VerdictRecovered {
 		t.Errorf("unanimous aggregate %q, want recovered", last.Verdict)
+	}
+}
+
+// TestJournalCellDurationsRoundTrip: every per-cell journal record carries
+// the measured duration and preserves it through the JSONL write/read path.
+func TestJournalCellDurationsRoundTrip(t *testing.T) {
+	rn := stubRunner(stubCat("P-001"), map[string]selftest.Result{"P-001": stubPass})
+	base := time.Unix(1700000000, 0)
+	clock := 0
+	rn.now = func() time.Time {
+		clock++
+		return base.Add(time.Duration(clock-1) * 125 * time.Millisecond)
+	}
+	res, err := rn.Run(&Matrix{Cells: []Cell{cell("c1", "P-001")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := res.Cells[0].Duration
+	if want != 125*time.Millisecond {
+		t.Fatalf("cell duration = %s, want deterministic 125ms measurement", want)
+	}
+	if want <= 0 {
+		t.Fatalf("cell duration = %s, want a positive deterministic measurement", want)
+	}
+
+	recs := res.JournalRecords("duration-round-trip")
+	dir := t.TempDir()
+	path, err := WriteJournal(dir, recs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for i, line := range strings.Split(strings.TrimRight(string(b), "\n"), "\n") {
+		var rec journal.Record
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("journal record %d failed round-trip: %v", i, err)
+		}
+		if rec.Type != journal.RecordFaultLanded && rec.Type != journal.RecordFaultReverted {
+			continue
+		}
+		got, err := time.ParseDuration(rec.Fields["duration"])
+		if err != nil {
+			t.Fatalf("journal record %d duration %q: %v", i, rec.Fields["duration"], err)
+		}
+		if got != want {
+			t.Errorf("journal record %d duration = %s, want %s", i, got, want)
+		}
+		seen++
+	}
+	if seen != 2 {
+		t.Fatalf("round-tripped %d cell records, want landed and reverted records", seen)
 	}
 }
 
