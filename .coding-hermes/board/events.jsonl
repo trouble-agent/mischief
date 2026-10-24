@@ -331,3 +331,5 @@
 {"id":258,"event_type":"task_completed","actor":"foreman","task_id":"DOC-19","tick":null,"timestamp":"2026-10-24T08:03:40Z","detail":"{\"status\":\"complete\"}"}
 {"id":259,"event_type":"task_completed","actor":"foreman","task_id":"DOC-23","tick":null,"timestamp":"2026-10-24T08:03:40Z","detail":"{\"status\":\"complete\"}"}
 {"id":260,"event_type":"task_completed","actor":"foreman","task_id":"DOC-24","tick":null,"timestamp":"2026-10-24T08:03:40Z","detail":"{\"status\":\"complete\"}"}
+{"id":261,"event_type":"task_updated","actor":"foreman","task_id":"DOC-15","tick":null,"timestamp":"2026-10-24T08:39:06Z","detail":"{\"status\":\"in_progress\"}"}
+{"id":262,"event_type":"task_completed","actor":"foreman","task_id":"DOC-15","tick":null,"timestamp":"2026-10-24T08:53:31Z","detail":"{\"status\":\"complete\",\"commit\":\"2fc06f6\",\"verdict\":\"c8e63311\",\"ci_run\":\"40079797024\"}"}
