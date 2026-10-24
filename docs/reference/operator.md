@@ -1,16 +1,82 @@
-# mischief — operator reference: reverter + shim environment variables
+# mischief — operator reference: sanction, reverter + shim environment variables
 
-Every environment variable mischief reads, one section each: what it does, who
-sets it, its default, safe override values, a troubleshooting note, and whether
-it is a **supported knob** (documented, stable, safe to set in production) or
-**internal-only** (set by the binary itself; do not set it by hand outside
-tests/debugging).
+Every environment variable mischief reads has a section below: what it does,
+who sets it, its default, safe override values, a troubleshooting note, and
+whether it is a **supported knob** (documented, stable, safe to set in
+production) or **internal-only** (set by the binary itself; do not set it by
+hand outside tests/debugging). The sanction variables are the exception to the
+old "you never need any of these" rule: they are host-admission controls, and
+one of the two sanction halves must admit the host before a gated verb can run.
 
-**The one-line rule:** if you are arming a fault or running the CLI, you never
-need any of these. The CLI derives everything; the variables exist so the
-detached owner process and the LD_PRELOAD shim can carry their orders across a
-process boundary. Setting them by hand outside tests reproduces what the CLI
-already does — and can fight it.
+**The one-line rule:** for reverter and shim variables, if you are arming a
+fault or running the CLI, you never need to set them by hand. The CLI derives
+their values; they exist so the detached owner process and the LD_PRELOAD shim
+can carry their orders across a process boundary. The sanction pair below is
+different: it supplies the explicit host sanction that the CLI checks before
+fault-landing work. Setting reverter or shim variables by hand outside tests
+reproduces what the CLI already does — and can fight it.
+
+---
+
+## Sanction gate: host admission (SPEC-13)
+
+The sanction gate runs before target resolution and before any fault-landing
+work. Either the environment half (`MISCHIEF_SANCTION=1`) or a readable marker
+file containing a reason line admits the host. The two halves are documented
+separately below because they have different inputs and defaults.
+
+### MISCHIEF_SANCTION — supported knob
+
+- **Purpose:** explicit environment-variable admission for a sanctioned host.
+- **Accepted value:** exactly `1` (`MISCHIEF_SANCTION=1`) is the only
+  sanctioning value. `true`, `yes`, `0`, an empty value, and any other value do
+  not sanction the host; there is no truthiness conversion.
+- **Default / absence:** unset, which does not admit the host by this half.
+  The file half may still admit it when its marker is readable and has a reason
+  line.
+- **Fail-closed result:** if neither half admits the host, the CLI returns
+  `host_not_sanctioned` with exit **2** and writes nothing — no journal entry,
+  state file, or marker. The refusal names this variable and the value `1`.
+- **Troubleshooting:** an unexpected refusal means this variable is not exactly
+  `1`, or the marker-file half is also absent/reasonless. Sanitize both
+  variables when testing refusal: `env -u MISCHIEF_SANCTION
+  -u MISCHIEF_SANCTION_FILE ...`.
+
+### MISCHIEF_SANCTION_FILE — supported knob
+
+- **Purpose:** override the path of the host sanction marker file.
+- **Default / override:** when unset, mischief reads
+  `/etc/mischief-sanction`. When set, its value replaces that default, including
+  an explicitly empty value (which leaves only the environment half able to
+  admit the host).
+- **Marker requirement:** the selected file must be readable and contain a
+  reason line: the first non-empty, non-comment (`#`) line. An empty,
+  whitespace-only, or comment-only marker still refuses; it is not a warning.
+- **Fail-closed result:** without either `MISCHIEF_SANCTION=1` or a valid
+  reason-bearing marker, the CLI returns `host_not_sanctioned` with exit **2**
+  and writes nothing — no journal entry, state file, or marker. The refusal
+  names the selected marker path and this override variable.
+- **L1-container recipe:** `/etc` is normally not writable in an L1 container.
+  Follow `README.md`'s **First sanctioned run (the L1 container recipe)** (the
+  same recipe is described in `docs/TEST-PLANE.md`):
+
+  ```sh
+  printf "%s\\n" "sanctioned: ephemeral L1 container for mischief selftest" > "$HOME/mischief-sanction"
+  export MISCHIEF_SANCTION_FILE="$HOME/mischief-sanction"
+  export MISCHIEF_SANCTION=1
+  mischief selftest --all
+  ```
+
+  The marker line is required even when the environment half is not used; the
+  recipe's `MISCHIEF_SANCTION=1` is shown explicitly because it is the only
+  accepted environment value.
+
+Source of truth: `internal/sanction/sanction.go` (`EnvSanction`,
+`EnvSanctionValue`, `EnvSanctionFile`, `DefaultMarkerPath`, `parseReasonLine`,
+and `Check`), its tests in `internal/sanction/sanction_test.go`, and
+`docs/SPEC-PLAN.md` §SPEC-13. The implementation's read-only check is pinned by
+`TestSanctionCheckWritesNothing`; refusal exit mapping is pinned by
+`TestRefusalTextNamesHostAndMissingMarker`.
 
 The reverter journal lives in the active run dir: `~/.mischief/runs/default`
 unless a verb's `--dir` flag overrides it. That is the shared default of the
