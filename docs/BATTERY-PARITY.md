@@ -78,12 +78,16 @@ the seam alone.
 
 - `--quick` is the fixed parity matrix (exactly the five cells above, in
   bunker-qa.sh cell order); it ignores `--project`/`--primitive`.
-- `--file-rows` emits `findings.jsonl` (AC-18 board-vocabulary rows for
-  every adverse verdict; each row carries the run id in `run_id` — the
-  AC-9 correlation key shared with the journal records and the CLI's
-  `verdict:` line — plus the journal path in `reasoning`).
-- Artefacts: `matrix.json` / `matrix.md` (fault × detection × recovery,
-  S-5), `battery.jsonl` (SPEC-02 journal).
+- `--dir <run-dir>` is the journal location: `battery.jsonl` (the SPEC-02
+  journal) is written under this directory.
+- `--out <artefact-dir>` is the artefact location: `matrix.json`, `matrix.md`
+  (fault × detection × recovery, S-5), and `findings.jsonl` are written under
+  this directory. The `findings.jsonl` file contains AC-18 board-vocabulary
+  rows for every adverse verdict; each row carries the run id in `run_id` —
+  the AC-9 correlation key shared with the journal records and the CLI's
+  `verdict:` line — plus the journal path in `reasoning`.
+- Verify the printed `artefact:` and `journal:` lines: the former should point
+  under `<artefact-dir>` and the latter under `<run-dir>`.
 - Exit code 0 on green-or-skip; every adverse verdict files a finding.
 
 ## Deletion checklist (fleet-side follow-up — NOT this repo)
