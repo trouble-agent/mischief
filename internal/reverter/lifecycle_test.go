@@ -557,6 +557,10 @@ func TestOwnerSurvivesKill9AndRevertsAtTTL(t *testing.T) {
 // flow must survive (unset = the natural defaultDetach order). Returns the
 // store dir so callers can scan the journal further.
 func testOwnerSurvivesKill9AndRevertsAtTTL(t *testing.T) string {
+	// Keep this natural-path test independent of an operator's shell. The
+	// exported override is for deliberate shape-pinning tests, not for the
+	// default lifecycle contract exercised here.
+	t.Setenv(detachModeOverrideEnv, "")
 	if testing.Short() {
 		t.Skip("spawns real processes; skipped in -short")
 	}
@@ -787,6 +791,8 @@ func osReadFile(path string) ([]byte, error) { return os.ReadFile(path) }
 // exact shape the judge's end-to-end repro exercises (see the env-var leg
 // in owner_spawn_test.go); the host fallback runs here for real.
 func TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner(t *testing.T) {
+	// This test exercises the natural fallback, not an operator-pinned shape.
+	t.Setenv(detachModeOverrideEnv, "")
 	if testing.Short() {
 		t.Skip("spawns a real process; skipped in -short")
 	}
@@ -848,6 +854,9 @@ func TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner(t *testing.T) {
 // the show), so it still fails with the verified 203/EXEC class; the
 // setsid leg fork/execs it and fails.
 func TestFallbackFailureJoinsSystemdExecClass(t *testing.T) {
+	// The assertions require both natural-path arms. Clear the documented
+	// operator pin so an exported value cannot select only one detach shape.
+	t.Setenv(detachModeOverrideEnv, "")
 	st, lf := newTestStore(t)
 	prevSelf := selfExe
 	selfExe = func() (string, error) {
