@@ -4,8 +4,24 @@
   "base": "origin/main",
   "budget": 12,
   "legs": [
-    {"task_id":"MISCHIEF-DF-57","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-57","branch":"wt/MISCHIEF-DF-57","status":"prepared"},
-    {"task_id":"MISCHIEF-DF-46","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-46","branch":"wt/MISCHIEF-DF-46","status":"prepared"},
-    {"task_id":"MISCHIEF-DF-56","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-56","branch":"wt/MISCHIEF-DF-56","status":"prepared-existing-branch"}
-  ]
+    {
+      "task_id": "MISCHIEF-DF-57",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-57",
+      "branch": "wt/MISCHIEF-DF-57",
+      "status": "merged-and-judged-pass"
+    },
+    {
+      "task_id": "MISCHIEF-DF-46",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-46",
+      "branch": "wt/MISCHIEF-DF-46",
+      "status": "merged-judged-incomplete-requeued"
+    },
+    {
+      "task_id": "MISCHIEF-DF-56",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-56",
+      "branch": "wt/MISCHIEF-DF-56",
+      "status": "not-dispatched-requeued"
+    }
+  ],
+  "finished_at": "2026-10-24T10:12:00Z"
 }
