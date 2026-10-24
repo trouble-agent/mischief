@@ -108,7 +108,7 @@ func (e *ResolveError) Error() string {
 	case ReasonNoTarget:
 		return fmt.Sprintf("no target: mischief has no default target — pass --target or declare target.selector in the experiment (exit %d, nothing landed)", e.ExitCode)
 	case ReasonProtected:
-		return fmt.Sprintf("protected target %q refused: %s — an operator may pass the explicit override flag, and the run then records it in the journal (exit %d)", e.Protected, protectedReasons, e.ExitCode)
+		return fmt.Sprintf("protected target %q refused: %s (exit %d)", e.Protected, protectedReasons, e.ExitCode)
 	case ReasonExcluded:
 		return fmt.Sprintf("target %s is structurally excluded and refuses unconditionally (exit %d)", e.Excluded, e.ExitCode)
 	default:

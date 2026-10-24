@@ -84,6 +84,23 @@ func TestResolveProtectedTable(t *testing.T) {
 	}
 }
 
+// TestResolveProtectedRefusalText stays truthful: protected targets remain
+// named, but the shared refusal must not promise an override flag that no
+// shipped verb registers.
+func TestResolveProtectedRefusalText(t *testing.T) {
+	_, err := Resolve(DeclaredTarget{Kind: TargetProcess, Selector: "container:gateway"}, ResolveOptions{})
+	if err == nil {
+		t.Fatal("Resolve succeeded, want the protected refusal")
+	}
+	const want = "protected target \"gateway\" refused: fleet control plane: a fault pointed at it by accident is an outage, not an experiment (exit 2)"
+	if got := err.Error(); got != want {
+		t.Fatalf("protected refusal text=%q, want %q", got, want)
+	}
+	if strings.Contains(err.Error(), "an operator may pass the explicit override flag") {
+		t.Fatal("protected refusal promises an override flag that no shipped verb registers")
+	}
+}
+
 // TestResolveProtectedAllowedRecords: AC-7's override path — the explicit
 // operator flag resolves the SAME protected target, and the resolution says
 // so (Protected set, ProtectedAllowed=true — what the journal records).
