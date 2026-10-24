@@ -112,17 +112,19 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
 - `selftest` is listed by the shipped top-level help: `cmd/mischief/main.go`
   renders it in `mischief --help`, and
   `cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest` asserts the row at
-  verified HEAD `ff01bc9e0616ffc06559bc509ffc2ece2f393ca0` (manual check:
-  `mischief selftest --help` renders its flags and exits 0). It remains gated
-  outside a sanctioned host and refuses on the SPEC-13 gate, rc=2. Same for
-  `battery`, `plan` and `arm`: SPEC-13 wants a readable
-  `/etc/mischief-sanction` (override via `MISCHIEF_SANCTION_FILE`, must carry a
-  reason line) or `MISCHIEF_SANCTION=1`.
-
-ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest+manual:/tmp/mischief-doc21-selftest-help.txt evidence=/tmp/mischief-doc21-selftest-help.txt+cmd/mischief/main.go+cmd/mischief/help_test.go witness=none:local-worktree-only verdict=none:pending commit=none:pending memory=none:not-written
+  verified landing commit `b639bc8e903a379758fcd1ec95314f316c9dc419`. Re-run
+  `go run ./cmd/mischief --help` and
+  `go test -count=1 ./cmd/mischief/ -run TestTopLevelHelpListsSelftest -v`
+  to verify the listing and its regression test; `mischief selftest --help`
+  renders its flags and exits 0. It remains gated outside a sanctioned host and
+  refuses on the SPEC-13 gate, rc=2. Same for `battery`, `plan` and `arm`:
+  SPEC-13 wants a readable `/etc/mischief-sanction` (override via
+  `MISCHIEF_SANCTION_FILE`, must carry a reason line) or `MISCHIEF_SANCTION=1`.
   On refusal it prints `rails: host_not_sanctioned: … nothing was written` —
   fail-closed, not a crash. Land faults only on an ephemeral sanctioned host
   (a bunker instance), never the main fleet host.
+
+ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest evidence=skills/mischief-usage/SKILL.md witness=tag:b639bc8@origin verdict=none:pending commit=b639bc8e903a379758fcd1ec95314f316c9dc419 memory=none:not-written
 - **Sanction vars leak through long-lived agent shells.** A session that exported
   `MISCHIEF_SANCTION=1` for an earlier probe keeps it exported forever — a later
   "should refuse" leg silently succeeds. Probe refusals from a sanitized env
