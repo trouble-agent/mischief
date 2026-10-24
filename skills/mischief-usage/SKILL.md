@@ -14,29 +14,32 @@ inverse + blast radius). **v0.1.0 is released**: tarballs (linux_amd64 / linux_a
 tag), or the tarball's static binary plus prebuilt `libfault-anchored.so`.
 Quick checks after install: `mischief version`, `mischief status`, `mischief doctor`.
 
-## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help`, 2026-10-09; arm verified live 2026-10-16; plan `--journal-dir` verified live 2026-10-19)
+## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help` and every listed leaf's `--help`, HEAD 3352398e7963, 2026-10-24)
 
 ```text
-plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  # zero side effects (AC-1);
+plan      -f <exp.yaml> [--catalog-dir D] [--json] [--plan-only-sanction-skip] [--scratch-dir D] [--journal-dir D]  # zero side effects (AC-1);
                               # --journal-dir D appends one run_planned record to D/plan.jsonl
-status    [--dir D] [--all]   # ACTIVE holds (armed/stuck) + TTL remaining, proofs;
+status    [--dir D] [--all] [--json]   # ACTIVE holds (armed/stuck) + TTL remaining, proofs;
                               # --all adds terminal holds (reverted/revert_failed)
 revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = the kill switch;
                               # --retry re-executes a revert_failed hold's recorded inverse
-arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
+arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--catalog-dir D] [--dir D]
 serve     --dir D             # reverter daemon: TTLs + boot reconcile + health.json
-doctor    [--catalog-dir D] [--json] [--self-check]         # exit 1 = a check FAILED
-battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
-chaos     matrix --project P [--tier-max N] [--out D]
-        | check --lane F
-        | finding --project P --board D --title T --reason R
-sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
+doctor    [--catalog-dir D] [--json] [--ops] [--prefix P] [--self-check]         # exit 1 = a check FAILED
+battery   [--catalog-dir D] [--dir D] [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
+chaos matrix  --project P [--catalog-dir D] [--markdown] [--tier-max N] [--out D]
+chaos check   --lane F [--lane-dir D]
+chaos finding --project P --board D --title T --reason R [--priority P] [--primitive ID] [--verdict V]
+sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD] [--destroy-class C]
 install   [--user U] [--prefix P] [--dry-run] [--no-drop-in]
-uninstall [--prefix P] [--dry-run] [--keep-count N] [--keep-days D]
-audit     [--prefix P] [--json]
+uninstall [--prefix P] [--dry-run] [--keep-count N] [--keep-days D] [--runs-dir D]
+audit     [--prefix P] [--json] [--user U]
 retention [--apply] [--runs-dir D] [--keep-count N] [--keep-days D] [--dry-run]
-plane     parse-agent-id | record | selftest-verdict | fold    # bunker test-plane evidence CLI
-selftest  --all | --primitive <id>   # L0 scratch land+revert proofs; exit 0 only green-or-skip
+plane parse-agent-id [--in F]                                      # bunker test-plane evidence CLI
+plane record --file F --step S --status S [--detail TEXT]
+plane selftest-verdict --exit-code N
+plane fold --file F
+selftest  --all | --primitive <id> [--dir D] [--catalog-dir D]   # L0 scratch land+revert proofs; exit 0 only green-or-skip
 version                      # stamped git sha (tag on release builds)
 ```
 
