@@ -1,0 +1,54 @@
+{
+  "tick_id": "mischief-foreman-2026-10-23-05-34-28",
+  "wave_id": "mischief-foreman-2026-10-23-05-34-28",
+  "created_at": "2026-10-23T05:38:22.888844Z",
+  "tasks": [
+    {
+      "task_id": "MISCHIEF-DF-70",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-70",
+      "branch": "wt/MISCHIEF-DF-70",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-70-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-70-brief.txt"
+    },
+    {
+      "task_id": "MISCHIEF-DF-71",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71",
+      "branch": "wt/MISCHIEF-DF-71",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-71-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-71-brief.txt"
+    },
+    {
+      "task_id": "MISCHIEF-DF-72",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-72",
+      "branch": "wt/MISCHIEF-DF-72",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-72-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-72-brief.txt"
+    },
+    {
+      "task_id": "MISCHIEF-DF-73",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-73",
+      "branch": "wt/MISCHIEF-DF-73",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-73-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-73-brief.txt"
+    },
+    {
+      "task_id": "QA-MISCHIEF-006",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-006",
+      "branch": "wt/QA-MISCHIEF-006",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/QA-MISCHIEF-006-worker.log",
+      "brief": "/tmp/QA-MISCHIEF-006-brief.txt"
+    }
+  ],
+  "finished_at": "2026-10-24T04:42:00Z",
+  "recovery_status": "completed"
+}

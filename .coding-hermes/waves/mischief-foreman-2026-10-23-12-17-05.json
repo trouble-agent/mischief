@@ -1,0 +1,27 @@
+{
+  "tick_id": "mischief-foreman-2026-10-23-12-17-05",
+  "wave_id": "mischief-foreman-2026-10-23-12-17-05",
+  "created_at": "2026-10-23T13:01:00Z",
+  "tasks": [
+    {
+      "task_id": "MISCHIEF-DF-24",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-24",
+      "branch": "wt/MISCHIEF-DF-24",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-24-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-24-brief.txt"
+    },
+    {
+      "task_id": "MISCHIEF-DF-68-R2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-68",
+      "branch": "wt/MISCHIEF-DF-68",
+      "status": "dispatching",
+      "worker_pid": null,
+      "worker_log": "/tmp/MISCHIEF-DF-68-R2-worker.log",
+      "brief": "/tmp/MISCHIEF-DF-68-R2-brief.txt"
+    }
+  ],
+  "finished_at": "2026-10-24T04:42:00Z",
+  "recovery_status": "completed"
+}
