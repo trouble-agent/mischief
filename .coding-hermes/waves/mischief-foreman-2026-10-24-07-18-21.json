@@ -1,0 +1,13 @@
+{
+  "tick_id": "mischief-foreman-2026-10-24-07-18-21",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "9dc6a14d0482c28d928c15f9f02518fc301af4f5",
+  "wave_budget": 10,
+  "tasks": [
+    {"id":"INT-CI-9","worktree":"/home/kara/worktrees/mischief-INT-CI-9","branch":"wt/INT-CI-9","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
+    {"id":"DOC-19","worktree":"/home/kara/worktrees/mischief-DOC-19","branch":"wt/DOC-19","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
+    {"id":"DOC-23","worktree":"/home/kara/worktrees/mischief-DOC-23","branch":"wt/DOC-23","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"},
+    {"id":"DOC-24","worktree":"/home/kara/worktrees/mischief-DOC-24","branch":"wt/DOC-24","base_sha":"9dc6a14d0482c28d928c15f9f02518fc301af4f5","status":"dispatched"}
+  ]
+}
