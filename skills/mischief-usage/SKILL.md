@@ -109,10 +109,17 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
 
 ## Gating you WILL hit outside a sanctioned host
 
-- `selftest` is real but gated, so `--help` does not list it (verified 2026-10-09:
-  it runs and refuses on the SPEC-13 gate, rc=2). Same for `battery`, `plan` and
-  `arm`: SPEC-13 wants a readable `/etc/mischief-sanction` (override via
-  `MISCHIEF_SANCTION_FILE`, must carry a reason line) or `MISCHIEF_SANCTION=1`.
+- `selftest` is listed by the shipped top-level help: `cmd/mischief/main.go`
+  renders it in `mischief --help`, and
+  `cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest` asserts the row at
+  verified HEAD `ff01bc9e0616ffc06559bc509ffc2ece2f393ca0` (manual check:
+  `mischief selftest --help` renders its flags and exits 0). It remains gated
+  outside a sanctioned host and refuses on the SPEC-13 gate, rc=2. Same for
+  `battery`, `plan` and `arm`: SPEC-13 wants a readable
+  `/etc/mischief-sanction` (override via `MISCHIEF_SANCTION_FILE`, must carry a
+  reason line) or `MISCHIEF_SANCTION=1`.
+
+ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest+manual:/tmp/mischief-doc21-selftest-help.txt evidence=/tmp/mischief-doc21-selftest-help.txt+cmd/mischief/main.go+cmd/mischief/help_test.go witness=none:local-worktree-only verdict=none:pending commit=none:pending memory=none:not-written
   On refusal it prints `rails: host_not_sanctioned: … nothing was written` —
   fail-closed, not a crash. Land faults only on an ephemeral sanctioned host
   (a bunker instance), never the main fleet host.
