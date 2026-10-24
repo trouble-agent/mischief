@@ -135,13 +135,35 @@ scripts/bunker-plane.sh run --server bunker-mvp --ttl 2h \
     --evidence /tmp/run42.jsonl --repo /path/to/mischief
 ```
 
-Environment (all optional): `BUNKER_PLANE_SERVER` (default `bunker-mvp`),
-`BUNKER_PLANE_TTL` (2h), `BUNKER_PLANE_SSH_PORT` (2223),
-`BUNKER_PLANE_HOST_KEY` (`~/.ssh/id_ed25519_bunker_mvp`),
-`BUNKER_PLANE_EVIDENCE` (per-run `/tmp/mischief-plane-evidence-<ts>-$$.jsonl`
-— never a shared path), `BUNKER_PLANE_REPO`, `BUNKER_PLANE_KEEP=1` (skip the
-destroy for debugging; recorded as a skip row naming the destroy command),
-`BUNKER_PLANE_SELFTEST_TIMEOUT` (300s).
+Environment (all optional; defaults below are the values resolved by
+`scripts/bunker-plane.sh`):
+
+| variable | default | purpose |
+|---|---|---|
+| `BUNKER_PLANE_SERVER` | `bunker-mvp` | bunker server name |
+| `BUNKER_PLANE_TTL` | `2h` | requested agent TTL |
+| `BUNKER_PLANE_EVIDENCE` | `/tmp/mischief-plane-evidence-<UTC timestamp>-<pid>.jsonl` | per-run evidence path; the default is not shared |
+| `BUNKER_PLANE_REPO` | unset, then the script's Git repository root | repository to ship |
+| `BUNKER_PLANE_KEEP` | `0` | set to `1` to skip destroy for debugging; the driver records a named skip |
+| `BUNKER_PLANE_SELFTEST_TIMEOUT` | `300` seconds | remote selftest timeout |
+| `BUNKER_PLANE_SYNC_MAX_BYTES` | `314572800` bytes (300 MiB) | maximum source-tree bytes accepted for sync |
+| `BUNKER_PLANE_BIN_MAX_BYTES` | `104857600` bytes (100 MiB) | maximum binary bytes accepted for shipping |
+| `BUNKER_PLANE_SPAWN_ATTEMPTS` | `2` | spawn attempts before the driver records a named skip |
+
+The table is kept against the driver with this per-variable census, run from
+the repository root:
+
+```sh
+for v in BUNKER_PLANE_SERVER BUNKER_PLANE_TTL BUNKER_PLANE_EVIDENCE BUNKER_PLANE_REPO BUNKER_PLANE_KEEP BUNKER_PLANE_SELFTEST_TIMEOUT BUNKER_PLANE_SYNC_MAX_BYTES BUNKER_PLANE_BIN_MAX_BYTES BUNKER_PLANE_SPAWN_ATTEMPTS; do
+    printf '%-32s %s\\n' "$v" "$(grep -c "$v" scripts/bunker-plane.sh)"
+done
+```
+
+It counts literal occurrences in `scripts/bunker-plane.sh`, including its
+usage comments and variable assignment. Every name in this table must produce
+a nonzero count; a variable absent from the driver must not be added to the
+table.
+
 
 Exit codes: **0** PASS (agent obtained, selftest exit 0, evidence pulled and
 verified, agent destroyed) · **1** FAIL (any stage; the `PLANE fail …` line
