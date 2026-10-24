@@ -116,7 +116,7 @@ type CellResult struct {
 	// the table above).
 	Recovery string `json:"recovery"`
 	// Duration is the measured wall time of the cell's execute loop.
-	Duration time.Duration `json:"-"`
+	Duration time.Duration `json:"duration"`
 	// Timeline is the four-timing model stamped on the graded result.
 	Timeline verdict.Timeline `json:"timeline"`
 }
@@ -647,11 +647,13 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 		if c.LandProof != "" {
 			add(&journal.Record{Type: journal.RecordFaultLanded, Fields: map[string]string{
 				"cell": c.Cell.ID, "primitive": c.Cell.Primitive, "proof": c.LandProof,
+				"duration": c.Duration.String(),
 			}})
 		}
 		if c.RevertProof != "" {
 			add(&journal.Record{Type: journal.RecordFaultReverted, Fields: map[string]string{
 				"cell": c.Cell.ID, "primitive": c.Cell.Primitive, "proof": c.RevertProof,
+				"duration": c.Duration.String(),
 			}})
 		}
 		graded = append(graded, verdict.Result{
