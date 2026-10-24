@@ -1,0 +1,27 @@
+{
+  "tick_id": "mischief-foreman-2026-10-24-14-52-45",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "ff01bc9e0616ffc06559bc509ffc2ece2f393ca0",
+  "budget": 12,
+  "legs": [
+    {
+      "task_id": "DOC-11",
+      "worktree": "/home/kara/worktrees/mischief-DOC-11",
+      "branch": "wt/DOC-11",
+      "status": "prepared"
+    },
+    {
+      "task_id": "DOC-17",
+      "worktree": "/home/kara/worktrees/mischief-DOC-17",
+      "branch": "wt/DOC-17",
+      "status": "prepared"
+    },
+    {
+      "task_id": "DOC-21",
+      "worktree": "/home/kara/worktrees/mischief-DOC-21",
+      "branch": "wt/DOC-21",
+      "status": "prepared"
+    }
+  ]
+}
