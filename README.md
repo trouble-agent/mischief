@@ -280,7 +280,7 @@ SPEC-13 sanction gate and refuses fail-closed (exit 2, nothing written) on an
 unsanctioned host. Arming writes the hold only — landing the fault remains
 the fault verbs' act.
 
-Legacy-vocabulary upgrade path (MISCHIEF-DF-68): `arm` accepts the underscore
+Legacy-vocabulary upgrade path (MISCHIEF-DF-68, stale: fix not yet merged to main): `arm` accepts the underscore
 spellings pre-whitelist builds wrote into journals (`restore_file`,
 `remove_file`, `file_matches_backup`, `file_absent`) and normalizes them onto
 the canonical hyphenated kinds at WRITE time, restoring their legacy
