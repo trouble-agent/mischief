@@ -387,3 +387,14 @@
 - ARTIFACTS: DOC-24-R2, this log entry, docs/dogfood/2026-10-26-doc-drift.md, scratch `/tmp/mc-df-20261026-gPO5/`, bunker evidence `/tmp/bunker-qa-evidence-20261026T072914Z-2679445.jsonl`. Read-only product lane: no source code, scheduler state, permissions, visibility, credentials, or real target were modified; only the new finding row and run-history/doc artifacts were written.
 
 - ADDENDUM to tick 2026-10-26 07:12: the legacy-vocabulary live probe was stronger than the initial docs-only split: `restore_file` still refuses rc=2 on the current CLI even though 15a9b3e is merged and the normalizer exists. The pre-open `ValidateForArm` in cmd/mischief/arm.go runs before Lifecycle.Arm's normalizer. Filed MISCHIEF-DF-68-R2-R2 via the required recurrence minter; DOC-24-R2 remains the separate stale README delivery-chain claim.
+
+
+## 2026-10-26 11:22 UTC — lane mischief-dogfood, tick mischief-dogfood-2026-10-26-11-08-49
+
+- HEAD under test: `0fc4b9df442f5bba640ebfad406d25a3068e7e92`, detached worktree `/tmp/mischief-df-20261026-1122`; source tree unchanged.
+- Promise: a fresh user can build or install mischief, run the documented CLI, and receive truthful safety/state/JSON behavior without touching real targets.
+- Real use: initial isolated-HOME `make bin` failed before compilation because required `go1.26.9` was absent from the isolated toolchain root. Repeating with the existing Go cache completed in 0.85s and produced `mischief 0fc4b9df442f`. `version` rc=0; absent `status` rc=1 and `state: absent`; absent `status --json` rc=1 with parseable JSON; `doctor --self-check` rc=1 with named sanction refusal; `audit --json` rc=0 with `condition: not_installed`; `retention --dry-run` rc=0 with zero actions.
+- Perf: successful cold build 0.85s; CLI verbs measured at 0.00s wall by `time -p`; nothing user-noticeable, no PERF row.
+- Install leg: NOT silently passed. Bunkers were reachable, but `bunker-qa.sh run /home/kara/mischief --keep` produced `/tmp/bunker-qa-evidence-20261026T112624Z-3854552.jsonl` whose final record is `collect FAIL no-launch-record`; its `fresh-install` cell is harness-shaped `FAIL install rc=0 but no artifact found (toolsd not in PATH...)`. This is partial/unproven fresh-machine evidence, not a product install PASS.
+- Verdict: PROMISING-BUT-ROUGH — the documented CLI safety/state surfaces worked, but the isolated toolchain bootstrap and incomplete bunker launch/collect prevent a clean installability verdict.
+- Artifacts: `docs/dogfood/2026-10-26-1122-install-and-cli.md`; no board row or product code changed. Foreman not woken; permissions/visibility/credentials untouched.
