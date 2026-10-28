@@ -1,0 +1,22 @@
+{
+  "tick_id": "mischief-foreman-2026-10-28-19-31-37",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "c60672a",
+  "budget": 12,
+  "legs": [
+    {"task_id": "DOC-12", "worktree": "/home/kara/worktrees/mischief-DOC-12", "branch": "wt/DOC-12", "status": "dispatched"},
+    {"task_id": "DOC-14", "worktree": "/home/kara/worktrees/mischief-DOC-14", "branch": "wt/DOC-14", "status": "dispatched"},
+    {"task_id": "DOC-22", "worktree": "/home/kara/worktrees/mischief-DOC-22", "branch": "wt/DOC-22", "status": "dispatched"},
+    {"task_id": "DOC-24-R2", "worktree": "/home/kara/worktrees/mischief-DOC-24-R2", "branch": "wt/DOC-24-R2", "status": "dispatched"},
+    {"task_id": "MISCHIEF-DF-56", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-56", "branch": "wt/MISCHIEF-DF-56", "status": "dispatched"},
+    {"task_id": "MISCHIEF-DF-72", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-72", "branch": "wt/MISCHIEF-DF-72", "status": "dispatched"},
+    {"task_id": "MISCHIEF-RV-20261027-HEALTH-SHAPE", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-20261027-HEALTH-SHAPE", "branch": "wt/MISCHIEF-RV-20261027-HEALTH-SHAPE", "status": "dispatched"},
+    {"task_id": "MISCHIEF-DF-66", "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-66", "branch": "wt/MISCHIEF-DF-66", "status": "salvaged-rebased", "note": "no worker dispatched: prior-tick commit 6a465e3 (rebased to wt tip) already implements this row; foreman gates + completes it"}
+  ],
+  "not_taken": [
+    {"task_id": "MISCHIEF-DF-69", "reason": "AC clause 2 gates on 'the NEXT full bunker-qa battery evidence jsonl' — cannot honestly close in-tick; deferred"},
+    {"task_id": "QA-MISCHIEF-002-R2", "reason": "depends_on QA-MISCHIEF-002 which is complete, but row premise needs JIT-agent battery runs (bunker); deferred"},
+    {"task_id": "QA-MISCHIEF-007", "reason": "depends_on QA-MISCHIEF-002-R2 (pending); blocked"}
+  ]
+}
