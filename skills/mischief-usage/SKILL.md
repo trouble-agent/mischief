@@ -141,10 +141,13 @@ ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-forema
 
 - `docs/prd/mischief-v0.1.md` — front door. Live-file claims about the fleet
   (the harness's bunker-qa.sh chaos cells) were verified 2026-10-02.
-- `docs/FAULT-CATALOG.md` — 113 fault-id rows: 104 primitives across 8 layers
+- `docs/FAULT-CATALOG.md` — design-only catalogue: 113 fault-id rows and 104 primitives across 8 layers
   (P14 S14 R12 F16 N18 C12 I14 T4) plus a 9-row simulated-case table under layer I
   (MSF-010: one runnable sim case per sim-covered I id, landed-proof written to the
-  per-run request log). Counts verified exactly 2026-10-09 (recompute, never eyeball).
+  per-run request log). The shipped loader serves exactly the 11 ids in
+  `catalog/faults/*.yaml`; ids outside that shipped boundary refuse at rc=2 with
+  "not in the selftest corpus". This does not claim the product serves the design count.
+  Counts verified exactly 2026-10-09 (recompute, never eyeball).
 - `docs/SPEC-PLAN.md` — SPEC-01..12, each must falsify the PRD + carry NOT-LIST.
 - `docs/` also carries: `RELEASE.md` (release runbook), `CATALOG.md` (schema fields),
   `BATTERY-PARITY.md`, `CHAOS-LANE.md`, `LANES.md`, `TEST-PLANE.md`, `EXPERIMENTS.md`,
@@ -349,3 +352,8 @@ degraded leg is split three ways — full ladder in
 - The sanction variable is `MISCHIEF_SANCTION` (no "F"): a transposed
   `MISFCHIEF_SANCTION=1` produces the same `host_not_sanctioned` refusal rc=2 as
   setting nothing at all, so read the refusal text before blaming the host.
+
+ch:trace row=DOC-22 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-22 test=none:doctor-wc-greps doc=skills/mischief-usage/SKILL.md prompt=/tmp/mf-20261028-1931-DOC-22-brief.txt evidence=commit witness=none:doctor-output verdict=none:pending-foreman-judge commit=self memory=none:board-row
+STATUS: complete
+TIER: T1 (edit + doctor/wc/grep checks invoked and observed)
+EVIDENCE: commit
