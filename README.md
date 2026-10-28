@@ -280,13 +280,22 @@ SPEC-13 sanction gate and refuses fail-closed (exit 2, nothing written) on an
 unsanctioned host. Arming writes the hold only — landing the fault remains
 the fault verbs' act.
 
-Historical legacy-vocabulary behavior (MISCHIEF-DF-68, closed and superseded; its fix is not merged to main):
-`arm` accepted the underscore spellings in the recorded pre-whitelist journal path (`restore_file`,
-`remove_file`, `file_matches_backup`, `file_absent`) and normalizes them onto
+Historical legacy-vocabulary behavior (MISCHIEF-DF-68, closed and superseded; its normalizer fix IS merged — 15a9b3e is an ancestor of main):
+In the recorded pre-whitelist journal path `arm` accepted the underscore spellings
+(`restore_file`, `remove_file`, `file_matches_backup`, `file_absent`) and normalized them onto
 the canonical hyphenated kinds at WRITE time, restoring their legacy
 `from` param onto `backup` — the armed hold's journal record carries only
 canonical spellings plus a `legacy_spelling` annotation naming what was
-renamed, so the kill switch and the TTL owner see one vocabulary. A legacy
+renamed, so the kill switch and the TTL owner see one vocabulary.
+
+Current state (measured 2026-10-28): the CLI arm pre-validation
+(cmd/mischief, `ValidateForArm`) runs BEFORE the journal normalizer, so
+legacy underscore spellings are refused fail-closed at arm (`rc=2`,
+`inverse kind "restore_file": unknown`) — canonical hyphenated kinds
+(`restore-file`, ...) are the only spelling the CLI accepts today. The
+merged normalizer still repairs vocabulary for holds that reach the
+journal layer. Routing the CLI declaration through the normalizer before
+pre-validation is tracked open as MISCHIEF-DF-68-R2-R2 — the second, still-open recurrence of the superseded first fix MISCHIEF-DF-68-R2, which stands at the journal layer while the CLI arm gate refuses legacy spellings. A legacy
 spelling with no canonical equivalent (`file_exists`) still refuses
 fail-closed at arm; an EXISTING journal hold with such kinds folds and lists
 normally and reverts fail-closed (measured `revert_failed` naming the
@@ -345,3 +354,8 @@ MIT — see `LICENSE`.
 ---
 
 ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=25241a6c6af4d43fb1d554ed251d19ad1e38518d memory=none:not-durable-yet
+
+ch:trace row=DOC-24-R2 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-24-R2 test=none:live-arm-control-refuted doc=README.md prompt=/tmp/mf-20261028-1931-DOC-24-R2-brief.txt evidence=commit witness=none:worker-arm-rc2-console verdict=none:pending-foreman-judge commit=self memory=none:board-row
+STATUS: complete
+TIER: T2 (live sanctioned arm control invoked; rc=2 premise refutation observed; docs corrected per the row's escape clause)
+EVIDENCE: commit
