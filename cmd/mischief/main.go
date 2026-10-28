@@ -112,8 +112,10 @@ func run(args []string) int {
 		}
 		return 0
 	case "version", "--version":
-		fmt.Printf("mischief %s\n", gitSha)
-		return 0
+		// MISCHIEF-DF-72: the verb parses its own argument set —
+		// --json emits the machine document, an unknown argument is a
+		// named refusal (exit 2) instead of a silently ignored token.
+		return cmdVersion(args[1:])
 	case "help", "-h", "--help":
 		usage(os.Stdout)
 		return 0
@@ -122,6 +124,41 @@ func run(args []string) int {
 		usage(os.Stderr)
 		return 2
 	}
+}
+
+// cmdVersion implements the version verb (MISCHIEF-DF-72): the verb owns
+// its argument surface instead of ignoring everything after the verb
+// token. Bare `version` (and the top-level `--version` alias) keep the
+// plain "mischief <sha>" line; `--json` emits ONE parseable document
+// {"version":...,"tool":"mischief"} so scripts can jq the sha; `--help` /
+// `-h` keep the conventional help contract (the CLI-table checker drives
+// the built binary with `version --help`); anything else is a named
+// refusal on stderr with exit 2 — an unknown token must never read as a
+// successful version report.
+func cmdVersion(args []string) int {
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			b, err := json.Marshal(struct {
+				Version string `json:"version"`
+				Tool    string `json:"tool"`
+			}{Version: gitSha, Tool: "mischief"})
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "version:", err)
+				return 1
+			}
+			os.Stdout.Write(append(b, '\n'))
+			return 0
+		case "--version", "-h", "--help":
+			fmt.Printf("mischief %s\n", gitSha)
+			return 0
+		default:
+			fmt.Fprintf(os.Stderr, "version: unknown flag %s; supported: --json, --version\n", arg)
+			return 2
+		}
+	}
+	fmt.Printf("mischief %s\n", gitSha)
+	return 0
 }
 
 // verbParseExit maps a FlagSet parse error to the verb's exit code.
@@ -146,7 +183,7 @@ func usage(w *os.File) {
 
 Usage:
   mischief plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  (writes nothing without --journal-dir)
-  mischief status    [--dir D] [--all]  (active holds: armed/stuck; a revert_failed fault reads as exit 1 + a counter; --all lists terminal holds too)
+  mischief status    [--dir D] [--all] [--json]  (active holds: armed/stuck; a revert_failed fault reads as exit 1 + a counter; --all lists terminal holds too)
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
   mischief revert    (--all | --hold <id> [--retry]) [--dir D]
   mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
@@ -160,7 +197,7 @@ Usage:
   mischief chaos     matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
   mischief plane     parse-agent-id | record | selftest-verdict | fold   (bunker test-plane evidence CLI)
-  mischief version
+  mischief version   [--json]
 
 Safety floor: no default target; protected targets refuse at resolution;
 sanction-marker gate (SPEC-13) fail-closed on the landing verbs (plan, arm,
