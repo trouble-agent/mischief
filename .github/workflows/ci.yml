@@ -35,6 +35,9 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Docs twins
+        run: python3 tools/gen-docs.py --check
+
       - name: Test
         # The docker selftests (docker:pause/kill/oom) grade pass-or-skip
         # by daemon/image presence; TestLiveSelftestAllGreenOrSkip demands
@@ -66,3 +69,8 @@ jobs:
 
       - name: Row-status drift gate (skills/README must not cite closed board rows as live)
         run: python3 tools/check_row_drift.py
+
+# ch:trace row=DOC-14 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-14 test=none:gate-check-command doc=CONTRIBUTING.md prompt=/tmp/mf-20261028-1931-DOC-14-brief.txt evidence=commit witness=none:workflow-grep verdict=none:pending-foreman-judge commit=self memory=none:board-row
+# STATUS: complete
+# TIER: T1 (edit + gate checks invoked and observed)
+# EVIDENCE: commit
