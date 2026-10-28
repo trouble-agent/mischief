@@ -298,6 +298,7 @@ func (d *Daemon) render() Health {
 	// ok=false a live revert_failed raises are derived from the terminal
 	// rows, which the CLI's active-only default no longer carries.
 	st := d.lf.StatusAll()
+	holds := make([]HealthHold, 0)
 	h := Health{
 		OK:          true,
 		DaemonBoot:  d.daemonBoot, // the PROCESS's id (DF-32), not the fold's host-boot id
@@ -305,6 +306,7 @@ func (d *Daemon) render() Health {
 		RunDir:      d.Dir,
 		StartedAt:   d.started.Unix(),
 		GeneratedAt: now.Unix(),
+		Holds:       holds,
 	}
 	for _, hold := range st.Holds {
 		row := HealthHold{
