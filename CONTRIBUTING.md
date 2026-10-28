@@ -6,15 +6,20 @@ convention — read its CONTRIBUTING too if you contribute to both.
 
 ## The authority is the spec set, not the code
 
-`docs/prd/mischief-v0.1.md` (the PRD), `docs/SPEC-PLAN.md` and the shipped
-spec documents are the contract. Code lands against an acceptance criterion
+The spec set is two documents, and together they are the contract:
+`docs/prd/mischief-v0.1.md` (the PRD) and `docs/SPEC-PLAN.md` (the spec plan,
+which carries the numbered specs — including the isolation contract, SPEC-13 —
+and their acceptance criteria). Code lands against an acceptance criterion
 (AC) that already exists there, or the spec is amended first — with a
 letter-suffix section (`§3.4a`, never a renumbering of `§3.4`).
 
 Before you write code:
 
-1. Find the AC that covers your change in the spec set.
-2. If no AC covers it, amend the owning spec (letter suffix) first.
+1. Find the AC that covers your change in the spec set: open
+   `docs/SPEC-PLAN.md` and `docs/prd/mischief-v0.1.md` and read the section
+   owning your area.
+2. If no AC covers it, amend the owning section of `docs/SPEC-PLAN.md` (or
+   the PRD) first — letter suffix.
 3. State in your PR which AC the change satisfies, or which spec section you
    amended.
 
