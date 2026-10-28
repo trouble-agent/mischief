@@ -373,7 +373,17 @@ func (h *Hold) Validate() error {
 // only after Open leaves a freshly minted boot.json + empty reverter.jsonl
 // behind a "nothing was written" refusal). The error text matches Arm's
 // ("reverter: arm: ...").
+//
+// MISCHIEF-DF-68-R2-R2: the validation applies to a hold normalized the
+// SAME way Arm normalizes (NormalizeHold on a local copy, BEFORE the
+// checks). The gate runs before Open/Arm on the CLI arm path, so a gate
+// that skipped normalization diverged from Arm on the legacy vocabulary:
+// restore_file / from / file_matches_backup were refused as unknown at the
+// gate while the very same hold armed successfully one call later. The
+// caller's hold is untouched (Arm keeps sole ownership of annotating the
+// write-ahead record with legacy_spelling).
 func ValidateForArm(h Hold) error {
+	NormalizeHold(&h) // local copy: gates on the canonical form Arm will write
 	if err := h.Validate(); err != nil {
 		return fmt.Errorf("reverter: arm: %w", err)
 	}
@@ -392,20 +402,20 @@ func (h *Hold) ID() string {
 // process's boot id and pid. A detached owner (another pid) reads THIS to
 // execute the inverse and the check from journal bytes alone.
 type armPayload struct {
-	FaultID string            `json:"fault_id"`
-	Target  string            `json:"target"`
-	Inverse Decl              `json:"inverse"`
-	Check   Decl              `json:"check"`
-	TTL     durationNanos     `json:"ttl"`
+	FaultID string        `json:"fault_id"`
+	Target  string        `json:"target"`
+	Inverse Decl          `json:"inverse"`
+	Check   Decl          `json:"check"`
+	TTL     durationNanos `json:"ttl"`
 	// BootID is the REVERTER boot id (from run/boot.json's reverter_boot
 	// field), NOT the host boot id from /proc/sys/kernel/random/boot_id.
 	// Boot reconcile compares this against the journal's current BootID to
 	// find previous-boot leftovers. Using the host boot id instead of the
 	// reverter boot id causes arm records to be instantly graded stuck
 	// with reason previous_boot (same live boot, false stuck). See DF-06.
-	BootID  string            `json:"boot_id"`
-	ArmPID  int               `json:"arm_pid,omitempty"`
-	Extra   map[string]string `json:"extra,omitempty"`
+	BootID string            `json:"boot_id"`
+	ArmPID int               `json:"arm_pid,omitempty"`
+	Extra  map[string]string `json:"extra,omitempty"`
 }
 
 // record is one journal line: the typed envelope plus the flat field map
