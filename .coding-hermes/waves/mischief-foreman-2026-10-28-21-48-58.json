@@ -5,8 +5,27 @@
   "base_sha": "bd92abec228d02af998b79fa300ac401db2faaa5",
   "budget": 12,
   "legs": [
-    {"task_id":"DOC-18","worktree":"/home/kara/worktrees/mischief-DOC-18","branch":"wt/DOC-18","status":"prepared"},
-    {"task_id":"MISCHIEF-DF-68-R2-R2","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-68-R2-R2","branch":"wt/MISCHIEF-DF-68-R2-R2","status":"prepared"},
-    {"task_id":"MISCHIEF-DF-71","worktree":"/home/kara/worktrees/mischief-MISCHIEF-DF-71","branch":"wt/MISCHIEF-DF-71","status":"prepared"}
-  ]
+    {
+      "task_id": "DOC-18",
+      "worktree": "/home/kara/worktrees/mischief-DOC-18",
+      "branch": "wt/DOC-18",
+      "status": "already_merged"
+    },
+    {
+      "task_id": "MISCHIEF-DF-68-R2-R2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-68-R2-R2",
+      "branch": "wt/MISCHIEF-DF-68-R2-R2",
+      "status": "already_merged"
+    },
+    {
+      "task_id": "MISCHIEF-DF-71",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71",
+      "branch": "wt/MISCHIEF-DF-71",
+      "status": "requeued_noop",
+      "reason": "zero task-specific diff; branch tip bd92abec already ancestor of main d8f1ac6; tier-2 cc12684d INCOMPLETE"
+    }
+  ],
+  "finished_at": "2026-10-28T23:11:44Z",
+  "status": "recovered",
+  "recovery_note": "DOC-18 and MISCHIEF-DF-68-R2-R2 were already merged and gated on current main; MISCHIEF-DF-71 was a zero-diff no-op ancestor with tier-2 INCOMPLETE verdict cc12684d and was requeued from a fresh worktree after board reconciliation."
 }
