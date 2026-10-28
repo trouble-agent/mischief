@@ -9,19 +9,25 @@
       "task_id": "QA-MISCHIEF-008",
       "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-008",
       "branch": "wt/QA-MISCHIEF-008",
-      "status": "prepared"
+      "status": "failed_no_diff",
+      "verdict": "3ce31ac7"
     },
     {
       "task_id": "MISCHIEF-DF-69",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-69",
       "branch": "wt/MISCHIEF-DF-69",
-      "status": "prepared"
+      "status": "failed_no_diff",
+      "verdict": "e1ea5446"
     },
     {
       "task_id": "MISCHIEF-DF-71",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71",
       "branch": "wt/MISCHIEF-DF-71",
-      "status": "prepared"
+      "status": "failed_no_diff",
+      "verdict": "a5aa0833"
     }
-  ]
+  ],
+  "finished_at": "2026-10-28T23:11:44Z",
+  "status": "failed_workers_preserved",
+  "recovery_note": "Prepared three independent legs; all workers produced zero diff before bounded stop. GitReins completion was run for each and recorded tier-2 missing-implementation verdicts. Branches and worktrees preserved as evidence; no merge performed."
 }
