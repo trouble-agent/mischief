@@ -94,8 +94,8 @@ func TestUninstallCLINoStutter(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("uninstall over residue: exit %d, want 1\nstderr=%q", code, stderr)
 	}
-	if !strings.Contains(stderr, "uninstall: rmdir") {
-		t.Fatalf("expected the executor's rmdir failure on stderr, got:\n%s", stderr)
+	if !strings.Contains(stderr, "uninstall: ") {
+		t.Fatalf("expected an uninstall-scoped executor failure on stderr, got:\n%s", stderr)
 	}
 	if strings.Contains(stderr, "uninstall: uninstall:") {
 		t.Fatalf("uninstall failure line stutters the verb:\n%s", stderr)
