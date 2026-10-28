@@ -110,8 +110,14 @@ named SKIP for the tick, never a retry loop.
   refuses `admission_mode=cooldown` on the namespace PUT; and POST births the
   row ARMED at the 900 s default. Provisioning order that works today:
   create → cooldown triple → namespace+deliver → admission_mode → enable.
-- MSF-032 (this board): the sanction gate covers `plan` only — `selftest` and
-  `battery` run unsanctioned (measured). Until that lands, the chaos lane's
-  prompt is the enforcement layer.
+- MSF-032 (this board, landed): the sanction gate covers ALL fault-landing
+  verbs — `plan`, `arm`, `selftest`, `battery`, `sim`, `chaos` — each verb
+  file carries a `sanction.Check` call, so the chaos lane's `selftest` and
+  `battery` legs run SANCTIONED, not unsanctioned.
 
 ch:trace row=DOC-11 spec=docs/LANES.md#the-lane-set wave=mischief-foreman-2026-10-24-14-52-45#DOC-11 test=sqlite3 -readonly ~/.hermes/coding-hermes/scheduler.db "SELECT name, admission_mode, cooldown_s, enabled, workdir, COALESCE(cooldown_pin_s,'-') FROM projects WHERE name LIKE 'mischief%' ORDER BY name;" evidence=docs/LANES.md witness=none:live-db-query-and-doc-table-reconciled verdict=none:pending commit=none:pending memory=none:not-written
+
+ch:trace row=DOC-12 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-12 test=none:docs-only-greps doc=docs/LANES.md prompt=/tmp/mf-20261028-1931-DOC-12-brief.txt evidence=commit witness=none:docs-greps verdict=none:pending-foreman-judge commit=self memory=none:board-row
+STATUS: complete
+TIER: T1 (edits + greps invoked and observed)
+EVIDENCE: commit
