@@ -1,0 +1,40 @@
+{
+  "tick_id": "mischief-foreman-2026-10-28-23-49-30",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "446721dd58d3f0f1207e6f0180c84f604ce23b8d",
+  "wave_budget": 10,
+  "status": "prepared",
+  "legs": [
+    {
+      "task_id": "QA-MISCHIEF-005",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-005-20261028-234930",
+      "branch": "wt/QA-MISCHIEF-005-20261028-234930",
+      "status": "prepared"
+    },
+    {
+      "task_id": "MISCHIEF-DF-70",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-70-20261028-234930",
+      "branch": "wt/MISCHIEF-DF-70-20261028-234930",
+      "status": "prepared"
+    },
+    {
+      "task_id": "MISCHIEF-DF-71",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71-20261028-234930",
+      "branch": "wt/MISCHIEF-DF-71-20261028-234930",
+      "status": "prepared"
+    },
+    {
+      "task_id": "QA-MISCHIEF-008",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-008-20261028-234930",
+      "branch": "wt/QA-MISCHIEF-008-20261028-234930",
+      "status": "prepared"
+    },
+    {
+      "task_id": "MISCHIEF-DF-69",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-69-20261028-234930",
+      "branch": "wt/MISCHIEF-DF-69-20261028-234930",
+      "status": "prepared"
+    }
+  ]
+}
