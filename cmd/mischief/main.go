@@ -553,6 +553,26 @@ func cmdServe(args []string) int {
 
 // ── shared helpers ───────────────────────────────────────────────────────────
 
+// verbErr renders a verb-scoped executor failure for stderr (MISCHIEF-DF-56).
+// The executors already frame many of their own errors with the verb or
+// package token ("install: write ...", "uninstall: rmdir ...", "reverter:
+// arm: ..."), so blindly prepending "verb:" stuttered the line —
+// `uninstall: uninstall: rmdir ...` reads as a typo, not as layering. The
+// rule is narrow: the SAME token never twice adjacently. If the error's
+// first token already equals the verb, print the error as-is (one copy);
+// anything else — a bare message, a different token, or a multi-layer chain
+// like "reverter: arm: ..." under the arm verb — gains the verb prefix,
+// keeping one token per real call layer ("arm: reverter: arm: check: ..."
+// stays). Exit codes and the top-level "mischief:" prefix surfaces are
+// untouched.
+func verbErr(verb string, err error) string {
+	msg := err.Error()
+	if t, _, ok := strings.Cut(msg, ":"); ok && t == verb {
+		return msg
+	}
+	return verb + ": " + msg
+}
+
 func loadCatalog(dir string) (*catalog.Catalog, error) {
 	if dir == "" {
 		return catalog.LoadDefault()

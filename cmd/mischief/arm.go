@@ -96,7 +96,7 @@ func cmdArm(args []string) int {
 	// (usage errors precede posture refusals).
 	cat, err := loadCatalog(*catalogDir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "arm:", err)
+		fmt.Fprintln(os.Stderr, verbErr("arm", err))
 		return 1
 	}
 	if cat.Get(*fault) == nil {
@@ -134,7 +134,7 @@ func cmdArm(args []string) int {
 		TTL:     *ttl,
 	}
 	if err := reverter.ValidateForArm(pending); err != nil {
-		fmt.Fprintln(os.Stderr, "arm:", err)
+		fmt.Fprintln(os.Stderr, verbErr("arm", err))
 		return 2
 	}
 
@@ -151,7 +151,7 @@ func cmdArm(args []string) int {
 	// MISCHIEF-DF-57's.
 	decl := rails.DeclaredTarget{Kind: declaredTargetKind(*target), Selector: *target}
 	if _, err := rails.Resolve(decl, rails.ResolveOptions{SelfPID: 0, SelfExe: ""}); err != nil {
-		fmt.Fprintln(os.Stderr, "arm:", err)
+		fmt.Fprintln(os.Stderr, verbErr("arm", err))
 		return rails.MapExit(err)
 	}
 
@@ -164,13 +164,13 @@ func cmdArm(args []string) int {
 
 	store, err := reverter.Open(*dir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "arm:", err)
+		fmt.Fprintln(os.Stderr, verbErr("arm", err))
 		return 1
 	}
 	defer store.Close()
 	id, err := reverter.New(store).Arm(pending)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "arm:", err)
+		fmt.Fprintln(os.Stderr, verbErr("arm", err))
 		return 1
 	}
 	fmt.Printf("armed %s fault=%s target=%s ttl=%s dir=%s\n", id, *fault, *target, *ttl, *dir)

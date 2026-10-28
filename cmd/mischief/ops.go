@@ -64,7 +64,7 @@ func cmdInstall(args []string) int {
 	}
 	plan, err := ops.PlanInstall(opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "install:", err)
+		fmt.Fprintln(os.Stderr, verbErr("install", err))
 		return 1
 	}
 	fmt.Print(plan.Render())
@@ -80,7 +80,7 @@ func cmdInstall(args []string) int {
 		for _, line := range landed {
 			fmt.Println(line)
 		}
-		fmt.Fprintln(os.Stderr, "install:", err)
+		fmt.Fprintln(os.Stderr, verbErr("install", err))
 		return 1
 	}
 	for path, sum := range sums {
@@ -102,7 +102,7 @@ func cmdUninstall(args []string) int {
 	}
 	pol, err := ops.ParseRetentionFlags(*keepCount, *keepDays)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "uninstall:", err)
+		fmt.Fprintln(os.Stderr, verbErr("uninstall", err))
 		return 2
 	}
 	rd := *runsDir
@@ -112,7 +112,7 @@ func cmdUninstall(args []string) int {
 	opts := ops.InstallOpts{Prefix: *prefix, DryRun: *dryRun}
 	plan, err := ops.PlanUninstall(opts, rd, pol)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "uninstall:", err)
+		fmt.Fprintln(os.Stderr, verbErr("uninstall", err))
 		return 1
 	}
 	fmt.Print(plan.Render())
@@ -128,7 +128,7 @@ func cmdUninstall(args []string) int {
 		for _, p := range removed {
 			fmt.Printf("removed %s\n", p)
 		}
-		fmt.Fprintln(os.Stderr, "uninstall:", err)
+		fmt.Fprintln(os.Stderr, verbErr("uninstall", err))
 		return 1
 	}
 	for _, p := range removed {
@@ -217,7 +217,7 @@ func cmdRetention(args []string) int {
 	}
 	pol, err := ops.ParseRetentionFlags(*keepCount, *keepDays)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "retention:", err)
+		fmt.Fprintln(os.Stderr, verbErr("retention", err))
 		return 2
 	}
 	rd := *runsDir
@@ -226,7 +226,7 @@ func cmdRetention(args []string) int {
 	}
 	plan, err := ops.PlanRetention(rd, pol)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "retention:", err)
+		fmt.Fprintln(os.Stderr, verbErr("retention", err))
 		return 1
 	}
 	if !*apply && !*dryRun {
@@ -242,7 +242,7 @@ func cmdRetention(args []string) int {
 	}
 	removed, err := ops.ExecuteRetention(rd, plan)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "retention:", err)
+		fmt.Fprintln(os.Stderr, verbErr("retention", err))
 		return 1
 	}
 	for _, p := range removed {
