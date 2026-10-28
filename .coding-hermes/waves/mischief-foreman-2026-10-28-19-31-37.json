@@ -18,6 +18,6 @@
     {"sha": "8ecef33", "note": "DF-56-CI: relax df56 e2e assertion (CI-only red, runners lstat-fail before rmdir)"},
     {"sha": "fffcba9", "note": "final wave merge (DF-66)"}
   ],
-  "ci": {"implementation_push": {"sha": "fffcba9", "conclusion": "failure", "note": "df56 e2e runner-environment red; fixed by 8ecef33"}, "post_fix": {"sha": "8ecef33", "conclusion": "success"}, "board_close_sha": "pending"},
+  "ci": {"implementation_push": {"sha": "fffcba9", "conclusion": "failure", "note": "df56 e2e runner-environment red; fixed by 8ecef33"}, "post_fix": {"sha": "8ecef33", "conclusion": "success"}, "board_close_sha": "04ddda1a", "board_close_conclusion": "success", "note": "board-close run 04ddda1a completed success (verified before manifest close)"},
   "finished_at": "2026-10-28T20:55:00Z"
 }
