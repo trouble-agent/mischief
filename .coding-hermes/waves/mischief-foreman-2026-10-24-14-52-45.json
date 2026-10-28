@@ -9,19 +9,21 @@
       "task_id": "DOC-11",
       "worktree": "/home/kara/worktrees/mischief-DOC-11",
       "branch": "wt/DOC-11",
-      "status": "prepared"
+      "status": "already-merged"
     },
     {
       "task_id": "DOC-17",
       "worktree": "/home/kara/worktrees/mischief-DOC-17",
       "branch": "wt/DOC-17",
-      "status": "prepared"
+      "status": "already-merged"
     },
     {
       "task_id": "DOC-21",
       "worktree": "/home/kara/worktrees/mischief-DOC-21",
       "branch": "wt/DOC-21",
-      "status": "prepared"
+      "status": "already-merged"
     }
-  ]
+  ],
+  "finished_at": "2026-10-28T21:45:00Z",
+  "recovery_note": "all 3 legs already merged to main (879e5f1); board rows complete with verdicts; manifest closed by recovery tick"
 }
