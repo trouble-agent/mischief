@@ -10,10 +10,18 @@
       "task_id": "MISCHIEF-DF-59-FIXUP",
       "worktree": "/home/kara/worktrees/mischief-20261029-022435",
       "branch": "wt/20261029-022435",
-      "status": "dispatched",
+      "status": "failed/no-op",
       "worker_model": "glm-5.3-flash",
       "worker_provider": "zai-glm-default",
-      "brief": "/tmp/mischief-foreman-20261029-022435-MISCHIEF-DF-59-FIXUP-brief.txt"
+      "brief": "/tmp/mischief-foreman-20261029-022435-MISCHIEF-DF-59-FIXUP-brief.txt",
+      "branch_tip": "d4aafb66e650cd78fc183aa2b5d3aa0375b8abc9",
+      "current_main": "8fcf21f94fe180fd8fa9e9f76d651f347bd5ba82",
+      "merge_base": "d4aafb66e650cd78fc183aa2b5d3aa0375b8abc9",
+      "diff_stat": "",
+      "gate": "PASS inherited main only",
+      "disposition": "preserved evidence; no merge"
     }
-  ]
+  ],
+  "finished_at": "2026-10-29T03:12:00Z",
+  "status": "recovered"
 }
