@@ -4,7 +4,9 @@
   "base": "origin/main",
   "base_sha": "446721dd58d3f0f1207e6f0180c84f604ce23b8d",
   "wave_budget": 10,
-  "status": "prepared",
+  "status": "finished",
+  "finished_at": "2026-10-29T01:11:15-05:00",
+  "recovery_result": "all 5 legs classified failed/no-op; no task-specific implementation landed; branches and worktrees preserved as evidence",
   "legs": [
     {
       "task_id": "QA-MISCHIEF-005",
