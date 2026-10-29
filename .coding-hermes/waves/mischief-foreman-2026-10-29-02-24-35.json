@@ -1,0 +1,19 @@
+{
+  "tick_id": "mischief-foreman-2026-10-29-02-24-35",
+  "project": "mischief",
+  "base": "origin/main",
+  "base_sha": "d4aafb66e650cd78fc183aa2b5d3aa0375b8abc9",
+  "wave_budget": 12,
+  "mode": "serial-fallback",
+  "legs": [
+    {
+      "task_id": "MISCHIEF-DF-59-FIXUP",
+      "worktree": "/home/kara/worktrees/mischief-20261029-022435",
+      "branch": "wt/20261029-022435",
+      "status": "dispatched",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default",
+      "brief": "/tmp/mischief-foreman-20261029-022435-MISCHIEF-DF-59-FIXUP-brief.txt"
+    }
+  ]
+}
