@@ -125,6 +125,12 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
   (a bunker instance), never the main fleet host.
 
 ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest evidence=skills/mischief-usage/SKILL.md witness=tag:b639bc8@origin verdict=none:pending commit=b639bc8e903a379758fcd1ec95314f316c9dc419 memory=none:not-written
+
+## Current dogfood re-proof — 2026-10-29, tick mischief-dogfood-2026-10-29-13-50-54, HEAD 852639e
+
+The current-HEAD real-use proof is recorded in `docs/dogfood/2026-10-29-1350-integration.md`. The verified local path is: build with `make bin`, empty `status --json`, `doctor --json`, unsanctioned `plan` refusal, then sanctioned `arm` -> manual target land -> `serve --dir`; a 5s hold reverted at about 10s on the roughly 5s fold, restored the target byte-for-byte, and wrote health `ok:true`, `reverted:1`, `revert_failed:0` plus a `revert_proof` with `reason=ttl_expiry` and `detail=check: same`. Fresh-machine evidence is `/tmp/bunker-qa-evidence-20261029T135721Z-2666888.jsonl`: install and upgrade passed, but the clean-agent `TestOwnerSurvivesKill9AndRevertsAtTTL` failure remains owned by `QA-MISCHIEF-002-R2` / `QA-MISCHIEF-007`; do not treat the battery as green until those rows are resolved.
+
+ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver test=cmd:status-plan-arm-serve doc=docs/dogfood/2026-10-29-1350-integration.md evidence=/tmp/bunker-qa-evidence-20261029T135721Z-2666888.jsonl witness=live:HEAD-852639e+serve-health-reverted verdict=existing-QA-recurrence commit=pending
 - **Sanction vars leak through long-lived agent shells.** A session that exported
   `MISCHIEF_SANCTION=1` for an earlier probe keeps it exported forever — a later
   "should refuse" leg silently succeeds. Probe refusals from a sanitized env

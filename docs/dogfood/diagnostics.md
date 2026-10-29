@@ -167,3 +167,9 @@ tests PASS at native HEAD (full go test ./... RC=0) — evidence, not row edits:
 Probe artifacts: bin rebuilt (make bin, 162bc20d64bb) — disclosed; go test build cache;
 ~/.mischief/runs/default/battery.jsonl +2 runs, selftest.jsonl appended (product's own
 default store, read-only surface); /tmp scratch swept.
+
+## 2026-10-29 13:50 UTC — tick mischief-dogfood-2026-10-29-13-50-54
+
+Canonical target `/home/kara/mischief`, HEAD `852639ee1eb1829a5ba38eb33f64a73a1899d368`, origin parity 0/0. Detached real-use probe built the current binary and exercised empty status, doctor, unsanctioned plan refusal, sanctioned `arm -> manual land -> serve` TTL recovery, health JSON, and journal proof. The 5s hold reverted around 10s; target bytes matched the backup; health was `ok:true`, `reverted:1`, `revert_failed:0`; journal `duration_nanos=120474`. Perf evidence `/tmp/mischief-dogfood-20261029-135054/perf/results.txt`: version 6.2ms ± 3.0ms, status 8.6ms ± 2.9ms, doctor 7.2ms ± 1.4ms over 20 warm runs; no user-noticeable PERF finding.
+
+Fresh install evidence `/tmp/bunker-qa-evidence-20261029T135721Z-2666888.jsonl`: collected 23 rows; `fresh-install OK` artifact 13295640 bytes, `upgrade OK`, `chaos-errorpath OK`, `ci-pass FAIL` and `chaos-resource FAIL` on `TestOwnerSurvivesKill9AndRevertsAtTTL`, disconnect UNVERIFIED cascade, UI INFO for Go-native file-backed service, compose/shutdown/database N/A. Run-owned agent `faea3e83` teardown verified by `bunker info` not_found and zero matches in a fresh list. Existing owners: QA-MISCHIEF-002-R2, QA-MISCHIEF-007, MISCHIEF-DF-69, MISCHIEF-DF-59 / MISCHIEF-DF-59-FIXUP. No new row minted; no board mutation.
