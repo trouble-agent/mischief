@@ -12,31 +12,31 @@
       "task_id": "QA-MISCHIEF-005",
       "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-005-20261028-234930",
       "branch": "wt/QA-MISCHIEF-005-20261028-234930",
-      "status": "prepared"
+      "status": "failed/no-op"
     },
     {
       "task_id": "MISCHIEF-DF-70",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-70-20261028-234930",
       "branch": "wt/MISCHIEF-DF-70-20261028-234930",
-      "status": "prepared"
+      "status": "failed/no-op"
     },
     {
       "task_id": "MISCHIEF-DF-71",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71-20261028-234930",
       "branch": "wt/MISCHIEF-DF-71-20261028-234930",
-      "status": "prepared"
+      "status": "failed/no-op"
     },
     {
       "task_id": "QA-MISCHIEF-008",
       "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-008-20261028-234930",
       "branch": "wt/QA-MISCHIEF-008-20261028-234930",
-      "status": "prepared"
+      "status": "failed/no-op"
     },
     {
       "task_id": "MISCHIEF-DF-69",
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-69-20261028-234930",
       "branch": "wt/MISCHIEF-DF-69-20261028-234930",
-      "status": "prepared"
+      "status": "failed/no-op"
     }
   ]
 }
