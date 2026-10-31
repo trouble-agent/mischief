@@ -80,12 +80,20 @@ Put the binary on your PATH (create the directory first if it doesn't exist):
 mkdir -p ~/.local/bin && install -m 0755 mischief ~/.local/bin/
 ```
 
-Then check the install:
+Then check the release binary. These are the supported immediate checks for a
+tarball-only install, including a fresh `$HOME`:
 
 ```sh
 mischief version   # mischief v0.1.0 (a release stamps the tag; `make bin` stamps the git sha)
 mischief status    # folds the run dir's journal: armed/stuck holds + TTL remaining, proofs; a terminal revert_failed hold (fault may still be live) reads as exit 1 + a counter (on a fresh host: `state: absent`, exit 1 — nothing written)
-mischief doctor    # capability/tier ladder report (see the catalog note below)
+```
+
+`mischief doctor` is a checkout/catalog check, not a tarball-only install check.
+Run it from a checkout, or provide a checkout's catalog explicitly:
+
+```sh
+mischief doctor
+mischief doctor --catalog-dir /path/to/mischief/catalog
 ```
 
 On a clean box `mischief status` is the first command that reads state — and the
@@ -359,3 +367,5 @@ ch:trace row=README-10 spec=README.md#Install wave=mischief-foreman-2026-10-31-0
 STATUS: complete
 TIER: T2 (live sanctioned arm control invoked; rc=2 premise refutation observed; docs corrected per the row's escape clause)
 EVIDENCE: commit
+
+ch:trace row=README-11 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-11 test=none:stranger-release-install doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-11-brief.txt evidence=none:docs-update witness=release:v0.1.0@origin verdict=none:worker-commit commit=HEAD memory=none:tick-local
