@@ -186,6 +186,23 @@ fault) is re-read from the journal bytes, not from the env.
   its life — expected in systemd-run mode; the user manager reaps it, and
   `--collect` GCs the failed unit after exit.
 
+### MISCHIEF_REVERTER_SYSTEMD_RUN_FAKE — tests-only internal variable
+
+- **Purpose:** selects the synthetic `systemd-run` backend used by reverter
+  regression tests to reproduce systemd exec-formation outcomes without a
+  real user manager.
+- **Who sets it:** tests only. The value must name an executable probe file;
+  otherwise the real `systemd-run` and `systemctl` binaries are used.
+- **Production boundary:** this is **not an operator knob**, is not a
+  supported production override, and must not be exported in production. It
+  exists solely as a package-internal test seam; operators should use the
+  supported CLI behavior or the internal debug pin above instead.
+- **Default / absence:** unset. An unset value, an empty value, a missing
+  file, a directory, or a non-executable file leaves the real backend active.
+- **Troubleshooting:** if a test unexpectedly invokes real systemd, verify
+  that the test probe path is executable. Do not set this variable to alter a
+  production reverter run.
+
 ---
 
 ## Shim (backend `shim`): rule, budget, proof
