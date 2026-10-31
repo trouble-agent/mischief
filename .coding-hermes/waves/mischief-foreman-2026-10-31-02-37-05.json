@@ -1,0 +1,47 @@
+{
+  "tick_id": "mischief-foreman-2026-10-31-02-37-05",
+  "wave_id": "mischief-foreman-2026-10-31-02-37-05",
+  "base_sha": "8ef930906f95035c805f4b8354da368fd5b12e25",
+  "tasks": [
+    {
+      "id": "README-10",
+      "worktree": "/home/kara/worktrees/mischief-README-10",
+      "branch": "wt/README-10",
+      "gitreins_task": "README-10",
+      "status": "merged",
+      "merged_at": "2026-10-31T04:38:26Z"
+    },
+    {
+      "id": "README-11",
+      "worktree": "/home/kara/worktrees/mischief-README-11",
+      "branch": "wt/README-11",
+      "gitreins_task": "README-11",
+      "status": "merged",
+      "merged_at": "2026-10-31T04:38:26Z"
+    },
+    {
+      "id": "README-12",
+      "worktree": "/home/kara/worktrees/mischief-README-12",
+      "branch": "wt/README-12",
+      "gitreins_task": "README-12",
+      "status": "merged",
+      "merged_at": "2026-10-31T04:38:26Z"
+    },
+    {
+      "id": "DOC-25",
+      "worktree": "/home/kara/worktrees/mischief-DOC-25",
+      "branch": "wt/DOC-25",
+      "gitreins_task": "DOC-25",
+      "status": "merged",
+      "merged_at": "2026-10-31T04:38:26Z"
+    },
+    {
+      "id": "DOC-26",
+      "worktree": "/home/kara/worktrees/mischief-DOC-26",
+      "branch": "wt/DOC-26",
+      "gitreins_task": "DOC-26",
+      "status": "merged",
+      "merged_at": "2026-10-31T04:38:26Z"
+    }
+  ]
+}
