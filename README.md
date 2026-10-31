@@ -206,6 +206,19 @@ green-or-skip; on an unsanctioned host selftest refuses fail-closed with
 on an L1 container where `/etc` is not writable, use the "First sanctioned run"
 recipe above).
 
+Before submitting documentation changes, run the repository's bounded, read-only
+freshness gate from the checkout root:
+
+```sh
+make docs-check
+```
+
+It runs `row-drift` and `python3 tools/gen-docs.py --check`; the latter checks
+existing generated HTML twins without writing them. A nonzero result identifies
+stale generated docs or a current-status row reference that needs review.
+
+<!-- ch:trace row=README-12 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-12 test=Makefile::docs-check doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-12-brief.txt evidence=none:docs-update witness=none:no-docs-check-target verdict=none:worker-commit commit=HEAD memory=none:tick-local -->
+
 ### The privileged surface: `mischief install`, `mischief audit`, `mischief uninstall`
 
 The binary install above puts the CLI on your PATH; the privileged surface is a

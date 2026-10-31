@@ -18,7 +18,7 @@ LDFLAGS := -X main.gitSha=$(SHA)
 # release-dry` is the config-only check (no build).
 DIST := dist/release
 
-.PHONY: bin test vet build clean shim dist tags release-dry row-drift
+.PHONY: bin test vet build clean shim dist tags release-dry row-drift docs-check
 
 bin:
 	CGO_ENABLED=0 $(GO) build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/mischief
@@ -39,6 +39,11 @@ test:
 # exempt (dated history may record a row as open at the time of the run).
 row-drift:
 	python3 tools/check_row_drift.py
+
+# docs-check: bounded, read-only documentation freshness gate. It checks the
+# generated HTML twins and current-status references without modifying files.
+docs-check: row-drift
+	python3 tools/gen-docs.py --check
 
 # shim: the per-arch shim .so from the DECIDED path (MSF-018) — the same
 # ShimSourceC the runtime compiles at arm time, via system cc (amd64) and
