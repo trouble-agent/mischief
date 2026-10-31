@@ -95,7 +95,7 @@ func cmdPlaneRecord(args []string) int {
 	fs := flag.NewFlagSet("plane record", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	file := fs.String("file", "", "evidence JSONL file (required)")
-	step := fs.String("step", "", "pipeline stage: preflight | ship | selftest | collect | destroy (required)")
+	step := fs.String("step", "", "pipeline stage: preflight | build | spawn | ship | selftest | collect | destroy (required)")
 	status := fs.String("status", "", "pass | fail | skip (required)")
 	detail := fs.String("detail", "", "reason/proof text (encoded by this verb)")
 	if err := fs.Parse(args); err != nil {
