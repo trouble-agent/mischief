@@ -13,7 +13,7 @@ import (
 var shippedSubcommands = []string{
 	"plan", "status", "revert", "doctor", "install", "uninstall",
 	"audit", "retention", "selftest", "plane", "battery", "chaos",
-	"sim", "serve", "arm",
+	"sim", "serve", "arm", "land",
 }
 
 // TestEveryShippedSubcommandHelpExitsZero (MISCHIEF-CLI-001): every

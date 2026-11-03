@@ -44,7 +44,7 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `docs/SPEC-PLAN.md` | the spec set and the spec→PRD→AC map |
 | `probe/RESULTS.md` | the measured capability audit the design rests on, with the scripts that produced it |
 | `docs/EXPERIMENTS.md` | the rehearsal contract for `catalog/experiments/`: which experiments are runnable today, why the rest are rehearsal-only, and the scratch-host rule |
-| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`) — core verbs: `plan` (zero side effects, AC-1: nothing is written; `--journal-dir D` opts in to recording the preview as `D/plan.jsonl`) · `status` (default: ACTIVE holds; a terminal `revert_failed` hold reads as exit 1 + a `revert_failed: N` counter in both modes — the same condition the daemon grades `ok:false`; `--all` also lists terminal `reverted` / `revert_failed` holds) · `revert` (`--all` is the kill switch; `--hold <id> --retry` re-runs a terminal `revert_failed` hold's recorded inverse as one more measured attempt) · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha); v0.1 also ships `install` (privileged helper manifest + a visudo-validated sudoers drop-in — never elevates itself) · `uninstall` · `audit` (survey the live privileged surface against the canonical verb table) · `retention` (rotate old run dirs; report-only without `--apply`), plus the evidence verbs `battery` · `chaos` · `sim` · `plane`. Battery honesty: the matrix schema is fault × detection × recovery, but the detection axis is NOT measured in v0.1 — no production detector is wired (only `detected (observer)` rows are detection claims; `gap`/`not_wired`/`error` mean detection was not measured; see docs/BATTERY-PARITY.md) |
+| `cmd/mischief/` + `Makefile` | the M1 chassis CLI (`make bin`) — core verbs: `plan` (zero side effects, AC-1: nothing is written; `--journal-dir D` opts in to recording the preview as `D/plan.jsonl`) · `status` (default: ACTIVE holds; a terminal `revert_failed` hold reads as exit 1 + a `revert_failed: N` counter in both modes — the same condition the daemon grades `ok:false`; `--all` also lists terminal `reverted` / `revert_failed` holds) · `land` (`--hold <id>` \| `--all`) records that YOU landed an armed hold's fault — the LAND step of the loop, which had no verb; it records the caller's claim and proves nothing · `revert` (`--all` is the kill switch; a hold with no landed record grades `not_landed` and exits 3 rather than reporting a clean sweep; `--hold <id> --retry` re-runs a terminal `revert_failed` hold's recorded inverse as one more measured attempt) · `doctor` (rails self-checks) · `selftest --all \| --primitive <id>` (L0 scratch land+revert proofs per primitive; exit 0 only green-or-skip — the M1 exit criterion, AC-19/AC-3/AC-4) · `serve` (reverter daemon: TTLs, boot reconcile, `health.json`) · `version` (stamped git sha); v0.1 also ships `install` (privileged helper manifest + a visudo-validated sudoers drop-in — never elevates itself) · `uninstall` · `audit` (survey the live privileged surface against the canonical verb table) · `retention` (rotate old run dirs; report-only without `--apply`), plus the evidence verbs `battery` · `chaos` · `sim` · `plane`. Battery honesty: the matrix schema is fault × detection × recovery, but the detection axis is NOT measured in v0.1 — no production detector is wired (only `detected (observer)` rows are detection claims; `gap`/`not_wired`/`error` mean detection was not measured; see docs/BATTERY-PARITY.md) |
 | `catalog/` | machine-readable fault and experiment examples |
 
 ## Install
@@ -326,11 +326,32 @@ such kinds folds and lists normally and reverts fail-closed (measured
 **Landing the fault is a separate act**, performed by the operator or by the
 fault verbs (`sim`, `selftest`, `battery`, `plane`) — the bare `LAND` step in
 the loop above. Landing means making the fault real on the target yourself;
-for a file-scoped fault that is the change the fault models:
+for a file-scoped fault that is the change the fault models, and then recording
+that you did it with `mischief land`:
 
 ```sh
-printf 'FAULTED' > /tmp/mischief-scratch/config.toml   # the LAND step
-bin/mischief status --dir ~/.mischief/runs/default      # the hold is still armed
+printf 'FAULTED' > /tmp/mischief-scratch/config.toml   # the LAND step: make it real
+bin/mischief land --all --dir ~/.mischief/runs/default # the LAND step: record it
+bin/mischief status --dir ~/.mischief/runs/default     # the hold is still armed
+```
+
+`land` records the caller's own claim and proves nothing — "prove landed" stays
+a separate step needing an independent witness (a syscall trace, a filesystem
+fact, a process exit status). It exists so the journal can distinguish a hold
+that was actually faulted from one that was only armed.
+
+That distinction is graded. A hold with **no landed record** does not revert to
+`reverted`: it grades **`not_landed`**, because "reverted" would assert a fault
+was undone when nothing was ever applied — a green proof for an injection that
+never happened, which is the false green an agent consuming this most easily
+believes. The inverse still runs (`not_landed` is about the grade, never about
+skipping cleanup: an out-of-band fault must still be undone), and the command
+exits **3** rather than reporting a clean sweep:
+
+```sh
+bin/mischief arm  ... --ttl 30s              # armed, nothing injected
+bin/mischief revert --all                    # not_landed, exit 3 (cleanup still runs)
+bin/mischief land --all && bin/mischief revert --all   # reverted, exit 0
 ```
 
 The hold's measured check and its recorded reverse action decide the outcome:
