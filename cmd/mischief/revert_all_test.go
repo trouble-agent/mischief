@@ -37,6 +37,14 @@ func scratchCLIHold(t *testing.T, faultID string) (reverter.Hold, string, string
 // armCLIHolds arms the given holds into a scratch run dir and closes the
 // store, so the revert verb's own Open folds the journal from disk the way
 // a real invocation does.
+//
+// PROF-002: each hold is also LANDED. The documented loop is
+// arm → LAND → prove landed → hold → revert (README line 265), and arm is
+// write-ahead only: it records the hold and stops there. A hold that is armed
+// but never landed now grades not_landed rather than reverted, because grading
+// only the UNDO let an arm-then-expire cycle with no injection in between
+// publish a green proof. Landing here is what a real injector records after it
+// has actually applied the fault.
 func armCLIHolds(t *testing.T, dir string, holds ...reverter.Hold) []string {
 	t.Helper()
 	store, err := reverter.Open(dir)
@@ -49,6 +57,9 @@ func armCLIHolds(t *testing.T, dir string, holds ...reverter.Hold) []string {
 		id, err := lf.Arm(h)
 		if err != nil {
 			t.Fatalf("arm %s: %v", h.FaultID, err)
+		}
+		if err := lf.Land(id); err != nil {
+			t.Fatalf("land %s: %v", h.FaultID, err)
 		}
 		ids = append(ids, id)
 	}

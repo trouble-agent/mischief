@@ -103,6 +103,14 @@ func run(args []string) int {
 		// inverse, check, TTL) into the run dir's journal. The write-ahead
 		// half of the loop that serve/owner/revert complete.
 		return cmdArm(args[1:])
+	case "land":
+		// PROF-002: the LAND step of the documented loop
+		// (declare → plan → arm → LAND → prove landed → hold → revert),
+		// which had no verb. arm is write-ahead only: it records the hold
+		// and stops there, so until this verb existed the journal could
+		// never learn that a fault was actually applied — and an
+		// arm-then-expire cycle looked identical to a real inject-and-recover.
+		return cmdLand(args[1:])
 	case "__owner":
 		// The detached TTL owner (reverter.RunOwner). Not listed in usage:
 		// it is a spawn target, not an operator verb.
@@ -185,6 +193,7 @@ Usage:
   mischief plan      -f <exp.yaml> [--json] [--scratch-dir D] [--journal-dir D]  (writes nothing without --journal-dir)
   mischief status    [--dir D] [--all] [--json]  (active holds: armed/stuck; a revert_failed fault reads as exit 1 + a counter; --all lists terminal holds too)
   mischief arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--dir D]
+  mischief land      (--hold <id> | --all) [--dir D]  (record that YOU landed the fault; arm is write-ahead only)
   mischief revert    (--all | --hold <id> [--retry]) [--dir D]
   mischief doctor    [--catalog-dir D] [--json] [--self-check]  (exit 1 = a check FAILED: catalog load, or a --self-check rail)
   mischief selftest  (--all | --primitive <id>) [--dir D] [--catalog-dir D]  (exit 0 only when green-or-skip — the M1 exit criterion)
@@ -419,9 +428,25 @@ func cmdRevert(args []string) int {
 		// unknown outcome value too — fails the verb. Mirrors the --hold
 		// path, which already exits non-zero on the same outcome.
 		if failed := countRevertFailures(proofs); failed > 0 {
-			fmt.Printf("kill switch: %d holds reverted, %d revert_failed, wall=%s (AC-6 budget 2s)\n", len(proofs)-failed, failed, wall.Round(time.Millisecond))
+			fmt.Printf("kill switch: %d holds reverted, %d revert_failed, %d not_landed, wall=%s (AC-6 budget 2s)\n",
+				len(proofs)-failed-countNotLanded(proofs), failed, countNotLanded(proofs), wall.Round(time.Millisecond))
 			fmt.Fprintln(os.Stderr, "revert: kill switch sweep did not fully revert — at least one fault may still be live")
 			return 1
+		}
+		// PROF-002: nothing faulted means nothing was proven. Reporting a clean
+		// sweep here would tell an operator (or an agent) that faults were
+		// exercised and reverted when no injection ever happened — the same
+		// false green, one level up from the proof.
+		if nl := countNotLanded(proofs); nl == len(proofs) && nl > 0 {
+			fmt.Printf("kill switch: 0 holds reverted, %d not_landed, wall=%s (AC-6 budget 2s)\n", nl, wall.Round(time.Millisecond))
+			fmt.Fprintln(os.Stderr, "revert: nothing was faulted — every hold records a fault that never landed, so this sweep proves nothing about the target")
+			return 3
+		}
+		if nl := countNotLanded(proofs); nl > 0 {
+			fmt.Printf("kill switch: %d holds reverted, %d not_landed, wall=%s (AC-6 budget 2s)\n",
+				len(proofs)-nl, nl, wall.Round(time.Millisecond))
+			fmt.Fprintln(os.Stderr, "revert: some holds record a fault that never landed and carry no signal")
+			return 3
 		}
 		fmt.Printf("kill switch: %d holds reverted, wall=%s (AC-6 budget 2s)\n", len(proofs), wall.Round(time.Millisecond))
 		return 0
@@ -445,6 +470,13 @@ func cmdRevert(args []string) int {
 	} else {
 		fmt.Printf("%s %-16s outcome=%s detail=%s duration=%s\n", revertLineWord(pr.Outcome), pr.HoldID, pr.Outcome, pr.Detail, pr.Duration.Round(time.Millisecond))
 	}
+	// PROF-002: not_landed is not a revert failure (there is no fault to undo)
+	// and not a success (nothing was injected). It is the inconclusive case, so
+	// it gets the inconclusive exit rather than being folded into either.
+	if pr.Outcome == reverter.OutcomeNotLanded {
+		fmt.Fprintln(os.Stderr, "revert: nothing to revert — the fault was never landed, so this proves nothing about the target")
+		return 3
+	}
 	if pr.Outcome != reverter.OutcomeReverted {
 		return 1
 	}
@@ -455,10 +487,32 @@ func cmdRevert(args []string) int {
 // revert: the declared revert_failed outcome, and any outcome value outside
 // the closed vocabulary (a malformed or unknown proof must never count as
 // green by accident — the sweep is only as good as its worst proof).
+//
+// PROF-002: not_landed is deliberately NOT a failure. It means the fault was
+// never applied, so no inverse was owed; calling that a revert failure would
+// report a live fault that does not exist. It is counted separately by
+// countNotLanded so the sweep can report it instead of hiding it.
 func countRevertFailures(proofs []reverter.Proof) int {
 	n := 0
 	for _, pr := range proofs {
-		if pr.Outcome != reverter.OutcomeReverted || !pr.Outcome.Valid() {
+		if !pr.Outcome.Valid() {
+			n++
+			continue
+		}
+		if pr.Outcome != reverter.OutcomeReverted && pr.Outcome != reverter.OutcomeNotLanded {
+			n++
+		}
+	}
+	return n
+}
+
+// countNotLanded counts sweep proofs that record a fault that never landed.
+// These carry no signal: nothing was injected, so the sweep demonstrates
+// neither that the target recovers nor that it does not.
+func countNotLanded(proofs []reverter.Proof) int {
+	n := 0
+	for _, pr := range proofs {
+		if pr.Outcome == reverter.OutcomeNotLanded {
 			n++
 		}
 	}

@@ -61,12 +61,22 @@ const (
 	// check failed, or the check could not be evaluated — the fault may
 	// still be live; the proof carries the measured detail.
 	OutcomeRevertFailed Outcome = "revert_failed"
+	// OutcomeNotLanded: the hold was armed but the fault was NEVER landed
+	// (no landed record in the write-ahead journal), so there was no fault
+	// to undo. The inverse is deliberately NOT executed: on an unlanded
+	// hold it would be a no-op at best and destructive at worst (a
+	// restore-file inverse would overwrite live state with a stale arm-time
+	// backup). Grading this `reverted` — as this code did before the
+	// PROF-002 fix — published a green proof for a fault that never
+	// happened, which is the exact false green an agent must never receive:
+	// it would conclude a fix worked without anything having been injected.
+	OutcomeNotLanded Outcome = "not_landed"
 )
 
 // Valid reports whether o is a declared outcome value.
 func (o Outcome) Valid() bool {
 	switch o {
-	case OutcomeReverted, OutcomeRevertFailed:
+	case OutcomeReverted, OutcomeRevertFailed, OutcomeNotLanded:
 		return true
 	}
 	return false

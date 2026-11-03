@@ -167,12 +167,16 @@ const (
 	// StatusRevertFailed: a measured revert proof recorded failure (AC-4:
 	// the fault may still be live; never reported as reverted).
 	StatusRevertFailed HoldStatus = "revert_failed"
+	// StatusNotLanded: a proof recorded that the fault was never landed, so
+	// no fault was ever applied and no inverse was run. Terminal, but carries
+	// NO integrity signal — it is neither a pass nor a recovery.
+	StatusNotLanded HoldStatus = "not_landed"
 )
 
 // Valid reports whether s is a declared hold status.
 func (s HoldStatus) Valid() bool {
 	switch s {
-	case StatusArmed, StatusStuck, StatusReverted, StatusRevertFailed:
+	case StatusArmed, StatusStuck, StatusReverted, StatusRevertFailed, StatusNotLanded:
 		return true
 	}
 	return false
@@ -403,18 +407,24 @@ func (s *Store) foldLine(line []byte) error {
 	case RecordHoldExpired:
 		// informational: the TTL boundary; the proof record follows it.
 	case RecordRevertProof:
-		pr := proofFromRecord(rec)
-		s.history = append(s.history, pr)
-		if st, ok := s.holds[rec.HoldID]; ok {
-			st.OwnPID = rec.OwnPID
-			switch rec.Outcome {
-			case OutcomeReverted:
-				st.Status = StatusReverted
-			case OutcomeRevertFailed:
-				st.Status = StatusRevertFailed
-			}
-			delete(s.expiries, rec.HoldID)
+	pr := proofFromRecord(rec)
+	s.history = append(s.history, pr)
+	if st, ok := s.holds[rec.HoldID]; ok {
+		st.OwnPID = rec.OwnPID
+		switch rec.Outcome {
+		case OutcomeReverted:
+			st.Status = StatusReverted
+		case OutcomeRevertFailed:
+			st.Status = StatusRevertFailed
+		case OutcomeNotLanded:
+			// PROF-002: terminal, but not a recovery. The expiry is
+			// dropped so the hold stops being a revert candidate; the
+			// status keeps "nothing was ever faulted" visible instead
+			// of collapsing it into reverted or revert_failed.
+			st.Status = StatusNotLanded
 		}
+		delete(s.expiries, rec.HoldID)
+	}
 	case RecordHoldStuck:
 		if st, ok := s.holds[rec.HoldID]; ok {
 			st.Status = StatusStuck

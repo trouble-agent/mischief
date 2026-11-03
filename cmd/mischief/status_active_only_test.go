@@ -48,7 +48,12 @@ func statusArmArgs(t *testing.T, dir, fault string) []string {
 }
 
 // statusArm arms one hold through the real CLI and returns its hold id,
-// read back from arm's own "armed <id> fault=..." line (never guessed).
+// then lands it. PROF-002: arm is write-ahead only (README: "arm records the
+// hold and stops there"), so a hold that is armed but never landed now grades
+// not_landed instead of reverted. These tests assert the status surface over a
+// hold that represents a real fault, so the LAND step of the documented loop
+// belongs here — without it they would be asserting the shape of a cycle that
+// injected nothing.
 func statusArm(t *testing.T, dir, fault string) string {
 	t.Helper()
 	code, out := captureStdout(t, func() int { return run(statusArmArgs(t, dir, fault)) })
@@ -59,7 +64,13 @@ func statusArm(t *testing.T, dir, fault string) string {
 	if len(fields) < 2 || fields[0] != "armed" {
 		t.Fatalf("arm %s output does not name the hold id: %q", fault, out)
 	}
-	return fields[1]
+	id := fields[1]
+	if code, lout := captureStdout(t, func() int {
+		return run([]string{"land", "--hold", id, "--dir", dir})
+	}); code != 0 {
+		t.Fatalf("land %s exit: %d, want 0 (out=%q)", id, code, lout)
+	}
+	return id
 }
 
 // statusSections splits a status text document at its `proofs:` line: the

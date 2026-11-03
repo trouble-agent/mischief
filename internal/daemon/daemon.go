@@ -73,6 +73,11 @@ type Health struct {
 	// RevertFailed is the count of holds whose measured revert FAILED
 	// (the fault may still be live — the one state that flips OK false).
 	RevertFailed int `json:"revert_failed"`
+	// NotLanded is the count of holds whose proof recorded that the fault
+	// was NEVER landed. It is not a pass and not a failure: no fault was
+	// applied, so the run carries no integrity signal. Counted explicitly
+	// so it cannot be mistaken for reverted (PROF-002).
+	NotLanded int `json:"not_landed"`
 	// RefoldError is non-empty when the tick's journal re-fold failed
 	// (corruption): the document then carries the LAST KNOWN fold and
 	// ok=false — never a silent stale view (MISCHIEF-DF-30).
@@ -330,6 +335,11 @@ func (d *Daemon) render() Health {
 		case reverter.StatusRevertFailed:
 			h.RevertFailed++
 			h.OK = false // a live un-reverted fault is NOT ok
+		case reverter.StatusNotLanded:
+			// Not a pass and not a failure: no fault was ever applied.
+			// Counted so a reader cannot mistake the absence of reverts
+			// for a clean run (PROF-002).
+			h.NotLanded++
 		}
 		h.Holds = append(h.Holds, row)
 	}
@@ -374,6 +384,8 @@ func (d *Daemon) staleRender(now time.Time) Health {
 		case reverter.StatusRevertFailed:
 			h.RevertFailed++
 			h.OK = false
+		case reverter.StatusNotLanded:
+			h.NotLanded++
 		}
 		h.Holds = append(h.Holds, row)
 	}

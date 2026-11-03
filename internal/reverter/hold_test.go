@@ -297,6 +297,16 @@ func TestLegacyJournalHoldStaysGraceful(t *testing.T) {
 	if err := appendJournalLine(dir, legacy); err != nil {
 		t.Fatalf("append legacy line: %v", err)
 	}
+	// PROF-002: a hold with no landed record now grades not_landed and does not
+	// reach the inverse at all — so to exercise the property this test actually
+	// pins (an UNKNOWN legacy inverse spelling fails CLOSED into a measured
+	// revert_failed rather than silently succeeding), the hold must be landed
+	// first. A real faulted hold would carry this record.
+	land := `{"type":"land","hold_id":"b7e9f744dfb5a67d","ts":1791000001,"boot_id":"` + boot +
+		`","own_pid":4242,"fields":{"landed":"1"}}` + "\n"
+	if err := appendJournalLine(dir, land); err != nil {
+		t.Fatalf("append land line: %v", err)
+	}
 
 	st, err := Open(dir)
 	if err != nil {

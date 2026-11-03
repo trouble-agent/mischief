@@ -237,7 +237,7 @@ func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role
 		return Proof{}, fmt.Errorf("%w: %s", ErrNoHold, holdID)
 	}
 	status := st.Status
-	terminal := status == StatusReverted || status == StatusRevertFailed
+	terminal := status == StatusReverted || status == StatusRevertFailed || status == StatusNotLanded
 	arm := st.Arm
 	expiry := st.Expiry
 	s.mu.Unlock()
@@ -311,9 +311,63 @@ func (l *Lifecycle) RevertRetry(ctx context.Context, holdID, reason string, role
 func (l *Lifecycle) revertNow(holdID string, arm armPayload, reason string, role Role) (Proof, error) {
 	s := l.store
 	start := s.Now()
+
+	// PROF-002: a hold with no landed record was never faulted, so its proof
+	// may not say `reverted` — before this check, revertNow graded only the
+	// UNDO (inverse ran + check passed) and never asked whether anything had
+	// been faulted at all, so an arm-then-expire cycle with no injection in
+	// between produced a green `reverted` proof. An agent consuming that proof
+	// would conclude its code survived a fault it was never exposed to.
+	//
+	// The inverse STILL RUNS. This is deliberate and is the safer of the two
+	// harms: the journal cannot prove a fault was NOT applied (an operator may
+	// have faulted the target out-of-band, and no production path records a
+	// land today), so skipping cleanup would risk leaving a live fault —
+	// a SIGSTOPped process, a truncated file — which is the one thing a fault
+	// injector must never do. A redundant restore of the arm-time backup is
+	// recoverable; a fault left live is not. So the cleanup duty is
+	// unconditionally honoured and only the GRADE changes.
+	s.mu.Lock()
+	neverLanded := false
+	if st, ok := s.holds[holdID]; ok {
+		neverLanded = st.LandPID == 0
+	}
+	s.mu.Unlock()
+
 	_, actionErr := l.exec.execAction(arm.Inverse.Kind, arm.Inverse)
 	detail, checkOK, checkErr := l.exec.evalCheck(arm.Check.Kind, arm.Check)
 	dur := s.Now().Sub(start)
+
+	if neverLanded {
+		// Cleanup ran; the run carries no signal. Say both, so a reader cannot
+		// mistake a clean restore for "the target survived a fault".
+		cause := "fault never landed (no landed record in the write-ahead journal)"
+		switch {
+		case actionErr != nil:
+			cause += fmt.Sprintf("; cleanup inverse FAILED: %v (the fault may still be live)", actionErr)
+		case checkErr != nil:
+			cause += fmt.Sprintf("; cleanup inverse ran, check error: %v", checkErr)
+		case !checkOK:
+			cause += fmt.Sprintf("; cleanup inverse ran, check did not pass: %s", strings.TrimSpace(detail))
+		default:
+			cause += "; cleanup inverse ran and the target was restored, but nothing was ever injected so this proves nothing about the target"
+		}
+		proof := Proof{
+			HoldID:   holdID,
+			FaultID:  arm.FaultID,
+			Target:   arm.Target,
+			Outcome:  OutcomeNotLanded,
+			Detail:   cause,
+			Duration: dur,
+			Role:     role,
+			PID:      os.Getpid(),
+			Reason:   reason,
+		}
+		if err := s.append(proofRecord(proof, s.BootID)); err != nil {
+			return proof, fmt.Errorf("reverter: revert %s: %w", holdID, err)
+		}
+		return proof, nil
+	}
 
 	outcome := OutcomeReverted
 	switch {

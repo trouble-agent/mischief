@@ -90,6 +90,16 @@ func TestRevertAllFailureProofsContinue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("arm bad: %v", err)
 	}
+	// PROF-002: both holds must be landed to exercise the revert measurement.
+	// An unlanded hold has no fault to undo and now grades not_landed without
+	// running its inverse, so arming alone no longer reaches the good/bad split
+	// this test pins.
+	if err := lf.Land(idGood); err != nil {
+		t.Fatalf("land good: %v", err)
+	}
+	if err := lf.Land(idBad); err != nil {
+		t.Fatalf("land bad: %v", err)
+	}
 	// The bad hold's backup EXISTED at arm (DF-23's probe requires it) and
 	// is sabotaged afterwards: its revert measurably fails (the live file
 	// keeps its faulted bytes).

@@ -70,6 +70,16 @@ func TestStatusJSONSurface(t *testing.T) {
 		t.Fatalf("arm output does not start with the hold id: %q", out)
 	}
 	holdID := fields[1]
+	// PROF-002: land the fault (the documented loop is arm → LAND → hold →
+	// revert). arm is write-ahead only, so without this the hold records no
+	// injection and revert --hold below would correctly grade not_landed
+	// (exit 3) instead of the measured revert this surface test asserts.
+	// Landing does not change the hold's status: it stays `armed`.
+	if code, lout := captureStdout(t, func() int {
+		return run([]string{"land", "--hold", holdID, "--dir", dir})
+	}); code != 0 {
+		t.Fatalf("land: exit %d, want 0\n%s", code, lout)
+	}
 
 	code, out = captureStdout(t, func() int { return run([]string{"status", "--json", "--dir", dir}) })
 	if code != 0 {

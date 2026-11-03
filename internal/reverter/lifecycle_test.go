@@ -424,8 +424,17 @@ func TestRevertAllUnderTwoSecondsWithProofs(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, pr := range proofs {
-		if pr.Outcome != OutcomeReverted {
-			t.Errorf("proof for %s: outcome %s, want reverted (%s)", pr.FaultID, pr.Outcome, pr.Detail)
+		// PROF-002: the legacy hold was armed by a previous boot and carries
+		// no land record (legacy journals predate it), so it grades
+		// not_landed — the kill switch still runs its inverse for cleanup, but
+		// the proof must not claim a fault was survived. The five holds armed
+		// and landed above keep the reverted expectation.
+		want := OutcomeReverted
+		if pr.FaultID == "P-ALL-LEGACY" {
+			want = OutcomeNotLanded
+		}
+		if pr.Outcome != want {
+			t.Errorf("proof for %s: outcome %s, want %s (%s)", pr.FaultID, pr.Outcome, want, pr.Detail)
 		}
 		if pr.Role != RoleKillSwitch || pr.Reason != "kill_switch" {
 			t.Errorf("proof for %s: role=%s reason=%s", pr.FaultID, pr.Role, pr.Reason)

@@ -97,6 +97,13 @@ func TestArmLegacyKindNormalizesBeforePreOpenGate(t *testing.T) {
 	if err := os.WriteFile(target, []byte(faulted), 0o644); err != nil {
 		t.Fatalf("land fault: %v", err)
 	}
+	// PROF-002: record the land. Applying the fault out-of-band is not enough —
+	// without a landed record the journal cannot tell this from an arm that
+	// never injected anything, and the proof now grades not_landed. A real
+	// injector does both: apply the fault, then record that it landed.
+	if n := landArmedHolds(t, runDir); n != 1 {
+		t.Fatalf("landed %d holds, want 1", n)
+	}
 	code, out = captureStdout(t, func() int { return run([]string{"revert", "--all", "--dir", runDir}) })
 	if code != 0 || !strings.Contains(out, "kill switch: 1 holds reverted") {
 		t.Fatalf("revert --all after legacy arm: exit %d out=%q, want 0 + 1 reverted", code, out)

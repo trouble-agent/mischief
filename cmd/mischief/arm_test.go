@@ -203,6 +203,13 @@ func TestArmToServeRevertAtTTL(t *testing.T) {
 	}
 	// Run the serve verb's daemon loop for real: cancel after one heartbeat
 	// (HeartbeatInterval = 5s) — the sweep reverts the expired hold.
+	// PROF-002: the fault is landed here first. Arming alone means nothing was
+	// injected, and the owner's TTL revert would correctly grade not_landed
+	// instead of proving the reverted path. Landing is what a real injector
+	// records after applying the fault.
+	if n := landArmedHolds(t, dir); n != 1 {
+		t.Fatalf("landed %d holds, want 1", n)
+	}
 	d, err := daemon.New(dir)
 	if err != nil {
 		t.Fatalf("daemon new: %v", err)
