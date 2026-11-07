@@ -598,11 +598,35 @@ func cmdServe(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	fmt.Printf("mischiefd: run_dir=%s boot=%s health=%s\n", *dir, "folding", filepath.Join(*dir, daemon.HealthFileName))
+	// Metrics surface (MISCHIEF-OPS-001): a separately bound listener,
+	// because this daemon deliberately serves no HTTP on its health path.
+	// A bind failure is LOGGED and never stops containment; "off" disables.
+	if addr := metricsAddr(); addr != "" {
+		go func() {
+			if err := d.Metrics.Serve(ctx, addr); err != nil && ctx.Err() == nil {
+				fmt.Fprintln(os.Stderr, "serve: metrics:", err)
+			}
+		}()
+		fmt.Printf("mischiefd: metrics=http://%s/metrics\n", addr)
+	}
 	if err := d.Run(ctx); err != nil && err != context.Canceled {
 		fmt.Fprintln(os.Stderr, "serve:", err)
 		return 1
 	}
 	return 0
+}
+
+// metricsAddr resolves the metrics listener address: MISCHIEFD_METRICS_ADDR
+// when set, the loopback default otherwise, and "" (disabled) for "off".
+func metricsAddr() string {
+	addr := strings.TrimSpace(os.Getenv(daemon.MetricsAddrEnv))
+	switch addr {
+	case "":
+		return daemon.DefaultMetricsAddr
+	case "off", "disabled":
+		return ""
+	}
+	return addr
 }
 
 // ── shared helpers ───────────────────────────────────────────────────────────

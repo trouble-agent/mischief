@@ -100,6 +100,10 @@ type Daemon struct {
 	Dir string
 	// Now is the clock seam (tests inject).
 	Now func() time.Time
+	// Metrics is the daemon's Prometheus counter set (MISCHIEF-OPS-001).
+	// Every method on it is nil-safe, so a Daemon built without one (a
+	// test literal) still runs; the serve path wires a real one.
+	Metrics *Metrics
 
 	mu      sync.Mutex
 	lf      *reverter.Lifecycle
@@ -128,7 +132,7 @@ func New(dir string) (*Daemon, error) {
 	if store == nil {
 		return nil, err
 	}
-	d := &Daemon{Dir: dir, Now: time.Now, lf: reverter.New(store), store: store, started: time.Now(), daemonBoot: daemonBootID()}
+	d := &Daemon{Dir: dir, Now: time.Now, Metrics: NewMetrics(), lf: reverter.New(store), store: store, started: time.Now(), daemonBoot: daemonBootID()}
 	if err != nil {
 		d.refoldErr = err
 	}
@@ -159,6 +163,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 				// sees the corruption and the process survives it. Any
 				// other error still exits: only the re-fold is survivable.
 				if isRefoldErr(err) {
+					d.Metrics.IncError("refold")
 					d.setRefoldErr(err)
 					// MISCHIEF-DF-39-R2: the beat must still PUBLISH. Skipping
 					// writeHealth here leaves the last good document standing
@@ -171,9 +176,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 					}
 					continue
 				}
+				d.Metrics.IncError("revert")
 				return err
 			}
+			d.Metrics.IncCycle()
 			if err := d.writeHealth(); err != nil {
+				d.Metrics.IncError("health_write")
 				return err
 			}
 		}
@@ -241,11 +249,24 @@ func (d *Daemon) revertExpired() error {
 		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
 			continue
 		}
-		if _, err := d.lf.Revert(context.Background(), h.HoldID, "ttl_expiry", reverter.RoleOwner); err != nil {
+		attempt := time.Now()
+		pf, err := d.lf.Revert(context.Background(), h.HoldID, "ttl_expiry", reverter.RoleOwner)
+		// The metric records the MEASURED attempt, not an intention: the
+		// journal's Outcome is the closed vocabulary a monitor alerts on.
+		// An attempt that produced no proof at all (the hold vanished
+		// between snapshot and revert) is labelled no_hold rather than
+		// minting an empty label value.
+		outcome := string(pf.Outcome)
+		if outcome == "" {
+			outcome = "no_hold"
+		}
+		d.Metrics.ObserveRevert(time.Since(attempt), outcome)
+		if err != nil {
 			// a hold that disappeared between snapshot and revert is
 			// reported, not fatal; a proof-write failure IS fatal (the
 			// journal is the evidence contract).
 			if err != reverter.ErrNoHold {
+				d.Metrics.IncError("revert")
 				return fmt.Errorf("daemon: ttl revert %s: %w", h.HoldID, err)
 			}
 		}
