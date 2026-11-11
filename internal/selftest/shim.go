@@ -13,14 +13,12 @@ import (
 // ── S-001: LD_PRELOAD shim write-EIO ────────────────────────────────────────
 //
 // Land: compile the generated anchored shim, arm the rule on a scratch
-// target, run the control child (write lands, counter stays zero), run
-// the faulted child under the shim env, and prove the landing from the
-// shim's OWN counter file (backend_signal.ArmShim/Prove — the descriptor's
-// landed_proof.kind shim-counter). Inverse: DetachShim — the fault env is
-// removed and the NEXT write to the path is proven to succeed (the
-// descriptor's verify). Pre/post: the scratch pair {target, unaffected}
-// byte-compared — a failed detach leaves the target empty (the EIO
-// emptied it via the writer's own truncate) and the compare drifts.
+// target, run the control child, then run the faulted child under the shim
+// env. The shim counter is injector-owned diagnostic evidence only. The
+// parent independently reads the target and unaffected files after child
+// exit; target-empty plus unaffected-non-empty is the landing witness.
+// Inverse: DetachShim — the fault env is removed and the NEXT write to the
+// path is proven to succeed. Pre/post: the scratch pair is byte-compared.
 
 type shimLandable struct {
 	dir    string
@@ -89,7 +87,7 @@ func (s *shimLandable) prepare() ([]byte, error) {
 
 	// control run (no fault env): the target must hold the written bytes
 	// and the counter must NOT exist — the control pins the discrimination
-	// the landed-proof leans on.
+	// used by the independent filesystem witness.
 	if b, err := exec.Command(s.victim, s.target).CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("control run: %v: %s", err, trimOut(b))
 	}
@@ -112,22 +110,30 @@ func (s *shimLandable) land() landOutcome {
 	if b, err := faulted.CombinedOutput(); err != nil {
 		return bad("faulted run failed: %v: %s", err, trimOut(b))
 	}
-	res := s.arm.Prove()
-	if !res.Landed() {
-		return bad("%s", res.String())
+
+	// Prove() exposes the shim's counter as a diagnostic hint only. The
+	// independent witness is collected here by the parent process: it reads
+	// the target and unaffected files after the child exits. The target is
+	// truncated by open(2), but remains empty only when the injected write
+	// was refused; the unaffected write must still have landed.
+	cb, err := os.ReadFile(s.target)
+	if err != nil {
+		return bad("external target observation failed: %v", err)
 	}
-	// out-of-band confirmation, filesystem side: the anchored write was
-	// really refused — the faulted child truncated the target on open and
-	// its write never landed, so the file is empty right now.
-	if cb, err := os.ReadFile(s.target); err != nil || len(cb) != 0 {
-		return bad("counter fired but the target holds %d bytes — the EIO did not actually block the write", len(cb))
+	if len(cb) != 0 {
+		return bad("external target observation found %d bytes — the EIO did not block the write", len(cb))
 	}
-	// the unaffected path must survive the fault (the anchored rule's
-	// whole point)
-	if ob, err := os.ReadFile(s.other); err != nil || len(ob) == 0 {
-		return bad("unaffected path did not survive the fault (got %v, err %v)", ob, err)
+	ob, err := os.ReadFile(s.other)
+	if err != nil || len(ob) == 0 {
+		return bad("external unaffected-path observation failed (got %v, err %v)", ob, err)
 	}
-	return ok(res.String())
+
+	hint := s.arm.Prove()
+	proof := fmt.Sprintf("filesystem-observation: parent read %q empty after faulted child; %q contains %d bytes", s.target, s.other, len(ob))
+	return fromSignalOutcome(backend_signal.NewLandedWithWitness(
+		"S-001", "shim", proof, hint.Receipt,
+		"parent filesystem read after child exit (target empty; unaffected path non-empty)",
+	))
 }
 
 func (s *shimLandable) inverse() landOutcome {

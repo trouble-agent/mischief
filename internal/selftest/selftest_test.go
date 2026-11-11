@@ -108,6 +108,28 @@ func runnerWith(l *stubLandable) runner {
 	}
 }
 
+// TestPrimitiveWithoutIndependentWitnessIsInconclusive: injector-only
+// evidence cannot produce a passing result.
+func TestPrimitiveWithoutIndependentWitnessIsInconclusive(t *testing.T) {
+	l := &stubLandable{snap: []byte("pre")}
+	l.landOut = landOutcome{inconclusive: true, err: "missing independent witness"}
+	res := runnerWith(l).RunOne("Z-001")
+	if res.State != "skip" || !strings.Contains(res.Reason, "independent witness") {
+		t.Fatalf("missing-witness primitive graded %q (%s), want named skip", res.State, res.Reason)
+	}
+}
+
+// TestNeverFaultedTargetIsNotLanded: the runner must not treat a non-landed
+// target as a passing fault proof.
+func TestNeverFaultedTargetIsNotLanded(t *testing.T) {
+	l := &stubLandable{snap: []byte("healthy")}
+	l.landOut = bad("not_landed: target was never faulted")
+	res := runnerWith(l).RunOne("Z-001")
+	if res.State == "pass" || !strings.Contains(res.Reason, "not_landed") {
+		t.Fatalf("never-faulted target graded %q (%s), want non-pass", res.State, res.Reason)
+	}
+}
+
 // TestLandDidNotProveIsFail: a landing whose proof never fires FAILS —
 // it is never a pass (AC-3).
 func TestLandDidNotProveIsFail(t *testing.T) {
