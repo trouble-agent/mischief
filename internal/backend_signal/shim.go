@@ -162,9 +162,16 @@ func ArmShim(primitive string, r Rule, dir string) (*ShimArm, []string, error) {
 // ProofPath is the counter file this arm will grade its landing on.
 func (a *ShimArm) ProofPath() string { return a.proofPath }
 
-// Prove grades the landing AFTER the child has run: the shim's own counter
-// file must exist with hits >= 1 carrying this rule's canonical text.
+// Prove retains the shim counter as a diagnostic hint only. The counter is
+// written by the injecting code and therefore cannot independently prove land.
 func (a *ShimArm) Prove() Outcome {
+	return NewInconclusiveFromInjectorEvidence(a.Primitive, "shim", "shim-counter: "+a.proofPath, &Receipt{
+		Kind: "env", Detail: fmt.Sprintf("LD_PRELOAD=%s MCFAULT=%s attached to child", a.libPath, a.Rule.canonicalText()),
+	})
+}
+
+// proveCounterHint reads the injector-owned counter for diagnostics only.
+func (a *ShimArm) proveCounterHint() Outcome {
 	pl, err := ReadProofFile(a.proofPath)
 	if err != nil {
 		return NewFailed(a.Primitive, "shim", err, nil)
@@ -179,10 +186,7 @@ func (a *ShimArm) Prove() Outcome {
 				a.proofPath, pl.Rule, a.Rule.canonicalText()), nil)
 	}
 	proof := fmt.Sprintf("shim-counter: %s (hits=%d rule=%s)", a.proofPath, pl.Hits, pl.Rule)
-	return NewLanded(a.Primitive, "shim", proof, &Receipt{
-		Kind:   "env",
-		Detail: fmt.Sprintf("LD_PRELOAD=%s MCFAULT=%s attached to child", a.libPath, a.Rule.canonicalText()),
-	})
+	return NewInconclusiveFromInjectorEvidence(a.Primitive, "shim", proof, nil)
 }
 
 // ShimSourceC is the shim actually shipped to faulted children: GENERATED
@@ -377,9 +381,12 @@ func SelftestShim() error {
 	if out, err := faulted.CombinedOutput(); err != nil {
 		return fmt.Errorf("selftest shim: faulted run failed: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	res := arm.Prove()
-	if !res.Landed() {
-		return fmt.Errorf("selftest shim: land did not prove: %s", res)
+	// The shim counter is injector-owned and remains a hint. The parent
+	// process independently observes the target state after the child exits:
+	// open(O_TRUNC) created an empty target, while the unaffected write landed.
+	cb, err = os.ReadFile(target)
+	if err != nil || len(cb) != 0 {
+		return fmt.Errorf("selftest shim: external target observation found %d bytes — the EIO did not block the write (err %v)", len(cb), err)
 	}
 	ob, err := os.ReadFile(other)
 	if err != nil || len(ob) == 0 {

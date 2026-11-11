@@ -1,5 +1,7 @@
 package backend_signal
 
+// ch:trace row=PROF-001 spec=docs/prd/mischief-testing-profiles.md test=internal/backend_signal/backend_signal_test.go::TestShimProofNeverFaultedTargetIsInconclusive evidence=internal/backend_signal/shim.go witness=filesystem:target-observation verdict=none:foreman-runs-judge commit=HEAD memory=none:tick-local
+
 import (
 	"errors"
 	"os"
@@ -523,7 +525,36 @@ func TestApplyPrlimitNoOpAndRefusalArms(t *testing.T) {
 	}
 }
 
-// ---- shim backend: live child, control vs faulted, no_op arm ----
+// ---- shim backend: live child, control vs faulted, independent witness ----
+
+func TestShimProofNeverFaultedTargetIsInconclusive(t *testing.T) {
+	dir := t.TempDir()
+	r, err := ParseRule("write:*:never-faulted.tmp:EIO")
+	if err != nil {
+		t.Fatal(err)
+	}
+	arm, _, err := ArmShim("S-001", r, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "never-faulted.tmp")
+	if err := os.WriteFile(target, []byte("healthy\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(arm.ProofPath(), []byte("hits=1 rule="+r.canonicalText()+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := arm.Prove()
+	if out.Status != StatusInconclusive {
+		t.Fatalf("never-faulted target status=%q, want inconclusive", out.Status)
+	}
+	if !strings.Contains(out.NoOpReason, "independent witness") {
+		t.Fatalf("inconclusive result does not name missing witness: %q", out.NoOpReason)
+	}
+	if out.Landed() {
+		t.Fatal("never-faulted target produced a passing land proof")
+	}
+}
 
 func TestShimArmProveControlVsFaulted(t *testing.T) {
 	dir := t.TempDir()
@@ -564,8 +595,8 @@ func TestShimArmProveControlVsFaulted(t *testing.T) {
 		t.Errorf("control Prove = (%s) exit=%d — want no_op/1/named", ctl, ctl.ExitCode())
 	}
 
-	// FAULTED run: the write fails EIO, the unaffected path survives, the
-	// counter exists -> Prove grades landed.
+	// FAULTED run: the write fails EIO, the unaffected path survives, and
+	// Prove remains inconclusive because the counter is injector-owned.
 	faulted := exec.Command(victim, target)
 	faulted.Env = append(os.Environ(), env...)
 	outB, err := faulted.CombinedOutput()
@@ -583,11 +614,11 @@ func TestShimArmProveControlVsFaulted(t *testing.T) {
 		t.Errorf("target file is non-empty after the faulted run (%d bytes) — the fault did not bite", len(b))
 	}
 	res := arm.Prove()
-	if !res.Landed() {
-		t.Fatalf("faulted run did not prove: %s", res)
+	if res.Landed() || res.Status != StatusInconclusive {
+		t.Fatalf("faulted run status=%q, want inconclusive without independent witness: %s", res.Status, res)
 	}
-	if !strings.Contains(res.LandedProof, "hits=1") {
-		t.Errorf("proof does not name the counter: %q", res.LandedProof)
+	if !strings.Contains(res.NoOpReason, "independent witness") {
+		t.Errorf("inconclusive result does not name missing witness: %q", res.NoOpReason)
 	}
 	// the receipt is the env attachment, not the landing
 	if res.Receipt == nil || res.Receipt.Kind != "env" {
@@ -625,13 +656,14 @@ func TestShimBudgetStopsCounting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("faulted run: %v: %s", err, outB)
 	}
-	// budget 1: exactly one hit lands
+	// budget 1: exactly one hit is recorded, but the injector counter remains
+	// a hint and cannot independently prove landing.
 	res := arm.Prove()
-	if !res.Landed() {
-		t.Fatalf("budgeted fault did not prove: %s", res)
+	if res.Landed() || res.Status != StatusInconclusive {
+		t.Fatalf("budgeted fault status=%q, want inconclusive without independent witness: %s", res.Status, res)
 	}
-	if !strings.Contains(res.LandedProof, "hits=1") {
-		t.Errorf("budget 1 produced hits != 1: %q", res.LandedProof)
+	if !strings.Contains(res.NoOpReason, "independent witness") {
+		t.Errorf("inconclusive result does not name missing witness: %q", res.NoOpReason)
 	}
 	// the SECOND write (the unaffected path) must have succeeded: the
 	// budget stopped the rule after one hit

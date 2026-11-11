@@ -2,18 +2,18 @@ package backend_signal
 
 import "fmt"
 
-// Status is the two-value landing state of an Outcome. The vocabulary is
-// deliberately not the verdict vocabulary: SPEC-05 grades verdicts; a
-// backend only ever reports whether its landed-proof fired.
+// Status is the landing state of an Outcome. The vocabulary is deliberately
+// not the verdict vocabulary: SPEC-05 grades verdicts; a backend reports
+// whether an independent landed-proof fired.
 type Status string
 
 const (
-	// StatusLanded: the landed-proof fired (measured, independent of the
-	// fault's own exit code — AC-13).
+	// StatusLanded: an independent landed-proof fired.
 	StatusLanded Status = "landed"
-	// StatusNoOp: the fault was armed but no landed-proof fired. Per AC-3
-	// this FAILS the run (ExitCode 1); it is never a pass.
+	// StatusNoOp: the fault was armed but no landed-proof fired.
 	StatusNoOp Status = "no_op"
+	// StatusInconclusive: only injector-owned evidence was available.
+	StatusInconclusive Status = "inconclusive"
 )
 
 // Receipt is the measured evidence that the fault mechanism was delivered:
@@ -51,12 +51,38 @@ type Outcome struct {
 	Err error
 }
 
-// NewLanded records a landed application with its measured proof.
+// NewLanded records a landed application with a measured proof. Callers must
+// supply an independent observation; actuator-owned receipts are not proof.
 func NewLanded(primitive, backend, proof string, rc *Receipt) Outcome {
 	return Outcome{
 		Primitive: primitive, Backend: backend, Status: StatusLanded,
 		Receipt: rc, LandedProof: proof,
 	}
+}
+
+// NewInconclusive records evidence that cannot establish landing because the
+// primitive has no independent witness.
+func NewInconclusive(primitive, backend, reason string, rc *Receipt) Outcome {
+	if reason == "" {
+		reason = "missing independent witness"
+	}
+	return Outcome{Primitive: primitive, Backend: backend, Status: StatusInconclusive, Receipt: rc, NoOpReason: reason}
+}
+
+// Inconclusive reports that the landing could not be independently witnessed.
+func (o Outcome) Inconclusive() bool { return o.Status == StatusInconclusive }
+
+// NewLandedWithWitness records a pass only when an external witness is named.
+func NewLandedWithWitness(primitive, backend, proof string, rc *Receipt, witness string) Outcome {
+	if witness == "" {
+		return NewInconclusive(primitive, backend, "missing independent witness", rc)
+	}
+	return NewLanded(primitive, backend, proof+" [witness: "+witness+"]", rc)
+}
+
+// NewInconclusiveFromInjectorEvidence refuses evidence produced by the injector.
+func NewInconclusiveFromInjectorEvidence(primitive, backend, proof string, rc *Receipt) Outcome {
+	return NewInconclusive(primitive, backend, "missing independent witness: injector-owned proof is only a hint ("+proof+")", rc)
 }
 
 // NewNoOp records an armed-but-not-landed application. An empty reason is a
@@ -98,6 +124,8 @@ func (o Outcome) String() string {
 	switch o.Status {
 	case StatusLanded:
 		return fmt.Sprintf("%s/%s: landed (%s)", o.Backend, o.Primitive, o.LandedProof)
+	case StatusInconclusive:
+		return fmt.Sprintf("%s/%s: inconclusive (%s)", o.Backend, o.Primitive, o.NoOpReason)
 	default:
 		detail := o.NoOpReason
 		if o.Err != nil {

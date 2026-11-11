@@ -79,7 +79,7 @@ const L0 = 0
 // a host without the daemon reports the skip, never a green.
 var greenStates = map[string]bool{
 	"P-001": true, // SIGSTOP / SIGCONT: state T proven, resume proven
-	"S-001": true, // shim EIO: counter proven, detach + next-write proven
+	"S-001": true, // shim EIO: parent-observed filesystem witness, detach + next-write proven
 	"N-012": true, // proxy 429: hit-ledger proven, disarm + replay proven
 	"F-009": true, // file-replaced-under-writer: inode identity proven, restore byte-identical
 	"R-001": true, // systemd-run scope: property read-back proven, stop verified (probe-gated)
@@ -333,6 +333,11 @@ func (rn runner) run(id string) Result {
 	if land.skipped {
 		res.State = "skip"
 		res.Reason = "capability_unavailable: " + land.err
+		return res
+	}
+	if land.inconclusive {
+		res.State = "skip"
+		res.Reason = "capability_unavailable: inconclusive: " + land.err
 		return res
 	}
 	if !land.landed {

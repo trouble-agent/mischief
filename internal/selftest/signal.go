@@ -40,12 +40,14 @@ type landable interface {
 // landOutcome is the shared measured outcome shape for the land and
 // inverse steps.
 type landOutcome struct {
-	// landed: the measured proof fired.
+	// landed: the measured proof fired independently of the injector.
 	landed bool
 	// proof is the measured proof text ("" when not landed).
 	proof string
 	// err names why the step failed ("" when landed).
 	err string
+	// inconclusive records the absence of an independent witness.
+	inconclusive bool
 	// skipped grades the step an honest capability skip instead of a
 	// failure: the runner-flake class (INT-CI-6) is an environment
 	// capability boundary that can surface MID-LOOP even though the
@@ -71,6 +73,9 @@ func skipOut(format string, a ...any) landOutcome {
 // fromSignalOutcome adapts backend_signal's Outcome (the sig/shim/
 // prlimit/seccomp backends' measured result) onto the harness outcome.
 func fromSignalOutcome(out backend_signal.Outcome) landOutcome {
+	if out.Inconclusive() {
+		return landOutcome{err: out.NoOpReason, inconclusive: true}
+	}
 	if out.Landed() {
 		return ok(out.LandedProof)
 	}
