@@ -1,0 +1,57 @@
+Release readiness evidence
+Tick: mischief-chaos-releng-2026-11-02-00-47-05
+Target: trouble-agent/mischief
+Canonical checkout: /home/kara/mischief
+Remote: git@github.com:trouble-agent/mischief.git
+Candidate: main / origin/main
+Candidate SHA: 4f55b176b5b11578c61ab6c4fb561970f2cde76e
+Previous release: v0.1.0 (remote annotated tag; published GitHub Release)
+Proposed next version: v0.2.0 (minor; user-facing arm feature is in the range despite no feat-prefixed subject)
+
+Git identity and parity
+- git rev-parse HEAD = 4f55b176b5b11578c61ab6c4fb561970f2cde76e
+- git rev-parse origin/main = 4f55b176b5b11578c61ab6c4fb561970f2cde76e
+- git ls-remote origin refs/heads/main = 4f55b176b5b11578c61ab6c4fb561970f2cde76e
+- working tree tracked status: clean
+- remote v0.2.0 tag: absent
+
+Commit census v0.1.0..HEAD
+- total commits: 500
+- feat: 0
+- fix: 24
+- perf: 0
+- chore: 8
+- docs: 31
+- refactor: 0
+- test: 1
+- other: 436
+- breaking footer or typed ! marker: 0
+- semver decision: conservative minor v0.2.0 because the release delta contains the user-facing mischief arm command feature; no major signal
+
+Hosted CI
+- exact candidate run: 41372770720
+- URL: https://github.com/trouble-agent/mischief/actions/runs/41372770720
+- conclusion: success
+- Build & Test (1.24): success
+- build, vet, docs twins, test, selftest, battery, per-arch shim smoke, shim drift, and row-status drift: all success
+- no tag-SHA CI exists because v0.2.0 has not been authorized or created
+
+Release tooling and build
+- repository-owned tooling: docs/RELEASE.md, Makefile release-dry/dist/tags, .goreleaser.yml, .github/workflows/release.yml
+- make release-dry: exit 0; GoReleaser configuration validated
+- documented cut path: annotated v* tag -> tag-triggered CI/release workflow -> draft GitHub Release for review
+- no artifact mutation performed
+
+GitReins
+- candidate-bound verdict: UNVERIFIED
+- reason: candidate tree has no .gitreins/config.yaml and no verdict bound to 4f55b176b5b11578c61ab6c4fb561970f2cde76e
+- local verdict history is mixed and is not substituted for candidate-bound evidence
+
+Dogfood/QA
+- latest mischief-chaos dogfood evidence: PROMISING-BUT-ROUGH
+- selftest/battery were load-gated and isolated install/release evidence was skipped or blocked; no fresh-machine release PASS
+- active P1 blockers: QA-MISCHIEF-002-R2 failed recurrence; QA-MISCHIEF-007 pending recurrence; QA-MISCHIEF-CHAOS-1 pending QA harness path refusal
+- installed binary remains v0.1.0
+
+Decision
+NO-GO. Do not create or move v0.2.0. The current scheduler tick is a readiness sweep, not cut authorization. The open P1 QA rows, candidate-bound GitReins gap, and absent fresh-machine release PASS block the cut. Existing rolling board row RELEASE-013 is refreshed by this evidence; no duplicate RELEASE-* row is filed.

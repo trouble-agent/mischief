@@ -1,0 +1,60 @@
+{
+  "tick": "mischief-foreman-2026-11-12-04-30-32",
+  "project": "mischief",
+  "workdir": "/home/kara/mischief",
+  "base_commit": "eb19dc9d0d1aa17f6914bab63adbdc3e5449abb0",
+  "base_ref": "origin/main",
+  "wave_budget": 8,
+  "worker_model": "openai/gpt-6.1-terra",
+  "worker_provider": "xkiro",
+  "created_at": "2026-11-12T04:30:32Z",
+  "tasks": [
+    {
+      "id": "PROF-003",
+      "title": "mischief profile run executor",
+      "priority": "P0",
+      "worktree": "/home/kara/worktrees/mischief-PROF-003",
+      "branch": "wt/PROF-003",
+      "depends_on": ["PROF-001", "PROF-002"],
+      "status": "in_progress"
+    },
+    {
+      "id": "PROF-010",
+      "title": "S-010 fsync-lies primitive",
+      "priority": "P1",
+      "worktree": "/home/kara/worktrees/mischief-PROF-010",
+      "branch": "wt/PROF-010",
+      "depends_on": ["PROF-001"],
+      "status": "in_progress"
+    },
+    {
+      "id": "MISCHIEF-DF-46",
+      "title": "per-cell timing in battery artefacts",
+      "priority": "P4",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-46",
+      "branch": "wt/MISCHIEF-DF-46",
+      "depends_on": [],
+      "status": "in_progress"
+    },
+    {
+      "id": "QA-MISCHIEF-FOREMAN-1",
+      "title": "CI build battery under act",
+      "priority": "P1",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-FOREMAN-1",
+      "branch": "wt/QA-MISCHIEF-FOREMAN-1",
+      "depends_on": [],
+      "status": "in_progress"
+    },
+    {
+      "id": "QA-MISCHIEF-FOREMAN-2",
+      "title": "v0.1.0 builds under go.mod floor toolchain",
+      "priority": "P2",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-FOREMAN-2",
+      "branch": "wt/QA-MISCHIEF-FOREMAN-2",
+      "depends_on": [],
+      "status": "in_progress"
+    }
+  ],
+  "mutual_independence": "verified: no depends_on edges between the 5 picked tasks; disjoint file sets (profile executor new surface, S-010 sim surface, battery surface, .github/workflows/ci.yml, go.mod/toolchain)",
+  "note": "WAVE_BUDGET=8 respected (5 dispatched <= 8). Excluded pending rows: RELEASE-013 (blocked on failed QA-MISCHIEF-002-R2 / NO-GO), PROF-011/PROF-012/PROF-013 (overlap sim.go blast radius with PROF-010 -> serial later), QA-MISCHIEF-FOREMAN-3 (bunker-qa harness concern, not product worktree actionable), MISCHIEF-DF-46 included (P4, disjoint battery surface). Failed rows (not dispatched): MISCHIEF-DF-59, QA-MISCHIEF-002-R2, QA-MISCHIEF-008, MISCHIEF-DF-69/70/71."
+}
