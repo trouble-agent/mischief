@@ -105,6 +105,8 @@ func buildLandable(id, dir string) landable {
 		return &proxyLandable{}
 	case "F-009":
 		return &fileReplaceLandable{dir: dir}
+	case "S-011":
+		return &tornWriteLandable{dir: dir, sector: defaultTornSectorSize}
 	case "F-008":
 		// the truncate-under-live-writer shape (MISCHIEF-DF-22): rootless
 		// on a scratch path is exactly the descriptor's tier L0 (copy),
