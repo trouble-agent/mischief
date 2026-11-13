@@ -1,0 +1,15 @@
+# process & signal layer
+id: P-020
+name: power-loss-instant
+what: SIGKILL a target at an exact deterministic operation point — crash recovery and durability
+params: {signal: SIGKILL, ordinal: int|seed, max_ordinal: int, step: str}
+landed_proof:
+  kind: external-process-exit
+  check: "external parent observes wait status SIGKILL and the configured step ordinal"
+inverse: {primitive: P-020, params: {action: none}, verify: "crashed target is gone; restart is owned by the caller"}
+capability: none
+tier: L1
+backend: sig
+maturity: L1-only
+selftest: unknown
+expect_when_healthy: "the target exits by SIGKILL at the configured acknowledgement ordinal; same seed reproduces the ordinal"

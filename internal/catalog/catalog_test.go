@@ -9,13 +9,13 @@ import (
 	"testing"
 )
 
-// corpusIDs are the 11 machine-readable examples shipped in catalog/faults.
+// corpusIDs are the 12 machine-readable examples shipped in catalog/faults.
 var corpusIDs = []string{
 	"C-009", "F-008", "F-009", "I-002", "N-001", "N-012",
-	"P-001", "R-001", "S-001", "S-004", "T-001",
+	"P-001", "P-020", "R-001", "S-001", "S-004", "T-001",
 }
 
-// TestLoadDefaultCorpus: all 11 existing YAML examples must pass the loader.
+// TestLoadDefaultCorpus: all shipped YAML examples must pass the loader.
 func TestLoadDefaultCorpus(t *testing.T) {
 	cat, err := LoadDefault()
 	if err != nil {
