@@ -67,6 +67,10 @@ type ArtefactCell struct {
 	Detection DetectionEntry `json:"detection"`
 	// Recovery is the recovery axis.
 	Recovery string `json:"recovery"`
+	// Duration is the measured wall time of this cell's execute loop.
+	Duration time.Duration `json:"duration"`
+	// Elapsed is the measured wall time from run start through this cell.
+	Elapsed time.Duration `json:"elapsed"`
 	// Reason is the deciding rule text.
 	Reason string `json:"reason"`
 }
@@ -93,6 +97,8 @@ func BuildArtefact(r *RunResult, runID, catalogVersion string, now int64) *Artef
 			Verdict:    c.Verdict.String(),
 			Detection:  c.Detection,
 			Recovery:   c.Recovery,
+			Duration:   c.Duration,
+			Elapsed:    c.Elapsed,
 			Reason:     c.Reason,
 		})
 	}
@@ -159,8 +165,8 @@ func renderMarkdown(a *Artefact) string {
 	}
 
 	b.WriteString("## Matrix\n\n")
-	b.WriteString("| cell | project | fault | legacy cell | verdict | detection | recovery |\n")
-	b.WriteString("|---|---|---|---|---|---|---|\n")
+	b.WriteString("| cell | project | fault | legacy cell | verdict | timing | detection | recovery |\n")
+	b.WriteString("|---|---|---|---|---|---|---|---|\n")
 	for _, c := range a.Cells {
 		det := c.Detection.State
 		switch {
@@ -173,10 +179,10 @@ func renderMarkdown(a *Artefact) string {
 			// the table line, full in the JSON
 			det = fmt.Sprintf("%s (%s)", c.Detection.State, truncate(c.Detection.Reason, 80))
 		}
-		fmt.Fprintf(&b, "| `%s` | %s | `%s` | %s | %s | %s | %s |\n",
+		fmt.Fprintf(&b, "| `%s` | %s | `%s` | %s | %s | `%s` / `%s` | %s | %s |\n",
 			c.CellID, c.Project, c.Fault,
 			legacyCellText(c.LegacyCell),
-			c.Verdict, det, c.Recovery)
+			c.Verdict, c.Duration, c.Elapsed, det, c.Recovery)
 	}
 	b.WriteString("\nDetection states: `detected` (observer named — the record appeared in-window) · `gap` (checked, absent) · `not_wired` (no detector on the cell — NOT measured) · `error` (the check itself failed). Only `detected` is a detection claim.\n")
 	return b.String()

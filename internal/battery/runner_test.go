@@ -396,6 +396,13 @@ func TestJournalCellDurationsRoundTrip(t *testing.T) {
 		if got != want {
 			t.Errorf("journal record %d duration = %s, want %s", i, got, want)
 		}
+		elapsed, err := time.ParseDuration(rec.Fields["elapsed"])
+		if err != nil {
+			t.Fatalf("journal record %d elapsed %q: %v", i, rec.Fields["elapsed"], err)
+		}
+		if elapsed < want {
+			t.Errorf("journal record %d elapsed = %s, want at least %s", i, elapsed, want)
+		}
 		seen++
 	}
 	if seen != 2 {
@@ -469,8 +476,12 @@ func TestArtefactRoundTripFile(t *testing.T) {
 	if filepath.Base(jp) != "matrix.json" {
 		t.Errorf("artefact path %q", jp)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "matrix.md")); err != nil {
-		t.Errorf("markdown half missing: %v", err)
+	md, err := os.ReadFile(filepath.Join(dir, "matrix.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(md), "| timing |") {
+		t.Fatal("matrix markdown missing timing column")
 	}
 	b, err := os.ReadFile(jp)
 	if err != nil {
@@ -484,6 +495,53 @@ func TestArtefactRoundTripFile(t *testing.T) {
 	}
 	if !strings.Contains(string(b), notWired) {
 		t.Errorf("artefact missing the detection note (the AC-14 posture is stated once, honestly)")
+	}
+}
+
+// TestArtefactTimingRoundTrip proves that per-cell duration and elapsed
+// measurements survive into both machine-readable JSON and the Markdown table.
+func TestArtefactTimingRoundTrip(t *testing.T) {
+	rn := stubRunner(stubCat("P-001"), map[string]selftest.Result{"P-001": stubPass})
+	base := time.Unix(1700000000, 0)
+	clock := 0
+	rn.now = func() time.Time {
+		clock++
+		return base.Add(time.Duration(clock-1) * 100 * time.Millisecond)
+	}
+	res, err := rn.Run(&Matrix{Cells: []Cell{cell("c1", "P-001")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := BuildArtefact(res, "timed-run", "content-v1:test", 1700000000)
+	dir := t.TempDir()
+	jp, err := WriteArtefact(dir, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got Artefact
+	b, err := os.ReadFile(jp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Cells) != 1 {
+		t.Fatalf("JSON cells = %d, want 1", len(got.Cells))
+	}
+	wantDuration := 100 * time.Millisecond
+	if got.Cells[0].Duration != wantDuration {
+		t.Errorf("JSON cell duration = %s, want %s", got.Cells[0].Duration, wantDuration)
+	}
+	if got.Cells[0].Elapsed < wantDuration {
+		t.Errorf("JSON cell elapsed = %s, want at least %s", got.Cells[0].Elapsed, wantDuration)
+	}
+	md, err := os.ReadFile(filepath.Join(dir, "matrix.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(md), "`100ms` / `200ms`") {
+		t.Errorf("Markdown missing per-cell timing values:\n%s", md)
 	}
 }
 

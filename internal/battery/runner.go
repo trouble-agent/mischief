@@ -117,6 +117,8 @@ type CellResult struct {
 	Recovery string `json:"recovery"`
 	// Duration is the measured wall time of the cell's execute loop.
 	Duration time.Duration `json:"duration"`
+	// Elapsed is the measured wall time from the run start through this cell.
+	Elapsed time.Duration `json:"elapsed"`
 	// Timeline is the four-timing model stamped on the graded result.
 	Timeline verdict.Timeline `json:"timeline"`
 }
@@ -141,6 +143,10 @@ type RunResult struct {
 	// StartedAt / FinishedAt are unix seconds.
 	StartedAt  int64 `json:"started_at"`
 	FinishedAt int64 `json:"finished_at"`
+	// Duration is the measured wall time of the complete run.
+	Duration time.Duration `json:"duration"`
+	// Elapsed is the run wall time from the first clock sample through finish.
+	Elapsed time.Duration `json:"elapsed"`
 }
 
 // Counts renders the outcome census line.
@@ -429,11 +435,13 @@ func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 		}
 	}
 
-	res := &RunResult{Quick: m.Quick, Matrix: m, StartedAt: rn.now().Unix()}
+	started := rn.now()
+	res := &RunResult{Quick: m.Quick, Matrix: m, StartedAt: started.Unix()}
 	for _, c := range m.Cells {
-		start := rn.now()
+		cellStarted := rn.now()
 		st := rn.executeCell(c)
-		dur := rn.now().Sub(start)
+		finished := rn.now()
+		dur := finished.Sub(cellStarted)
 
 		cr := CellResult{
 			Cell:          c,
@@ -442,6 +450,7 @@ func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 			RevertProof:   st.RevertProof,
 			SkipReason:    st.Reason,
 			Duration:      dur,
+			Elapsed:       finished.Sub(started),
 		}
 		if d := rn.Cat.Get(c.Primitive); rn.Cat != nil && d != nil {
 			cr.FaultName = d.Name
@@ -477,7 +486,10 @@ func (rn *Runner) Run(m *Matrix) (*RunResult, error) {
 		}
 		res.Cells = append(res.Cells, cr)
 	}
-	res.FinishedAt = rn.now().Unix()
+	finished := rn.now()
+	res.FinishedAt = finished.Unix()
+	res.Duration = finished.Sub(started)
+	res.Elapsed = res.Duration
 	// The run id is a pure function of the finished result — the runner
 	// derives it once here so EVERY consumer (journal records, the CLI's
 	// verdict line, findings rows) reads the same value off the result
@@ -625,6 +637,15 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 	recs := make([]journal.Record, 0, 2*len(r.Cells)+3)
 	seq := 0
 	add := func(rec *journal.Record) {
+		if rec.Fields == nil {
+			rec.Fields = make(map[string]string, 2)
+		}
+		if _, ok := rec.Fields["duration"]; !ok {
+			rec.Fields["duration"] = r.Duration.String()
+		}
+		if _, ok := rec.Fields["elapsed"]; !ok {
+			rec.Fields["elapsed"] = r.Elapsed.String()
+		}
 		rec.RunID, rec.Seq, rec.TS = runID, seq, now
 		seq++
 		recs = append(recs, *rec)
@@ -639,6 +660,8 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 		"quick":    fmt.Sprintf("%t", r.Quick),
 		"cells":    strings.Join(cellIDs, ","),
 		"projects": strings.Join(r.Projects(), ","),
+		"duration": r.Duration.String(),
+		"elapsed":  r.Elapsed.String(),
 	}})
 
 	var graded []verdict.Result
@@ -647,13 +670,13 @@ func (r *RunResult) JournalRecords(runID string) []journal.Record {
 		if c.LandProof != "" {
 			add(&journal.Record{Type: journal.RecordFaultLanded, Fields: map[string]string{
 				"cell": c.Cell.ID, "primitive": c.Cell.Primitive, "proof": c.LandProof,
-				"duration": c.Duration.String(),
+				"duration": c.Duration.String(), "elapsed": c.Elapsed.String(),
 			}})
 		}
 		if c.RevertProof != "" {
 			add(&journal.Record{Type: journal.RecordFaultReverted, Fields: map[string]string{
 				"cell": c.Cell.ID, "primitive": c.Cell.Primitive, "proof": c.RevertProof,
-				"duration": c.Duration.String(),
+				"duration": c.Duration.String(), "elapsed": c.Elapsed.String(),
 			}})
 		}
 		graded = append(graded, verdict.Result{

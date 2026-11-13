@@ -97,6 +97,9 @@ func TestBatteryQuickLiveRunsAndEmitsArtefacts(t *testing.T) {
 	if !strings.Contains(out, "5 cells") {
 		t.Errorf("summary missing the cell count:\n%s", out)
 	}
+	if !strings.Contains(out, "duration=") || !strings.Contains(out, "elapsed=") {
+		t.Errorf("CLI cell output missing timing fields:\n%s", out)
+	}
 
 	// journal: every line reads back as a valid record
 	jb, err := os.ReadFile(filepath.Join(dir, "battery.jsonl"))
@@ -192,7 +195,7 @@ func TestBatteryAC9HopsCarryRunIDAndVerdict(t *testing.T) {
 	if line == "" {
 		t.Fatalf("no verdict line in the output:\n%s", out)
 	}
-	m := regexp.MustCompile(`^verdict: ([a-z_]+) \(run ([0-9a-f]{16})\)$`).FindStringSubmatch(line)
+	m := regexp.MustCompile(`^verdict: ([a-z_]+) \(run ([0-9a-f]{16}) elapsed=[^)]+\)$`).FindStringSubmatch(line)
 	if m == nil {
 		t.Fatalf("verdict line does not match the run-id + verdict shape: %q", line)
 	}
@@ -265,7 +268,7 @@ func TestBatteryAC9AdverseChainLive(t *testing.T) {
 	}
 
 	// The CLI hop.
-	m := regexp.MustCompile(`^verdict: ([a-z_]+) \(run ([0-9a-f]{16})\)$`).
+	m := regexp.MustCompile(`^verdict: ([a-z_]+) \(run ([0-9a-f]{16}) elapsed=[^)]+\)$`).
 		FindStringSubmatch(lastLinePrefixed(t, out, "verdict: "))
 	if m == nil {
 		t.Fatalf("verdict line does not match the run-id + verdict shape:\n%s", out)
