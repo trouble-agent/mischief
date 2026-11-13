@@ -1,0 +1,47 @@
+{
+  "tick": "mischief-foreman-2026-11-13-01-08-40",
+  "wave_id": "mischief-foreman-2026-11-13-01-08-40-w1",
+  "project": "mischief",
+  "workdir": "/home/kara/mischief",
+  "base_commit": "ad2ddc559fa9746291a90859d1b6c06e0b860963",
+  "base_ref": "origin/main",
+  "wave_budget": 7,
+  "worker_model": "openai/gpt-6.1-terra",
+  "worker_provider": "xkiro",
+  "status": "recovered",
+  "recovered_at": "2026-11-13T01:35:00-05:00",
+  "tasks": [
+    {
+      "id": "PROF-003",
+      "gitreins_task": "PROF-003-R2",
+      "worktree": "/home/kara/worktrees/mischief-PROF-003",
+      "branch": "wt/PROF-003",
+      "status": "preserved_uncommitted",
+      "outcome": "worker stalled; no commit; row remains open; GitReins task deleted"
+    },
+    {
+      "id": "PROF-010",
+      "gitreins_task": "PROF-010-R2",
+      "worktree": "/home/kara/worktrees/mischief-PROF-010",
+      "branch": "wt/PROF-010",
+      "status": "preserved_uncommitted",
+      "outcome": "worker stalled; no commit; row remains open; GitReins task deleted"
+    },
+    {
+      "id": "MISCHIEF-DF-46",
+      "gitreins_task": "MISCHIEF-DF-46-R2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-46",
+      "branch": "wt/MISCHIEF-DF-46",
+      "implementation_commit": "4cf7c9deb70deaa0b2551698f18c3dd0774f11d6",
+      "merge_commit": "7dac15e41be5bb69e3feffb62936d44f3accdcb5",
+      "status": "merged",
+      "outcome": "worker committed; branch pushed; merged serially; merged-tree build/vet/full test passed; GitReins completion passed before lifecycle deletion"
+    }
+  ],
+  "ci": {
+    "run": "pending",
+    "head_sha": "7dac15e41be5bb69e3feffb62936d44f3accdcb5",
+    "observed": "gh run list shows in_progress; exact-head CI is not green yet"
+  },
+  "notes": "The first two preserved diffs remain in their worktrees as evidence and were not reaped. The third task is published. The wave used three independent tasks, below WAVE_BUDGET=7."
+}
