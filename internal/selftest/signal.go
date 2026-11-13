@@ -99,6 +99,8 @@ func buildLandable(id, dir string) landable {
 	switch id {
 	case "P-001":
 		return &signalLandable{}
+	case "P-020":
+		return &powerLossLandable{}
 	case "S-001":
 		return &shimLandable{dir: dir}
 	case "N-012":

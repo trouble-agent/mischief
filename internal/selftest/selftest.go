@@ -12,8 +12,8 @@
 // force-sets green).
 //
 // Where the primitive set comes from: selftest walks the CATALOG
-// (catalog/faults at MSF-015: C-009 F-008 F-009 I-002 N-001 N-012 P-001 R-001
-// S-001 S-004 T-001), not a hand list — a primitive added to the catalog
+// (catalog/faults at MSF-015: C-009 F-008 F-009 I-002 N-001 N-012 P-001 P-020
+// R-001 S-001 S-004 T-001), not a hand list — a primitive added to the catalog
 // is selftested by construction. Green states live in the "green"
 // registry here (greenStates), consumed downstream by the AC-19 wiring:
 // rails.CheckScope refuses a non-green primitive outside an L0 scratch
@@ -79,6 +79,7 @@ const L0 = 0
 // a host without the daemon reports the skip, never a green.
 var greenStates = map[string]bool{
 	"P-001": true, // SIGSTOP / SIGCONT: state T proven, resume proven
+	"P-020": true, // SIGKILL: external wait status and exact ordinal proven
 	"S-001": true, // shim EIO: parent-observed filesystem witness, detach + next-write proven
 	"N-012": true, // proxy 429: hit-ledger proven, disarm + replay proven
 	"F-009": true, // file-replaced-under-writer: inode identity proven, restore byte-identical
