@@ -116,7 +116,7 @@ func buildLandable(id, dir string) landable {
 		return &scopeLandable{}
 	// SPEC-09 (MSF-010): the sim primitives — the catalog's I-layer rows
 	// whose landed-proof channel is the provider-sim request log
-	case "I-003", "I-004", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014":
+	case "I-003", "I-004", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014", "S-010":
 		return newSimLandable(id, dir)
 	// SPEC-09 (MSF-010): the docker node faults — L0 scratch containers
 	// minted, owned and removed by the landable itself

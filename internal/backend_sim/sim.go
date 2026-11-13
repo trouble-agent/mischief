@@ -81,6 +81,9 @@ const (
 	ShapeSnapshotStale ShapeKind = "snapshot-stale"
 	// ShapeDNSPropagation: I-014 — two resolvers disagree for a window.
 	ShapeDNSPropagation ShapeKind = "dns-propagation"
+	// ShapeFsyncLie: S-010 — fsync/fdatasync return success without
+	// advancing the simulated stable-storage witness.
+	ShapeFsyncLie ShapeKind = "fsync-lie"
 )
 
 // Valid reports whether k is a declared shape.
@@ -88,7 +91,7 @@ func (k ShapeKind) Valid() bool {
 	switch k {
 	case ShapeRateLimit, ShapeAPI5xx, ShapeEventualLag, ShapeObjectStore,
 		ShapeAuthExpiry, ShapeMetadata, ShapeQuota, ShapeSnapshotStale,
-		ShapeDNSPropagation:
+		ShapeDNSPropagation, ShapeFsyncLie:
 		return true
 	}
 	return false
@@ -131,6 +134,9 @@ type Shape struct {
 	// MissingKey answers 404 for object-store GETs on keys that EXIST in
 	// the sim's own store (the I-006 stale-read shape).
 	MissingKey bool
+	// DurabilityPaths is the closed path set S-010 may affect. Empty means
+	// no path is configured and every durability operation refuses.
+	DurabilityPaths []string
 }
 
 // RequestLogEntry is one line of the per-run request log — the
@@ -179,21 +185,35 @@ type Simulator struct {
 	entries []RequestLogEntry
 	hits    map[ShapeKind]int
 	// object store for the object-store shapes (key -> body)
-	store      map[string][]byte
-	lastWrite  map[string]time.Time
-	burstSpent int
-	srv        *http.Server
-	ln         net.Listener
-	url        string
+	store     map[string][]byte
+	lastWrite map[string]time.Time
+	// durability is the userspace S-010 model: the target writes the real
+	// path, while stable keeps the last state a non-faulted sync would make
+	// durable. A faulted sync returns success but leaves stable unchanged.
+	durabilityStable map[string][]byte
+	durabilityKnown  map[string]bool
+	durabilityCalls  map[string]int
+	configuredPaths  map[string]bool
+	burstSpent       int
+	srv              *http.Server
+	ln               net.Listener
+	url              string
 }
+
+// configuredPaths is deliberately separate from the armed shape: Disarm must
+// remove the lie without removing the operator's explicit path allowlist.
 
 // NewSimulator builds a simulator logging to logPath (created on Start).
 func NewSimulator(logPath string) *Simulator {
 	return &Simulator{
-		logPath:   logPath,
-		hits:      map[ShapeKind]int{},
-		store:     map[string][]byte{},
-		lastWrite: map[string]time.Time{},
+		logPath:          logPath,
+		hits:             map[ShapeKind]int{},
+		store:            map[string][]byte{},
+		lastWrite:        map[string]time.Time{},
+		durabilityStable: map[string][]byte{},
+		durabilityKnown:  map[string]bool{},
+		durabilityCalls:  map[string]int{},
+		configuredPaths:  map[string]bool{},
 	}
 }
 
@@ -258,6 +278,12 @@ func (s *Simulator) Arm(sh Shape) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.shape = sh
+	s.configuredPaths = map[string]bool{}
+	for _, path := range sh.DurabilityPaths {
+		if strings.TrimSpace(path) != "" {
+			s.configuredPaths[path] = true
+		}
+	}
 	s.burstSpent = 0
 	return nil
 }
@@ -373,7 +399,18 @@ func (s *Simulator) serve(r *http.Request, sh Shape) (int, []byte, bool, string,
 		return s.serveSnapshotStale(r, sh)
 	case ShapeDNSPropagation:
 		return s.serveDNS(r, sh)
+	case ShapeFsyncLie:
+		return s.serveFsyncLie(r, sh)
 	default:
+		// Once an S-010 path has been configured, disarm removes only the
+		// lie; durability operations remain available as the inverse/control
+		// surface and are fail-closed for paths outside that set.
+		if len(s.configuredPaths) > 0 {
+			op := r.URL.Query().Get("op")
+			if op == "write" || op == "fsync" || op == "fdatasync" || op == "read" || op == "crash" {
+				return s.serveFsyncLie(r, sh)
+			}
+		}
 		body, _ := json.Marshal(map[string]string{"status": "healthy", "service": "mischief-sim"})
 		return http.StatusOK, body, false, "", nil
 	}
@@ -551,6 +588,65 @@ func (s *Simulator) serveSnapshotStale(r *http.Request, sh Shape) (int, []byte, 
 		fmt.Sprintf("snapshot restored to a point %ds BEFORE the fault (data delta measurable)", stale), nil
 }
 
+func (s *Simulator) serveFsyncLie(r *http.Request, sh Shape) (int, []byte, bool, string, map[string]string) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		path = r.URL.Path
+	}
+	if path == "" || !s.durabilityPathConfigured(sh, path) {
+		return http.StatusBadRequest, []byte(`{"error":"durability path is not configured"}`), false,
+			"refused: path is not configured for S-010", nil
+	}
+	key := path
+	switch r.URL.Query().Get("op") {
+	case "write":
+		body := readBody(r)
+		s.store[key] = append([]byte(nil), body...)
+		return http.StatusOK, []byte(`{"written":true}`), false, "durability write", nil
+	case "":
+		return http.StatusOK, []byte(`{"status":"healthy","service":"mischief-sim"}`), false, "durability control", nil
+	case "fsync", "fdatasync":
+		s.durabilityCalls[key]++
+		if sh.Kind == ShapeFsyncLie && !burstExhausted(sh, s.burstSpent) {
+			return http.StatusOK, []byte(`{"synced":true}`), true,
+				fmt.Sprintf("%s returned success but stable storage was not advanced for %s", r.URL.Query().Get("op"), key), nil
+		}
+		// Disarmed/budget-exhausted calls are the inverse/control: a real
+		// sync copies the live bytes into the simulated stable store.
+		s.durabilityStable[key] = append([]byte(nil), s.store[key]...)
+		s.durabilityKnown[key] = true
+		return http.StatusOK, []byte(`{"synced":true}`), false, "durability sync", nil
+	case "read":
+		view := r.URL.Query().Get("view")
+		if view == "stable" {
+			return http.StatusOK, append([]byte(nil), s.durabilityStable[key]...), false, "stable-storage read", nil
+		}
+		return http.StatusOK, append([]byte(nil), s.store[key]...), false, "live-storage read", nil
+	case "crash":
+		if !s.durabilityKnown[key] {
+			s.store[key] = nil
+		} else {
+			s.store[key] = append([]byte(nil), s.durabilityStable[key]...)
+		}
+		return http.StatusOK, []byte(`{"crashed":true}`), true, "simulated crash restored stable storage", nil
+	default:
+		return http.StatusBadRequest, []byte(`{"error":"op must be write, fsync, fdatasync, read, or crash"}`), false,
+			"refused: unknown durability operation", nil
+	}
+}
+
+func (s *Simulator) durabilityPathConfigured(_ Shape, path string) bool {
+	if len(s.configuredPaths) == 0 {
+		return false
+	}
+	for configured := range s.configuredPaths {
+		if configured == path || (strings.HasSuffix(configured, "/*") && strings.HasPrefix(path, strings.TrimSuffix(configured, "*"))) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Simulator) serveDNS(r *http.Request, sh Shape) (int, []byte, bool, string, map[string]string) {
 	if burstExhausted(sh, s.burstSpent) {
 		return s.healthy()
@@ -606,6 +702,27 @@ func (s *Simulator) selfCall(path string) (int, []byte, error) {
 // multi-step shapes (eventual-lag's write-then-read window).
 func (s *Simulator) SelfCall(path string) (int, []byte, error) {
 	return s.selfCallMethod(http.MethodGet, path, nil)
+}
+
+// SelfDurabilityWrite writes bytes through the simulator's S-010 userspace
+// surface. It is intentionally a real HTTP request, not a direct state edit.
+func (s *Simulator) SelfDurabilityWrite(path string, body []byte) (int, []byte, error) {
+	return s.selfCallMethod(http.MethodPost, path+"?op=write", body)
+}
+
+// SelfDurabilityCall performs one S-010 operation over the simulator socket.
+func (s *Simulator) SelfDurabilityCall(path, op, view string) (int, []byte, error) {
+	if s.shape.Kind == ShapeFsyncLie && (op == "read" || op == "crash") {
+		if op == "read" && view == "stable" {
+			return s.selfCallMethod(http.MethodGet, path+"?op=read&view=stable", nil)
+		}
+		return s.selfCallMethod(http.MethodGet, path+"?op="+op, nil)
+	}
+	url := path + "?op=" + op
+	if view != "" {
+		url += "&view=" + view
+	}
+	return s.selfCallMethod(http.MethodGet, url, nil)
 }
 
 // selfCallMethod issues an arbitrary-method request against the running
@@ -690,7 +807,8 @@ func parseLogLine(line string) RequestLogEntry {
 func SortedShapeKinds() []string {
 	out := []string{string(ShapeRateLimit), string(ShapeAPI5xx), string(ShapeEventualLag),
 		string(ShapeObjectStore), string(ShapeAuthExpiry), string(ShapeMetadata),
-		string(ShapeQuota), string(ShapeSnapshotStale), string(ShapeDNSPropagation)}
+		string(ShapeQuota), string(ShapeSnapshotStale), string(ShapeDNSPropagation),
+		string(ShapeFsyncLie)}
 	sort.Strings(out)
 	return out
 }

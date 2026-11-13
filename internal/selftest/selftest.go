@@ -92,6 +92,7 @@ var greenStates = map[string]bool{
 	"I-012": true, // sim quota exhaustion: request-log proven
 	"I-013": true, // sim snapshot stale restore: request-log proven
 	"I-014": true, // sim DNS propagation split: request-log proven
+	"S-010": true, // sim fsync lie: external witness + crash-loss proven
 	// SPEC-09 (MSF-010): docker node faults — live-proven on this host
 	// (docker 29.x + cgroup v2); a host without the daemon skips honestly
 	"docker:pause": true,

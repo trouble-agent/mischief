@@ -56,6 +56,11 @@ var simShapes = map[string]struct {
 	// on /dns/selftest
 	"I-014": {backend_sim.Shape{Kind: backend_sim.ShapeDNSPropagation, StaleSeconds: 30},
 		"/dns/selftest?resolver=resolver-b", nil},
+	// S-010 models a successful fsync/fdatasync that does not advance the
+	// stable-storage witness. The selftest drives the external request-log
+	// witness and crash-loss observation through the simulator socket.
+	"S-010": {backend_sim.Shape{Kind: backend_sim.ShapeFsyncLie, DurabilityPaths: []string{"/durability/selftest.db"}},
+		"/durability/selftest.db", nil},
 }
 
 // simCoveredIDs lists the sim primitives this build selftests, sorted.
@@ -142,6 +147,45 @@ func (l *simLandable) prepare() ([]byte, error) {
 func (l *simLandable) land() landOutcome {
 	if err := l.sim.Arm(l.shape); err != nil {
 		return bad("arm: %v", err)
+	}
+	if l.shape.Kind == backend_sim.ShapeFsyncLie {
+		if _, _, err := l.sim.SelfDurabilityWrite(l.path, []byte("uncommitted")); err != nil {
+			return bad("durability write: %v", err)
+		}
+		st, _, err := l.sim.SelfDurabilityCall(l.path, "fsync", "")
+		if err != nil {
+			return bad("durability fsync: %v", err)
+		}
+		if st != http.StatusOK {
+			return bad("durability fsync status %d", st)
+		}
+		stableStatus, stable, err := l.sim.SelfDurabilityCall(l.path, "read", "stable")
+		if err != nil {
+			return bad("stable read: %v", err)
+		}
+		if stableStatus != http.StatusOK || len(stable) != 0 {
+			return bad("false fsync advanced stable storage")
+		}
+		if _, _, err := l.sim.SelfDurabilityCall(l.path, "crash", ""); err != nil {
+			return bad("simulated crash: %v", err)
+		}
+		_, live, err := l.sim.SelfDurabilityCall(l.path, "read", "")
+		if err != nil {
+			return bad("post-crash read: %v", err)
+		}
+		if len(live) != 0 {
+			return bad("crash retained data after false fsync")
+		}
+		entries, err := backend_sim.ReadRequestLog(l.log)
+		if err != nil {
+			return bad("request log read: %v", err)
+		}
+		for _, entry := range entries {
+			if entry.Faulted && entry.Shape == l.shape.Kind {
+				return ok(fmt.Sprintf("S-010 external request-log witness: fsync returned success without stable durability; crash lost live data (%s)", l.log))
+			}
+		}
+		return bad("request log shows no faulted %s entry", l.shape.Kind)
 	}
 	pre := l.lastServed
 	if err := l.serveAndRecord(); err != nil {
