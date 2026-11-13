@@ -12,7 +12,7 @@ import (
 // corpusIDs are the machine-readable examples shipped in catalog/faults.
 var corpusIDs = []string{
 	"C-009", "F-008", "F-009", "I-002", "N-001", "N-012",
-	"P-001", "P-020", "R-001", "S-001", "S-004", "S-011", "T-001",
+	"P-001", "P-020", "R-001", "S-001", "S-004", "S-011", "S-020", "S-021", "S-022", "S-023", "S-024", "T-001",
 }
 
 // TestLoadDefaultCorpus: all shipped YAML examples must pass the loader.
