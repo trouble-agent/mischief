@@ -173,11 +173,11 @@ func cmdBattery(args []string) int {
 		}
 		switch c.SelftestState {
 		case "pass":
-			fmt.Printf("%-6s %-6s PASS  %s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, legacy)
+			fmt.Printf("%-6s %-6s PASS  %s duration=%s elapsed=%s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, c.Duration, c.Elapsed, legacy)
 		case "skip":
-			fmt.Printf("%-6s %-6s SKIP  %s — %s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, c.SkipReason, legacy)
+			fmt.Printf("%-6s %-6s SKIP  %s duration=%s elapsed=%s — %s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, c.Duration, c.Elapsed, c.SkipReason, legacy)
 		default:
-			fmt.Printf("%-6s %-6s FAIL  %s — %s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, firstReasonLine(c.Reason), legacy)
+			fmt.Printf("%-6s %-6s FAIL  %s duration=%s elapsed=%s — %s%s\n", c.Cell.ID, c.Cell.Primitive, c.Verdict, c.Duration, c.Elapsed, firstReasonLine(c.Reason), legacy)
 		}
 	}
 	fmt.Println(res.Counts())
@@ -185,7 +185,7 @@ func cmdBattery(args []string) int {
 	// run id print together — the same aggregate the journal's verdict
 	// record carries and the same id every journal record and findings
 	// row names, so the three hops correlate by grep on one line.
-	fmt.Printf("verdict: %s (run %s)\n", res.AggregateVerdict(), runID)
+	fmt.Printf("verdict: %s (run %s elapsed=%s)\n", res.AggregateVerdict(), runID, res.Elapsed)
 
 	exit := 0
 	// Findings (AC-18): emitted + validated when --file-rows.
