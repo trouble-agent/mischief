@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-024
+name: partial-stdin
+what: "stdin delivers a fraction of the requested input and then EOF"
+params: {bytes: "int", fraction: "float?"}
+landed_proof:
+  kind: external-child-witness
+  check: "the child reports a short read of 7 bytes followed by EOF"
+inverse: {action: restore-input, verify: "a complete control input is read"}
+capability: none
+tier: L1
+backend: stdin
+maturity: L1-only
+selftest: unknown

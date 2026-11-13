@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-023
+name: eacces
+what: "EACCES is returned while the target path has mode 000"
+params: {path: str}
+landed_proof:
+  kind: external-child-witness
+  check: "the child reports EACCES and the parent reads mode 000"
+inverse: {action: restore-mode, verify: "the target mode is restored and a control write completes"}
+capability: none
+tier: L1
+backend: fs
+maturity: L1-only
+selftest: unknown

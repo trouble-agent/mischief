@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-022
+name: enospc
+what: "ENOSPC is returned at write time while the volume still has observable free blocks"
+params: {path: str}
+landed_proof:
+  kind: external-child-witness
+  check: "the child reports ENOSPC, the target remains empty, and the parent reads statfs"
+inverse: {action: detach-shim-rule, verify: "the control write completes"}
+capability: none
+tier: L1
+backend: shim
+maturity: L1-only
+selftest: unknown

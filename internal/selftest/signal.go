@@ -85,8 +85,8 @@ func fromSignalOutcome(out backend_signal.Outcome) landOutcome {
 // buildLandable is the production builder: primitive id → its landable on
 // the given scratch dir.
 //
-//   - The five M1-green primitives get live landables (P-001, S-001,
-//     N-012, F-009 rootless; R-001 probe-gated at capability()).
+//   - The rootless primitives get live landables (P-001, S-001,
+//     S-020..S-024, N-012, F-009; R-001 is probe-gated at capability()).
 //   - Catalog primitives whose actuator cannot run on the L0 scratch
 //     harness get a SKIP with the missing piece NAMED (AC-11 shape): the
 //     L2/L3 tiers (N-001 netns, C-009/I-002 container lifecycle) and the
@@ -101,6 +101,16 @@ func buildLandable(id, dir string) landable {
 		return &signalLandable{}
 	case "S-001":
 		return &shimLandable{dir: dir}
+	case "S-020":
+		return &errnoLandable{id: id, mode: "eintr", errno: "EINTR", dir: dir}
+	case "S-021":
+		return &errnoLandable{id: id, mode: "epipe", dir: dir}
+	case "S-022":
+		return &errnoLandable{id: id, mode: "enospc", errno: "ENOSPC", dir: dir}
+	case "S-023":
+		return &errnoLandable{id: id, mode: "eacces", dir: dir}
+	case "S-024":
+		return &errnoLandable{id: id, mode: "partialstdin", dir: dir}
 	case "N-012":
 		return &proxyLandable{}
 	case "F-009":

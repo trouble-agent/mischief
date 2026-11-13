@@ -80,6 +80,11 @@ const L0 = 0
 var greenStates = map[string]bool{
 	"P-001": true, // SIGSTOP / SIGCONT: state T proven, resume proven
 	"S-001": true, // shim EIO: parent-observed filesystem witness, detach + next-write proven
+	"S-020": true, // EINTR: delivered-return count and target bytes observed externally
+	"S-021": true, // EPIPE: closed-reader pipe state observed externally
+	"S-022": true, // ENOSPC: errno, empty target, and statfs observed externally
+	"S-023": true, // EACCES: mode 000 and child errno observed externally
+	"S-024": true, // partial stdin: short read and EOF observed externally
 	"N-012": true, // proxy 429: hit-ledger proven, disarm + replay proven
 	"F-009": true, // file-replaced-under-writer: inode identity proven, restore byte-identical
 	"R-001": true, // systemd-run scope: property read-back proven, stop verified (probe-gated)

@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-021
+name: epipe
+what: "EPIPE is returned when a pipe reader closes while the target writes"
+params: {path: str}
+landed_proof:
+  kind: external-child-witness
+  check: "the child reports EPIPE after the parent-side reader closes"
+inverse: {action: close-and-reopen-pipe, verify: "a control pipe write succeeds"}
+capability: none
+tier: L1
+backend: pipe
+maturity: L1-only
+selftest: unknown

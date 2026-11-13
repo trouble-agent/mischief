@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-020
+name: eintr
+what: "EINTR interrupts a write and the caller retries until all bytes are delivered; breaks retry loops and delivered-return accounting"
+params: {path: "str", budget: "int?"}
+landed_proof:
+  kind: external-child-witness
+  check: "the child reports delivered=6 after EINTR and the parent reads six target bytes"
+inverse: {action: detach-shim-rule, verify: "the control write completes without EINTR"}
+capability: none
+tier: L1
+backend: shim
+maturity: L1-only
+selftest: unknown
