@@ -1,0 +1,17 @@
+{
+  "tick": "mischief-foreman-2026-11-13-21-23-29",
+  "wave_id": "mischief-foreman-2026-11-13-21-23-29",
+  "project": "mischief",
+  "workdir": "/home/kara/mischief",
+  "base_commit": "1af1544717be1b4d8ba362e4f9fbd5cfc7baba08",
+  "base_ref": "origin/main",
+  "wave_budget": 12,
+  "worker_model": "openai/gpt-6.1-terra",
+  "worker_provider": "xkiro",
+  "status": "prepared",
+  "tasks": [
+    {"id":"PROF-011","gitreins_task":"PROF-011","worktree":"/home/kara/worktrees/mischief-PROF-011","branch":"wt/PROF-011","base_sha":"1af1544717be1b4d8ba362e4f9fbd5cfc7baba08","status":"prepared"},
+    {"id":"PROF-012","gitreins_task":"PROF-012","worktree":"/home/kara/worktrees/mischief-PROF-012","branch":"wt/PROF-012","base_sha":"1af1544717be1b4d8ba362e4f9fbd5cfc7baba08","status":"prepared"},
+    {"id":"PROF-013","gitreins_task":"PROF-013","worktree":"/home/kara/worktrees/mischief-PROF-013","branch":"wt/PROF-013","base_sha":"1af1544717be1b4d8ba362e4f9fbd5cfc7baba08","status":"prepared"}
+  ]
+}
