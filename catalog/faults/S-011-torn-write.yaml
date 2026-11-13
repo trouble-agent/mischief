@@ -1,0 +1,14 @@
+# syscall & libc layer
+id: S-011
+name: torn-write
+what: write() is truncated at a configured storage-sector boundary, leaving a partial record
+params: {path_substr: str, sector: "int?", fraction: "float?"}
+landed_proof:
+  kind: external-file-length-and-reader-divergence
+  check: "the target file ends at a non-sector-aligned partial record; unchecked reading returns it while checksum validation rejects it"
+inverse: {action: restore-pre-state, verify: "the original bytes and checksum-valid records are restored"}
+capability: none
+tier: L0
+backend: fs
+maturity: L1-only
+expect_when_healthy: "a checksum reader rejects the torn record while an unchecked reader never serves it"

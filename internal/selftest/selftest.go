@@ -82,6 +82,7 @@ var greenStates = map[string]bool{
 	"S-001": true, // shim EIO: parent-observed filesystem witness, detach + next-write proven
 	"N-012": true, // proxy 429: hit-ledger proven, disarm + replay proven
 	"F-009": true, // file-replaced-under-writer: inode identity proven, restore byte-identical
+	"S-011": true, // torn write: external length and checksum-reader divergence proven
 	"R-001": true, // systemd-run scope: property read-back proven, stop verified (probe-gated)
 	// SPEC-09 (MSF-010): provider simulator — rootless, no daemon
 	"I-003": true, // sim 429 burst: request-log proven, disarm proven
