@@ -7,6 +7,14 @@ Certified candidate: d6d605929a50071524b543016e7dc8a9052a1439
 Remote/default parity: local main == origin/main == origin/HEAD at d6d605929a50071524b543016e7dc8a9052a1439; ahead/behind 0/0.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
 
+## Pass-2 re-anchor (same tick, second pass)
+
+The header parity lines above were true at pass 1 and aged by this artifact's own carrier commit; they are superseded by this block, not wrong. Live tip at pass 2 is `4d931642d165ed291d9dd7db2a6dd83d53751a7b`. The delta `d6d605929a50071524b543016e7dc8a9052a1439..4d93164` is exactly one file — this artifact — with 0 product-path changes. Exact-tip CI run 43559322323 (workflow CI, push, headSha 4d93164, completed success) covers it; pass-1 CI run 43541516784 was green on d6d6059.
+
+New evidence re-derived at pass 2 (available but not recorded at pass 1): QA tick `mischief-chaos-qa-2026-11-14-00-58-14` ran a fresh clean-machine battery on tree `933233abf23a06c6d1015c61d0f4bd0486afadd9`, which is an ancestor of the live tip and differs from it by 0 product-path changes — so the candidate product tree has been exercised on a clean agent. That battery is partial, not a release battery: 16 OK / 5 N/A (product-absent) / 2 INFO / 1 PASS / 1 UNVERIFIED / 1 FAIL, the single FAIL being act Main Test exit 1 owned by INT-CI-10 (runner-env defect, row still pending). It does not clear the gate but it upgrades "no candidate-bound clean-machine evidence" to "partial coverage of an identical product tree".
+
+Decision unchanged: NO-CUT. v0.2.0 stays uncut until QA-MISCHIEF-002-R2, QA-MISCHIEF-CHAOS-4, INT-CI-10, QA-MISCHIEF-FOREMAN-1/2 reach terminal state and candidate-bound GitReins or an accepted equivalent gate exists.
+
 ## Decision
 
 NO-CUT — do not create or move v0.2.0, do not create a GitHub Release, and do not mutate deployed artifacts. The candidate has a minor-sized user-facing feature and green exact-head main CI, but release-grade evidence is incomplete: no GitReins verdict is bound to d6d6059, the latest clean-machine evidence is not bound to this candidate and the latest recorded dogfood is only partial/rough, and the deployed binary remains v0.1.0. Release CI is tag-triggered and unproven until the cut; the repository-owned flow requires the tag to be pushed only after readiness gates are proven.
