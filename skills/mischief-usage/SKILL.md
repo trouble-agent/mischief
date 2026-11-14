@@ -126,11 +126,36 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
 
 ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest evidence=skills/mischief-usage/SKILL.md witness=tag:b639bc8@origin verdict=none:pending commit=b639bc8e903a379758fcd1ec95314f316c9dc419 memory=none:not-written
 
-## Current dogfood re-proof — 2026-10-29, tick mischief-dogfood-2026-10-29-13-50-54, HEAD 852639e
+## Current dogfood re-proof — 2026-11-14, tick mischief-dogfood-2026-11-14-22-43-28, HEAD 04e7bfc
 
-The current-HEAD real-use proof is recorded in `docs/dogfood/2026-10-29-1350-integration.md`. The verified local path is: build with `make bin`, empty `status --json`, `doctor --json`, unsanctioned `plan` refusal, then sanctioned `arm` -> manual target land -> `serve --dir`; a 5s hold reverted at about 10s on the roughly 5s fold, restored the target byte-for-byte, and wrote health `ok:true`, `reverted:1`, `revert_failed:0` plus a `revert_proof` with `reason=ttl_expiry` and `detail=check: same`. Fresh-machine evidence is `/tmp/bunker-qa-evidence-20261029T135721Z-2666888.jsonl`: install and upgrade passed, but the clean-agent `TestOwnerSurvivesKill9AndRevertsAtTTL` failure remains owned by `QA-MISCHIEF-002-R2` / `QA-MISCHIEF-007`; do not treat the battery as green until those rows are resolved.
+The current-HEAD real-use proof is `docs/dogfood/2026-11-14-2243-dogfood.md` (its §7 is the
+records-only re-verification pass). The verified local path is unchanged: build with `make bin`,
+empty `status --json`, `doctor --json`, unsanctioned `plan` refusal, then sanctioned `arm` ->
+manual target land -> `serve --dir` -> TTL fold -> byte-for-byte restore. Measured on that HEAD at
+100ms resolution: a **4s** hold reverted at 8.511s (**+4.511s** late), **6s** at 10.039s
+(**+4.039s**), **10s** at 14.903s (**+4.903s**) — always LATE, never early, i.e. TTL + up to one
+~5s tick (see the fold-tick bullet above; the doc gap is filed as **MISCHIEF-DF-59-R2**).
+Verb latency on the same build is not a user-visible cost: `version` 7-8 ms, `plan` 7 ms, `arm`
+13-14 ms warm (no number worth optimising, and none filed).
 
-ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver test=cmd:status-plan-arm-serve doc=docs/dogfood/2026-10-29-1350-integration.md evidence=/tmp/bunker-qa-evidence-20261029T135721Z-2666888.jsonl witness=live:HEAD-852639e+serve-health-reverted verdict=existing-QA-recurrence commit=pending
+Fresh-machine evidence is `/tmp/bunker-qa-evidence-20261114T225627Z-192417.jsonl` (26 rows, per-cell
+logs under `.logs/qa-logs-800123/`): install/upgrade/lint/tests/`chaos-resource` green, `tests.log`
+22/22 packages `ok`. `ci-pass` stays **UNVERIFIED, not red**: under `act` the `Test` step failed at
+45.451s and that step's stdout was not captured, so the cause is unattributable from the evidence;
+hosted CI is green at both that HEAD and the record commit, and the live owner of the failing-test
+class is `QA-MISCHIEF-002-R2` (still `failed`, agent-side mechanism unverified) — do not treat the
+battery as green.
+
+Two **documented-command** defects are still open at this HEAD, so do not copy these examples
+until their rows close: `DOC-27` — `docs/OPERATIONS.md:138` documents `mischief retention --dir
+<run dir>`, which the binary rejects (rc=2, `flag provided but not defined: -dir`); the real flag
+is `-runs-dir`. `DOC-28` — the metrics family table at `docs/OPERATIONS.md:81` lists
+`reverted/revert_failed/no_hold` while a live scrape emits `result="not_landed"`.
+
+Prior re-proof (2026-10-29, HEAD 852639e): `docs/dogfood/2026-10-29-1350-integration.md`, a 5s hold
+reverted at ~10s and restored the target byte-for-byte.
+
+ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver test=cmd:status-plan-arm-serve doc=docs/dogfood/2026-11-14-2243-dogfood.md evidence=/tmp/bunker-qa-evidence-20261114T225627Z-192417.jsonl witness=live:HEAD-04e7bfc+serve-health-reverted verdict=existing-QA-recurrence commit=pending
 - **Sanction vars leak through long-lived agent shells.** A session that exported
   `MISCHIEF_SANCTION=1` for an earlier probe keeps it exported forever — a later
   "should refuse" leg silently succeeds. Probe refusals from a sanitized env
