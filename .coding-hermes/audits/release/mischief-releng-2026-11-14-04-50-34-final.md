@@ -3,8 +3,8 @@
 Target: trouble-agent/mischief
 Canonical checkout: /home/kara/mischief
 Forge/client: GitHub / gh
-Certified candidate: b0cac920d2208cba760edf392c7349a612a6703e
-Remote/default parity: certified candidate `b0cac920d2208cba760edf392c7349a612a6703e` equals `origin/main` and `git ls-remote origin refs/heads/main`; the detached candidate is 0/0 against the fetched default branch.
+Certified candidate: 5a3a008004103d24c04ff1c66c5ecb1d9ec336c7
+Remote/default parity: certified candidate `5a3a008004103d24c04ff1c66c5ecb1d9ec336c7` equals `origin/main` and `git ls-remote origin refs/heads/main`; the detached candidate is 0/0 against the fetched default branch.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
 
 ## Pass-4 re-anchor (2026-11-15, daily readiness sweep)
@@ -407,3 +407,49 @@ This tick re-fired. `origin/main` advanced one commit past pass-9's measured car
 | Authorization | scan of all rows' title/blocked_reason/reasoning/acceptance_criteria/foreman_note: 0 rows authorize a cut | NONE GRANTED |
 | Deployed binary | `/home/kara/.local/bin/mischief` reports `v0.1.0`, mtime 2026-10-16 09:31 | STALE |
 | Rolling row | `RELEASE-013` refreshed and rebound to the post-append artifact digest; `RELEASE-016` AC corrected | PASS |
+## Pass-11 re-verification (2026-11-15T13:20Z, current tick)
+
+The canonical GitHub default-branch tip is now `5a3a008004103d24c04ff1c66c5ecb1d9ec336c7`, seven commits ahead of the canonical checkout `/home/kara/mischief` and equal to `origin/main`/`git ls-remote origin refs/heads/main`. The checkout was not modified; it is dirty and behind with unrelated wave files, so this pass used a detached worktree.
+
+Decision remains NO-CUT for proposed `v0.2.0`. The repository-owned release contract is present, exact-tip hosted CI is green, and the tag namespace is free, but candidate-bound GitReins and clean-machine release evidence remain unavailable, open P0/P1 work remains, and no board row authorizes the cut. No tag, Release, artifact publication, deployment mutation, or force-move was performed.
+
+Census re-derived over `v0.1.0..5a3a008`: 596 commits total, 504 non-merge, 92 merges. Strict NUL-safe subject classification: feat 1, fix 21, perf 0, chore 15, docs 44, refactor 0, test 1, ci 1, other conventional 392, non-conventional 29; buckets sum to 504. Typed-bang subjects: 0. Line-start BREAKING CHANGE/BREAKING-CHANGE footers: 0. Proposed bump remains minor `v0.2.0`; no major confirmation is required. The only feature-class subject is `0b52fb8 feat(daemon): serve Prometheus metrics on a separately bound listener (MISCHIEF-OPS-001)`.
+
+## Pass-11 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate identity | `origin/main`, `git ls-remote origin refs/heads/main`, and detached worktree all resolve to `5a3a008004103d24c04ff1c66c5ecb1d9ec336c7`; forge metadata says default branch `main` | PASS |
+| Candidate movement | `419d80c..5a3a008` changes only `.coding-hermes/audits/release/mischief-releng-2026-11-14-04-50-34-final.md` and `.coding-hermes/board/tasks.jsonl`; no product paths changed | BOOKKEEPING-ONLY; prior product measurements carry |
+| Census | 596 total / 504 non-merge / 92 merge; feat 1, fix 21, perf 0, chore 15, docs 44, refactor 0, test 1, ci 1, other conventional 392, non-conventional 29; sum 504; bang 0; breaking footers 0 | v0.2.0 proposal |
+| Exact-tip hosted CI | GitHub run `43718299227`, workflow `CI`, push event, exact `headSha=5a3a008004103d24c04ff1c66c5ecb1d9ec336c7`, completed/success; job `Build & Test (1.24)` completed with 15/15 successful steps and 0 failed | PASS |
+| Recent CI | `gh run list --repo trouble-agent/mischief --limit 20`: the 20 observed runs are completed success on their own SHAs, including runs `43714702401` and `43718299227` | PASS for main; no tag run exists |
+| Repository release tooling | `docs/RELEASE.md`, Makefile `release-dry`/`dist`/`tags`, `.goreleaser.yml`, and tag-triggered `.github/workflows/release.yml` are present; repo-owned flow is authoritative | PASS |
+| Release rehearsal | Existing exact-tree rehearsal receipts remain strategy evidence: `make release-dry` and `make dist` passed on the unchanged product tree, producing Linux amd64/arm64 snapshot archives, checksums, metadata, and shims. Snapshot assets are not publishable. | PASS strategy evidence |
+| Release surface | Remote has only annotated `v0.1.0`, peeled to `b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`; one published non-draft Release; `refs/tags/v0.2.0` and the v0.2.0 Release are absent | Namespace available; no mutation |
+| GitReins | Candidate tree has no tracked `.gitreins` path/config. Live untracked verdicts are not candidate-bound; newest cited verdict is bound to `742166fd`, not this tip, and has conflicting `passed=false`/`no_concerns_found` signals | UNVERIFIED / blocker |
+| QA/dogfood | Latest QA ledger evidence remains `mischief-qa-2026-11-13-16-54-26` with `tested_sha` UNVERIFIED; latest durable clean-machine evidence is not candidate-bound. Latest dogfood `docs/dogfood/2026-11-14-2243-dogfood.md` targets ancestor `04e7bfc` and is findings/partial evidence, not a candidate-bound release battery | NOT CANDIDATE-BOUND / blocker |
+| Open product blockers | `PROF-002` review P0; `PROF-003` in_progress P0; `QA-MISCHIEF-002-R2` failed P1 remain open in the fetched board | BLOCKING |
+| Release-tooling findings | `RELEASE-014` and `RELEASE-016` premises remain live host-contamination/test-robustness findings; `RELEASE-015` remains open documentation drift about snapshot naming | OPEN / release hygiene |
+| Deployed binary | `/home/kara/.local/bin/mischief` still reports `v0.1.0`, mtime `2026-10-16` | STALE |
+| Authorization | Fetched board scan found no row naming an authorized `v0.2.0` cut for `trouble-agent/mischief`; `RELEASE-013` remains pending and NO-CUT. Scheduler template text is not authorization. | NONE GRANTED |
+| Board state | Existing rolling row `RELEASE-013` is the sole readiness row; no duplicate release row was created. Board validator is structurally OK with 258 pre-existing warnings. | PASS for read-only audit |
+
+## Known issues
+
+- Candidate-bound GitReins evidence is unavailable because the candidate tree carries no GitReins configuration/history.
+- Candidate-bound clean-machine QA/dogfood release evidence is absent; the latest QA record has an UNVERIFIED tested SHA and the latest durable dogfood targets an ancestor.
+- `PROF-002` and `PROF-003` remain unfinished P0 product work; `QA-MISCHIEF-002-R2` remains failed P1.
+- `QA-MISCHIEF-CHAOS-4` remains a pending scheduler/config finding for a phantom target path, outside the product tree.
+- `RELEASE-014`, `RELEASE-016`, and `RELEASE-015` remain open release-hygiene rows.
+- The deployed binary remains v0.1.0.
+
+## Unblock
+
+1. Obtain candidate-bound clean-machine QA/dogfood evidence and candidate-bound GitReins evidence, or record an explicitly accepted equivalent gate.
+2. Resolve or explicitly defer the unfinished P0/P1 product rows.
+3. Resolve the phantom scheduler target and open release-hygiene rows.
+4. Obtain an explicit board authorization naming `trouble-agent/mischief`, `v0.2.0`, and the certified baseline before any cut.
+5. Re-run the release sweep at a stable candidate, then follow `docs/RELEASE.md` for the annotated tag, tag CI, draft Release review, publication, and post-release verification.
+
+No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
