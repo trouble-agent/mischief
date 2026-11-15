@@ -300,3 +300,29 @@ The semver proposal remains `v0.2.0` minor: `v0.1.0..b0cac920d2208cba760edf392c7
 5. Re-run releng at a stable candidate. Only after all gates and authorization are present should the foreman follow `docs/RELEASE.md`: annotated `v0.2.0` tag, tag CI, draft Release asset review, publish, and post-release verification.
 
 No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+## Pass-8 closeout (same tick, re-entry)
+
+This tick (`mischief-chaos-releng-2026-11-15-11-18-38`, fired 2026-11-15T11:18:38Z) had already written and pushed its pass-8 record — the artifact append in `bb3c0c1`, the rolling row refresh in `50d8d31`, and the row/artifact binding in `2b3aaa6` — before this closeout resumed the same pass. Nothing in the product tree changed in between, and no gate below is copied forward from that earlier phase without being re-read at the pushed tip.
+
+**Carrier.** The pushed tip is `2b3aaa663c1bcbdfb9c6943f4de5d7966d44e792`. Its delta from pass-8's certified candidate `b0cac920d2208cba760edf392c7349a612a6703e` is exactly three paths — this artifact, `.coding-hermes/board/tasks.jsonl`, `.coding-hermes/board/events.jsonl` — i.e. **0 product-path changes**, so the earlier product measurements carry by construction rather than by assertion.
+
+**Exact-tip CI re-read.** GitHub run `43709691390`, workflow `CI`, event `push`, `headSha=2b3aaa663c1bcbdfb9c6943f4de5d7966d44e792`, `completed/success`. Its single job `Build & Test (1.24)` ran 15 steps, 0 failed, including Build, Vet, Docs twins, Test, the selftest suite, the live N-012 battery cell, the per-arch shim landing proof, and both drift gates.
+
+**Release surface re-read at the pushed tip.** `git ls-remote --tags origin` returns only the annotated `v0.1.0` (tag object `af9a38f`, peeled `b123b4e`); `gh release list` returns one published non-draft Release (`v0.1.0`, 2026-10-07); `git ls-remote --tags origin refs/tags/v0.2.0` returns 0 refs. The `v0.2.0` namespace is still free and nothing was published by any phase of this tick.
+
+**Record correction.** The row's `detail.evaluated_at` was written as `2026-11-15T11:18:38-05:00`, which resolves to `16:18:38Z` — five hours *after* the tick actually fired (`11:18:38Z`). The tick id carries UTC. Corrected to `2026-11-15T11:18:38Z` in the same row.
+
+**Blocker re-classification (new this closeout, and the one place the earlier phase was too coarse).** Three rows the earlier phase listed as open release-facing defects are *landed in the candidate tree* and are open only for evidence debt. Verified by reading the candidate's bytes, not the rows:
+
+| Row | Claim in row | Measured in the candidate tree | Status |
+|---|---|---|---|
+| DOC-27 | documented `retention --dir` exits 2 | `docs/OPERATIONS.md` now reads `mischief retention --runs-dir <run dir>` (landed `812f2f9`) | fixed; row open for missing GitReins verdict |
+| DOC-29 | documented `status --journal-dir` exits 2 | `docs/OPERATIONS.md:157` now reads `mischief status --dir <scratch>` (landed `a2ab3db`) | fixed; row open for missing GitReins verdict |
+| MISCHIEF-DF-75 | `mischiefd_revert_total` omits `not_landed` | `internal/daemon/metrics.go` `knownOutcomes` now unions `reverter.DeclaredOutcomes()` (landed `742166f`) | fixed; row open on a tier-1 FAIL that the row itself attributes to ambient `GOTMPDIR`/symlink contamination |
+
+The true product-open blocker set is therefore narrower than the open-row census: `PROF-002` (`review`, P0 — three-value outcome), `PROF-003` (`in_progress`, P0 — the `profile run` executor), `QA-MISCHIEF-002-R2` (`failed`, P1 — the JIT-agent TTL-owner recurrence), plus the two evidence gates that remain structurally absent: no candidate-bound clean-machine QA/dogfood battery and no candidate-bound GitReins verdict. `QA-MISCHIEF-CHAOS-4` is lane configuration (a nonexistent target path), not a product defect.
+
+**Canonical checkout, flagged and not touched.** `/home/kara/mischief` is 4 commits behind the pushed tip and carries three uncommitted `.coding-hermes/board/tasks.jsonl` lines (the `wave-20261115-095307` worktree/branch/session bindings for `DOC-28` and `MISCHIEF-DF-76`) plus one untracked wave file. Those are the 09:53 foreman wave's bookkeeping, not this lane's, and a releng lane may not commit another lane's in-flight board write. Every gate read in this pass was taken from a clean detached worktree at the exact tip, so the measurements do not depend on that checkout; the divergence itself is noted for the wave's owner.
+
+**Decision, unchanged: NO-CUT for `v0.2.0`.** The repository-owned contract is present and exercised, the exact-tip CI is green 15/15, and the release namespace is free — but two P0 product rows are unfinished and no candidate-bound QA or GitReins evidence exists. No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
