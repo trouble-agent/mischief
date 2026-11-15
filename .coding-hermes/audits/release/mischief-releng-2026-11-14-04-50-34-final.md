@@ -3,8 +3,8 @@
 Target: trouble-agent/mischief
 Canonical checkout: /home/kara/mischief
 Forge/client: GitHub / gh
-Certified candidate: 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0
-Remote/default parity: local main == origin/main == origin/HEAD at 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0; ahead/behind 0/0.
+Certified candidate: 1126bcbea56cd86958816c148e828e09bae89181
+Remote/default parity: local main == origin/main == origin/HEAD at 1126bcbea56cd86958816c148e828e09bae89181; ahead/behind 0/0.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
 
 ## Pass-4 re-anchor (2026-11-15, daily readiness sweep)
@@ -85,6 +85,54 @@ The release gate remains blocked by the existing rolling row RELEASE-013: QA-MIS
 
 No tag, GitHub Release, artifact publication, deployed-binary mutation, or force-move was performed by this pass.
 
+## Pass-6 re-anchor (2026-11-15, current delivery)
+
+The previous pass certified `1126bcbea56cd86958816c148e828e09bae89181`. The fetched canonical default-branch tip is now `edd03537bbaeb04ff50fbad895d802dcd86ebd47`; the delta is three paths, all under `.coding-hermes/` (the release artifact, board events, and the rolling task row). The product tree is unchanged, so pass-5 product measurements carry; the candidate and hosted CI receipt are refreshed to the new exact tip.
+
+Decision remains NO-CUT. The proposed version remains `v0.2.0` (minor): no breaking marker was found in the carried census, and the single user-facing `feat(daemon)` Prometheus metrics change still drives the minor proposal. No major confirmation is needed.
+
+## Pass-6 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate identity | `git rev-parse origin/main` = `edd03537bbaeb04ff50fbad895d802dcd86ebd47`; `git ls-remote --heads origin refs/heads/main` agrees; product-path delta from `1126bcb` is 0 | PASS |
+| Candidate movement | `1126bcb..edd0353` changes only `.coding-hermes/audits/release/mischief-releng-2026-11-14-04-50-34-final.md`, `.coding-hermes/board/events.jsonl`, and `.coding-hermes/board/tasks.jsonl` | BOOKKEEPING-ONLY; pass-5 product evidence carried |
+| Commit inventory | Carried from exact product tree at `1126bcb`: 578 total / 487 non-merge; strict conventional census has `feat=1`, `fix=20`, `perf=0`, `chore=13`, `docs=40`, `refactor=0`, `test=1`, `ci=1`, `other=409`; typed-bang=0; line-start BREAKING CHANGE footers=0 | v0.2.0 proposal |
+| Exact-tip hosted CI | GitHub run `43687404249`, workflow `CI`, push event, exact `headSha=edd03537bbaeb04ff50fbad895d802dcd86ebd47`, completed/success; `Build & Test (1.24)` completed with 15/15 steps successful and 0 failed/skipped | PASS |
+| Local required gates | Carried from the unchanged product tree at `1126bcb`: `go build ./...` rc=0, `go vet ./...` rc=0, `make release-dry` rc=0, `make dist` rc=0 with Linux amd64/arm64 snapshot archives, checksums, and per-arch shims | PASS strategy evidence |
+| Local full tests | Carried failure at `1126bcb`: `go test -count=1 ./...` rc=1 in `internal/chaos` (`TestSymlinkEvidenceOK`, `TestVerifyAgainstMatches` resolve `/var/tmp/hermes-go-tmp-real` instead of `/var/tmp/hermes-go-tmp`); attribution is not cleared by the bookkeeping-only move | FAIL / release blocker |
+| GitReins | `git ls-tree -r --name-only edd0353 -- .gitreins` is empty; no candidate-bound config/history verdict exists in the candidate tree | UNVERIFIED / blocker |
+| Dogfood / QA | Existing rolling evidence remains partial: failed P1 `QA-MISCHIEF-002-R2`, pending phantom-target `QA-MISCHIEF-CHAOS-4`, in-progress `QA-MISCHIEF-FOREMAN-1/2`; latest dogfood has act `ci-pass` UNVERIFIED and no complete candidate-bound release battery | BLOCKING |
+| Product work | `PROF-002` remains `review` P0; `PROF-003`, `PROF-011`, `PROF-012`, and `PROF-013` remain in progress | BLOCKING |
+| Release tooling | Repository-owned `docs/RELEASE.md`, `Makefile` targets `release-dry`/`dist`/`tags`, `.goreleaser.yml`, and tag-triggered `.github/workflows/release.yml` are present; use this path, not `gh release create` fallback | PASS |
+| Release surface | Remote has only annotated `v0.1.0` peeled to `b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`; `gh release list` shows one published release; `v0.2.0` tag and Release are absent | PASS / unchanged |
+| Deployed binary | `/home/kara/.local/bin/mischief` mtime `2026-10-16`, reports `mischief v0.1.0`; it predates the candidate | STALE / blocker |
+| Version hygiene | No `CHANGELOG.md` or `Unreleased` heading; release contract is documented, but future v0.2.0 version-facing claims still need review | PREP needed |
+
+## Known issues
+
+- `QA-MISCHIEF-002-R2` remains failed P1: the fresh JIT-agent TTL-owner recurrence is unresolved.
+- `QA-MISCHIEF-CHAOS-4` remains pending: scheduler satellites still point at the nonexistent `mischief-chaos` path; this is outside the product tree.
+- `QA-MISCHIEF-FOREMAN-1/2` remain in progress; act or stale premise evidence does not replace candidate-bound release evidence.
+- Candidate-bound GitReins is unavailable; historical/local untracked verdicts are not evidence for `edd0353`.
+- `PROF-002`/`PROF-003`/`PROF-011`/`PROF-012`/`PROF-013` remain unfinished product work.
+- The deployed `/home/kara/.local/bin/mischief` remains the v0.1.0 binary.
+- The required local full-suite failure remains unresolved or unattributed in a clean environment.
+
+## Unblock
+
+1. Reproduce or cleanly attribute the `internal/chaos` symlink-root test failure and obtain a fresh full-suite pass.
+2. Resolve `QA-MISCHIEF-002-R2` with a fresh JIT-agent receipt or an explicitly accepted release ruling.
+3. Correct the scheduler database and mirror for `QA-MISCHIEF-CHAOS-4`, then prove a bare-dispatched tick resolves `/home/kara/mischief`.
+4. Obtain candidate-bound GitReins evidence or an explicitly accepted equivalent gate.
+5. Finish/reconcile the open P0/P1 product rows and rerun releng at a stable candidate; only then follow `docs/RELEASE.md` for the annotated tag and tag-triggered draft Release.
+
+## Decision
+
+NO-CUT. Do not create or move `v0.2.0`, do not create a GitHub Release, do not mutate deployed artifacts, and do not force-move any tag. Exact-tip hosted CI is green, but the release gate is not: the unchanged product tree carries a failed required local full suite, candidate-bound GitReins is unavailable, QA/dogfood evidence is incomplete, open P0/P1 work remains, and the deployed binary is stale.
+
+No tag, GitHub Release, artifact publication, deployed-binary mutation, or force-move was performed by this pass.
+
 ## Pass-2 re-anchor (same tick, second pass)
 
 The header parity lines above were true at pass 1 and aged by this artifact's own carrier commit; they are superseded by this block, not wrong. Live tip at pass 2 is `4d931642d165ed291d9dd7db2a6dd83d53751a7b`. The delta `d6d605929a50071524b543016e7dc8a9052a1439..4d93164` is exactly one file — this artifact — with 0 product-path changes. Exact-tip CI run 43559322323 (workflow CI, push, headSha 4d93164, completed success) covers it; pass-1 CI run 43541516784 was green on d6d6059.
@@ -130,3 +178,33 @@ Semver proposal: v0.2.0 (minor). The v0.1.0..candidate range contains 548 commit
 3. Re-run the readiness sweep after those receipts and verify the candidate has not moved. If all gates are terminal green, cut only through `docs/RELEASE.md`: annotated v0.2.0 tag push, tag CI, DRAFT Release review, then publish/verify the complete asset set.
 
 No tag, GitHub Release, artifact publication, deployment restart, or force-move was performed by this sweep.
+
+## Pass-5 re-anchor (2026-11-15, current delivery)
+
+The prior pass certified `4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0`. The fetched canonical tip is now `1126bcbea56cd86958816c148e828e09bae89181`, a six-commit advance. The product-path delta is non-empty, so prior measurements are not silently carried. The new product changes are `README.md`, `cmd/mischief/arm.go`, `cmd/mischief/arm_test.go`, `docs/OPERATIONS.md`, `internal/daemon/daemon_test.go`, `internal/reverter/lifecycle.go`, `internal/reverter/prof002_not_landed_test.go`, and `internal/reverter/record.go`; board, wave, and release-audit files also moved.
+
+Decision remains NO-CUT. The proposed version remains `v0.2.0` (minor): the exact range `v0.1.0..1126bcbea56cd86958816c148e828e09bae89181` contains 576 commits, 485 non-merge commits, and 91 merge commits. Strict subject census over the 485 non-merges: feat 1, fix 20, perf 0, chore 13, docs 40, refactor 0, test 1, ci 1, other 409; the buckets sum to 485. Typed-bang subjects: 0. Line-start BREAKING CHANGE/BREAKING-CHANGE footers: 0. The user-facing feature remains `0b52fb8 feat(daemon): serve Prometheus metrics on a separately bound listener`; no major signal.
+
+## Pass-5 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate parity | `git rev-parse HEAD origin/main` = both `1126bcbea56cd86958816c148e828e09bae89181`; canonical tree clean | PASS |
+| Candidate movement | `4a7cf09..1126bcb` includes eight product files plus four bookkeeping paths | MATERIAL — measurements re-derived |
+| Exact-tip hosted CI | GitHub run `43685673677`, workflow `CI`, push event, exact `headSha=1126bcbea56cd86958816c148e828e09bae89181`, completed/success. Job `Build & Test (1.24)` ran 15 successful steps, 0 failed, including build, vet, docs twins, test, selftest, N-012 battery, shim smoke/drift, and row-status drift | PASS |
+| Local clean candidate gates | Detached worktree at exact `1126bcbea56cd86958816c148e828e09bae89181`, status 0; `go build ./...` rc=0; `go vet ./...` rc=0; `make release-dry` rc=0 (1 config validated); `make dist` rc=0 (Linux amd64/arm64 snapshot archives, checksums, per-arch shims) | PASS |
+| Local full tests | `go test -count=1 ./...` rc=1: `internal/chaos` fails `TestSymlinkEvidenceOK` and `TestVerifyAgainstMatches`; both resolve the symlink target under `/var/tmp/hermes-go-tmp-real` while the declared primary is under `/var/tmp/hermes-go-tmp`. This is a local scratch-root collision/fixture-environment failure, not evidence that the exact-head hosted test passed the same path, but it is a failed required local gate and remains a release blocker pending clean-environment reproduction/attribution | FAIL / UNVERIFIED attribution |
+| GitReins | 230 local verdict files exist under untracked `.gitreins/`, but `git ls-tree -r --name-only HEAD -- .gitreins` is empty and no verdict was found bound to `1126bcbea56cd86958816c148e828e09bae89181`; candidate-bound GitReins remains UNVERIFIED | BLOCKING |
+| Dogfood / QA | Board retains failed P1 `QA-MISCHIEF-002-R2`, pending phantom-target `QA-MISCHIEF-CHAOS-4`, and in-progress `QA-MISCHIEF-FOREMAN-1/2`; latest durable dogfood is partial with act `ci-pass` UNVERIFIED. No candidate-bound clean-machine release battery is present | BLOCKING |
+| Product work | `PROF-002` is `review` P0 and `PROF-003` is `in_progress` P0; `PROF-011`, `PROF-012`, and `PROF-013` remain in progress. The candidate still contains unfinished P0/P1 product surfaces | BLOCKING |
+| Release tooling | Repo-owned `docs/RELEASE.md`, `Makefile` (`release-dry`, `dist`, `tags`), `.goreleaser.yml`, and tag-triggered `.github/workflows/release.yml` are present and were used. No `gh release create` fallback is appropriate | PASS |
+| Release surface | Remote has only annotated `v0.1.0` (peeled `b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`) and one published non-draft Release. `v0.2.0` tag ref is absent. No tag or Release was created | PASS / unchanged |
+| Deployed binary | `/home/kara/.local/bin/mischief` reports `mischief v0.1.0`, mtime 2026-10-16; its installed commit is the prior release ancestor, so it is stale | BLOCKING / owner action |
+| Version hygiene | No `CHANGELOG.md` or `Unreleased` heading. The repository's release contract is documented, but a future v0.2.0 prep must review release-facing version claims | PREP needed |
+| Known issues | `QA-MISCHIEF-002-R2`, `QA-MISCHIEF-CHAOS-4`, `QA-MISCHIEF-FOREMAN-1/2`, candidate-bound GitReins, unfinished P0/P1 work, stale deployed v0.1.0, and the local full-test scratch-root failure above | BLOCKING |
+
+## Decision
+
+NO-CUT. Do not create or move `v0.2.0`, do not create a GitHub Release, do not mutate deployed artifacts, and do not force-move any tag. Main CI is green, but the release gate is not: the local full suite fails, candidate-bound GitReins is unavailable, open P0/P1 work and QA blockers remain, dogfood evidence is partial, and the deployed binary is stale. If the local `internal/chaos` failures are later attributed to the scratch-root setup, they still require a clean rerun before release; hosted success does not erase a failed required local gate.
+
+The rolling board row `RELEASE-013` remains the single release-readiness row. No duplicate RELEASE row was created. This pass updates its evidence only after the final candidate and artifact bytes are fixed. No tag, GitHub Release, package publication, deployment mutation, or force-move was performed.
