@@ -453,3 +453,95 @@ Census re-derived over `v0.1.0..5a3a008`: 596 commits total, 504 non-merge, 92 m
 5. Re-run the release sweep at a stable candidate, then follow `docs/RELEASE.md` for the annotated tag, tag CI, draft Release review, publication, and post-release verification.
 
 No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+## Pass-11 addendum: product-digest proof, board rebind, published tips (2026-11-15T14:0xZ)
+
+Recorded after the pass-11 section above, in the same tick. This addendum closes
+two integrity gaps the pass-11 narrative left implicit, and records the
+bookkeeping series that carries it.
+
+### 1. Product-file identity, proven by digest rather than by diff
+
+The pass-11 note asserted product-path equality via `git diff --name-status`.
+That is necessary but not sufficient: a diff proves what changed between two
+commits, not that the product file set is byte-identical across the whole
+series. Recomputed with a digest over the tab-delimited path field of
+`git ls-tree -r`, excluding `.coding-hermes/` and `.gitreins/`, and with a
+fail-loud guard that aborts if the exclusion removes zero entries:
+
+| revision | role | product files | bookkeeping files | product digest |
+|---|---|---|---|---|
+| b0cac920 | certified candidate | 330 | 67 | 9f17c4ca008a6c95ba917ef403e90fe843389831132c4b079b472a8865a32dee |
+| 419d80c6 | pass-10 candidate | 330 | 67 | 9f17c4ca008a6c95ba917ef403e90fe843389831132c4b079b472a8865a32dee |
+| 5a3a0080 | pass-10 landing / pass-11 candidate | 330 | 67 | 9f17c4ca008a6c95ba917ef403e90fe843389831132c4b079b472a8865a32dee |
+| f7f6c0e0 | pass-11 artifact commit | 330 | 67 | 9f17c4ca008a6c95ba917ef403e90fe843389831132c4b079b472a8865a32dee |
+| c163ff59 | pass-11 board rebind commit | 330 | 67 | 9f17c4ca008a6c95ba917ef403e90fe843389831132c4b079b472a8865a32dee |
+
+All five revisions share one product digest. Root tree hashes differ across the
+series (only because bookkeeping paths change); the product subtree does not.
+Consequence for the decision: the pass-10 local gate receipts (`make build`,
+`make vet`, 22-package `go test`, `make release-dry`) and the certified-candidate
+measurements are still measurements **of the pass-11 candidate tree**, so they
+carry as strategy evidence. They do not become publishable artifacts, and they
+do not substitute for candidate-bound clean-machine or GitReins evidence.
+
+Note on method: the first digest attempt filtered `ls-tree` output with a
+tab-based `grep -E` pattern; the exclusion silently matched nothing and produced
+five different "product" digests, which would have read as a false regression.
+The failing filter was replaced with tab-field `awk` plus an explicit
+`FILTER_NOOP` abort. A second attempt using `ls-tree` pathspec exclusion failed
+loudly (`pathspec magic not supported`), which is the correct behaviour.
+
+### 2. Board row RELEASE-013 rebound to pass-11 truth
+
+Before this tick the row still carried pass-10 structured detail while its title
+and note described pass 11 — the same stale-binding class flagged in earlier
+passes (a row naming a candidate its own evidence no longer covers).
+
+Updated: title, note, `commit_hash` = 5a3a0080 (the evaluated candidate, not the
+bookkeeping tip), `guard_result` = SKIP (board-only diff, no product code to
+guard), `ci_result` = GREEN, and `detail` rebound to:
+
+- `candidate` = 5a3a0080, `prior_candidate` = 419d80c6
+- `artifact_sha256` = a0c36b95e8988a48a73d9a3b88388f88e41c6ddcf413db90d97b8b9bad7faad2
+- `ci` = run 43718299227 on 5a3a0080, job `Build & Test (1.24)`, 15 steps, 0 failed, carried from 43714702401 on 419d80c6
+- `range` = 596 all / 504 non-merge / 92 merges, strict classifier, buckets summing to 504
+- `release_surface.verified_at` = 5a3a0080, `v020_tag` absent, `v020_release` absent
+- `bookkeeping_delta` extended to 5a3a0080 with the pass-11 carrier commit named
+- `local_gates` marked `carried_forward: true` with `measured_at_sha` = 419d80c6 and the reason (zero product delta, digest above)
+- `liveness_rereun.re_exercised_pass11 = false`; the RELEASE-014 / RELEASE-016 red reproductions stand as filed and were deliberately not re-run, because the product tree they exercised is byte-identical
+
+Row state is `pending`; pass 11 closes nothing and authorizes nothing.
+
+Verification of the edit: line count unchanged at 242 rows, exactly one row
+changed (RELEASE-013), `boardctl validate` returns `RESULT: OK` with 258
+pre-existing legacy-shape warnings, and the rebind assertions for candidate,
+artifact digest, CI run, and bucket sum all pass on re-read.
+
+### 3. Bookkeeping series published this tick
+
+| commit | contents | hosted CI |
+|---|---|---|
+| f7f6c0e0 | pass-11 section appended to this audit artifact, certified-candidate header moved to 5a3a0080 | run 43719688857 success |
+| c163ff59 | RELEASE-013 title/note/detail rebind + board event | run 43721608547 success, check-run `Build & Test (1.24)` success |
+
+`origin/main` = `git ls-remote origin refs/heads/main` = the tip pushed by this
+tick; remote parity 0/0 after push. The canonical checkout `/home/kara/mischief`
+was left unmodified; all writes happened in the detached scratch worktree.
+
+### 4. Release surface, re-verified after the pushes
+
+- `refs/tags/v0.1.0` = af9a38fd51df655ac6c4a77664e3b835e31cb3d4, peeled b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb
+- that is the only tag in the repository; no `v0.2.0` ref, no `v0.2.0` prerelease ref
+- exactly one published Release (`v0.1.0`, published 2026-10-07T16:35:57Z), not a draft, not a prerelease
+- deployed binary `/home/kara/.local/bin/mischief` still reports v0.1.0, mtime 2026-10-16
+
+### 5. Decision unchanged
+
+**NO-CUT for v0.2.0 at 5a3a0080.** Green exact-tip CI and a free tag namespace
+are necessary, not sufficient: open P0 product rows (PROF-002, PROF-003), a
+failed P1 QA row (QA-MISCHIEF-002-R2), no candidate-bound GitReins verdict, no
+candidate-bound clean-machine QA or dogfood, three open release-hygiene rows
+(RELEASE-014/015/016), a stale deployed binary, and no board row authorizing a
+`trouble-agent/mischief` v0.2.0 cut. No tag, no GitHub Release, no artifact
+publication, no deployment mutation, no force-move was performed.
