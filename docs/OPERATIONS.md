@@ -55,7 +55,7 @@ contain a fault for up to about 11s (`6s + 5s`) before the next sweep. The
 executable regression `internal/daemon/daemon_test.go::TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval`
 asserts both bounds through the real journal and daemon loop.
 
-ch:trace row=MISCHIEF-DF-59-R2 spec=internal/reverter/doc.go#HeartbeatInterval wave=.coding-hermes/waves/mischief-foreman-2026-11-15-05-54-19.json#MISCHIEF-DF-59-R2 test=internal/daemon/daemon_test.go::TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval doc=README.md+docs/OPERATIONS.md prompt=/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-15-05-54-19/attempt-01/MISCHIEF-DF-59-R2-brief.txt evidence=docs/OPERATIONS.md+README.md witness=none:worker-local-live-sweep verdict=none:foreman-will-judge commit=WORKER_SHA memory=none:worker
+ch:trace row=MISCHIEF-DF-59-R2 spec=internal/reverter/doc.go#HeartbeatInterval wave=.coding-hermes/waves/mischief-foreman-2026-11-15-05-54-19.json#MISCHIEF-DF-59-R2 test=internal/daemon/daemon_test.go::TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval doc=README.md+docs/OPERATIONS.md prompt=/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-15-05-54-19/attempt-01/MISCHIEF-DF-59-R2-brief.txt evidence=docs/OPERATIONS.md+README.md witness=none:worker-local-live-sweep verdict=none:foreman-will-judge commit=630f3839e4a705a726f0983aaf3fc1dc2b33bfce memory=none:worker
 
 ## Health document (unchanged)
 
