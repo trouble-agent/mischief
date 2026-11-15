@@ -208,3 +208,46 @@ Decision remains NO-CUT. The proposed version remains `v0.2.0` (minor): the exac
 NO-CUT. Do not create or move `v0.2.0`, do not create a GitHub Release, do not mutate deployed artifacts, and do not force-move any tag. Main CI is green, but the release gate is not: the local full suite fails, candidate-bound GitReins is unavailable, open P0/P1 work and QA blockers remain, dogfood evidence is partial, and the deployed binary is stale. If the local `internal/chaos` failures are later attributed to the scratch-root setup, they still require a clean rerun before release; hosted success does not erase a failed required local gate.
 
 The rolling board row `RELEASE-013` remains the single release-readiness row. No duplicate RELEASE row was created. This pass updates its evidence only after the final candidate and artifact bytes are fixed. No tag, GitHub Release, package publication, deployment mutation, or force-move was performed.
+
+## Pass-7 re-anchor (2026-11-15, tick `mischief-releng-2026-11-15-05-54-11`)
+
+Pass 6 certified `edd0353`. The fetched canonical tip is now `a3bf6ec649ac72bd82159d23ddd76ff85623e5b3`, a five-commit advance, and the product-path delta is non-empty, so every measurement below is re-derived rather than carried. Product changes since pass 6: `cmd/mischief/metrics_test.go`, `docs/OPERATIONS.md`, `internal/daemon/metrics.go`, `internal/reverter/record.go`, `README.md` (MISCHIEF-DF-75 not_landed series plus DOC-27/DOC-29); the rest is board, wave, and release-audit bookkeeping.
+
+Decision is unchanged, **NO-CUT for v0.2.0**, but two of pass 6's stated grounds are retired by measurement and replaced with narrower ones.
+
+**Retired: the local full-suite failure is attributed, and gone.** `go test -count=1 ./...` at `a3bf6ec` exits 0 with 22 packages ok and 0 failures — but only with `GOTMPDIR` unset. This host exports `GOTMPDIR=/var/tmp/hermes-go-tmp`, which is a *symlink* to `/var/tmp/hermes-go-tmp-real` (created 2026-11-06 by host hygiene, not by any test). Go's `t.TempDir()` therefore hands `internal/chaos` a fixture root under the symlink, `SymlinkEvidence` legitimately resolves the board to the `-real` target, and the assertion compares it against the unresolved declared primary. Reproduced both ways at the same commit: `GOTMPDIR=/var/tmp/hermes-go-tmp go test ./internal/chaos/` fails `TestSymlinkEvidenceOK` and `TestVerifyAgainstMatches`; `env -u GOTMPDIR TMPDIR=<real dir> go test -count=1 ./...` is clean. Hosted CI is unaffected (ubuntu `/tmp` is real). This is a test-robustness defect, not a product red, and it is filed as `RELEASE-014` rather than carried as a release blocker.
+
+**Falsified: `QA-MISCHIEF-FOREMAN-2`'s premise.** At `v0.1.0` (peeled `b123b4e`) `go build ./...` exits 0 on Go 1.26.9 and yields a working binary (unstamped, `mischief unknown`). The previous release was refused at the *release workflow* gates (`INT-CI-4`), not because its source does not build. The row's title premise should not be reused as a cut blocker.
+
+**Still blocking.** No candidate-bound clean-machine QA/dogfood battery: the newest durable dogfood is 2026-11-14-2243 at `04e7bfc` (ancestor, three commits behind) with verdict *works, containment promise holds, but late and three doc/output mismatches* — a findings pass, not a release battery. `QA-MISCHIEF-002-R2` stays open P1: its named test is green locally three times over (`go test ./internal/reverter/ -run TestOwnerSurvivesKill9AndRevertsAtTTL -count=3` rc=0, 21.2s), which is consistent with the row's own claim that the tree is green on the dev box and in CI — the unverified half is the JIT-agent mechanism, and that is still unproven. `PROF-002` (P0) sits in `review`, `PROF-003` (P0) in `in_progress`; `mischief profile` is still an unknown verb and no doc claims it, so nothing false is promised, but the candidate ships unfinished P0 work. `QA-MISCHIEF-CHAOS-4` still names a phantom target, `QA-MISCHIEF-FOREMAN-1` is still in progress.
+
+**GitReins.** The repository tracks no `.gitreins` path; the checkout carries an untracked `.gitreins/` with 231 verdict files. The freshest is `2026-11-15T09:43:06Z` on `742166fd` (two commits behind the candidate) for `MISCHIEF-DF-75`: `merge_recommendation=no_concerns_found` with all five items affirmative, including a mutation check that removing `OutcomeNotLanded` from `DeclaredOutcomes` fails `metrics_test.go:104` and a live scrape confirming four series — yet the artifact's own top-level `passed` flag is `false`. That self-inconsistency is recorded here rather than read as either PASS or FAIL. No verdict is bound to `a3bf6ec`; candidate-bound GitReins remains absent.
+
+## Pass-7 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate parity | `git rev-parse origin/main` = `a3bf6ec649ac72bd82159d23ddd76ff85623e5b3`, stable across two fetches 12 minutes apart; disposable worktrees at the exact sha report clean status | PASS |
+| Candidate movement | `edd0353..a3bf6ec` = 5 commits, 5 product paths; prior measurements re-derived | MATERIAL |
+| Commit census | `v0.1.0..a3bf6ec`: 589 total / 497 non-merge; feat 1, fix 20, docs 42, chore 13, test 1, ci 1, other lowercase prefixes 390 (tick titles), non-conventional 29; buckets sum to 497; typed-bang 0, line-start BREAKING footers 0 | v0.2.0 (minor) |
+| Exact-tip hosted CI | run `43706150195`, workflow `CI`, event push, exact `headSha=a3bf6ec...`, completed/success; job `Build & Test (1.24)` 15/15 steps success including build, vet, docs twins, tests, selftest, N-012 battery, per-arch shim live proof, shim drift, row-status drift | PASS |
+| Local gates at exact tip | detached worktree: `go build ./...` rc=0; `go vet ./...` rc=0; `make release-dry` rc=0; `make dist` rc=0; `tools/shim-build.sh --smoke` rc=0 with live landing proof on both arches (`arm64-landing-proof ok`, `hits=1`) | PASS |
+| Local full suite | `env -u GOTMPDIR TMPDIR=<real> go test -count=1 ./...` rc=0, 22 packages ok, 0 fail. With the host `GOTMPDIR` symlink in place, `internal/chaos` fails two symlink-resolution tests — attributed, reproduced, and filed as RELEASE-014 | PASS / attributed |
+| Release artifacts | snapshot archives contain `mischief`, `libfault-anchored.so` at 0755, `LICENSE`, `README.md` on amd64 and arm64; `checksums.txt` matches both | PASS |
+| 002-R2 named test | `go test ./internal/reverter/ -run TestOwnerSurvivesKill9AndRevertsAtTTL -count=3` rc=0 (21.2s) | PASS locally / agent-side UNVERIFIED |
+| GitReins | no tracked `.gitreins`; 231 untracked verdicts; freshest `2026-11-15T09:43:06Z` on `742166fd` (2 behind) = `no_concerns_found` with 5 affirmative items but `passed=false`; nothing bound to `a3bf6ec` | UNVERIFIED for candidate |
+| Dogfood / QA | newest durable log 2026-11-14-2243 at `04e7bfc` (3 behind): works-with-findings; no candidate-bound clean-machine battery | BLOCKING |
+| Product work | `PROF-002` review P0; `PROF-003` in_progress P0 (`mischief profile` = unknown verb, unclaimed in docs); `PROF-011/012/013` in progress | BLOCKING |
+| Release surface | remote has annotated `v0.1.0` (peeled `b123b4e`) and one published Release; `v0.2.0` tag and Release absent; no tag was created or moved | PASS / unchanged |
+| Version hygiene | no `CHANGELOG.md`; no stale candidate-version claims in the tree; README install pins name `v0.1.0`, correct until the next cut and a post-cut refresh item | PREP |
+| Snapshot stamp | `make dist` at `a3bf6ec` stamps `mischief v0.1.0` into the binary and names archives `mischief_v0.1.0_linux_*.tar.gz`, while docs/RELEASE.md says the dry run stamps `v0.0.0` | DRIFT — RELEASE-015 |
+| Deployed binary | `/home/kara/.local/bin/mischief` = `mischief v0.1.0`, mtime 2026-10-16, size 7962808, predates the candidate | STALE / owner action |
+
+## Pass-7 unblock ladder
+
+1. Run and record a clean-machine QA/dogfood battery bound to a fixed candidate sha; the 002-R2 acceptance asks specifically for the JIT-agent shape (recorded detach mode plus unit `ActiveState`/`ExecMainStatus`), not another dev-box rerun.
+2. Land or explicitly defer the two open P0s; if `PROF-003` is deferred, say so on the row so the release does not ship a half-exposed surface.
+3. Fix `RELEASE-014` so a symlinked temp root stops reddening the required local gate, and `RELEASE-015` so a snapshot build cannot wear a published tag.
+4. Then re-run this sweep against a stable candidate and cut only through `docs/RELEASE.md`: annotated `v0.2.0` tag, tag CI, DRAFT Release review, publish, verify the full asset set, and refresh the deployed binary.
+
+No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
