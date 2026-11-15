@@ -3,9 +3,41 @@
 Target: trouble-agent/mischief
 Canonical checkout: /home/kara/mischief
 Forge/client: GitHub / gh
-Certified candidate: 819e6913509703fa493e0d9e2ddc40f2bd214171
-Remote/default parity: local main == origin/main == origin/HEAD at 819e6913509703fa493e0d9e2ddc40f2bd214171; ahead/behind 0/0.
+Certified candidate: 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0
+Remote/default parity: local main == origin/main == origin/HEAD at 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0; ahead/behind 0/0.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
+
+## Pass-4 re-anchor (2026-11-15, daily readiness sweep)
+
+Same lane, ~5 hours after pass 3. The carrier advanced from 819e691 to 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0 and the delta `819e691..4a7cf09` is exactly three files, all under `.coding-hermes/` (this artifact, `board/tasks.jsonl`, `board/events.jsonl`) — a **0 product-path change**. Pass-3's product measurement therefore carries; no new release decision is invented here, and the single rolling row RELEASE-013 is refreshed in place rather than duplicated.
+
+Decision remains NO-CUT, on unchanged process gates plus one new product-grounds reason.
+
+Census re-derived over the wider range at this tip: `v0.1.0..4a7cf09` is 567 commits including merges and 478 non-merge. Strict NUL-delimited conventional-subject census: feat 1, fix 19, perf 0, chore 12, docs 38, refactor 0, test 1, ci 1, other 406 — buckets sum to 478, so the inventory is fully accounted for. Typed-bang subjects 0 and line-start `BREAKING CHANGE:`/`BREAKING-CHANGE:` footers 0. The user-facing feature is still 0b52fb8 `feat(daemon): serve Prometheus metrics on a separately bound listener (MISCHIEF-OPS-001)`. Proposed bump stays v0.2.0 (minor); no major signal.
+
+Exact-tip hosted CI is green: run 43683916602, workflow CI, push event, headSha 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0, completed/success. Its only job `Build & Test (1.24)` completed/success with 15 steps and 0 failed. Tag CI does not exist because no tag exists for v0.2.0.
+
+Repository-owned release tooling was exercised fresh at this exact tip in a throwaway detached worktree (`/home/kara/.hermes/cache/scratch/releng-mischief-4a7cf09`, HEAD 4a7cf09, 0 dirty lines, go1.26.9): `go build ./...` rc=0, `go vet ./...` rc=0, `make release-dry` (goreleaser check, 1 configuration file validated) rc=0, `make dist` (goreleaser snapshot --clean) rc=0 producing linux amd64 and arm64 archives, `checksums.txt`, `artifacts.json`/`metadata.json` and both per-arch shim libraries. Snapshot assets carry the v0.1.0 name from the current tag — strategy evidence, not publishable assets.
+
+New material read from the tip board this pass: the P0 product wave is mid-flight — `PROF-002` is `review` (three-value outcome everywhere; kill the false-green revert path) and `PROF-003` is `in_progress` (`mischief profile run`, the executor that actually applies a profile). A cut now would publish a half-landed P0 surface, which is a NO-CUT reason on product grounds independent of the process gates. The sixth dogfood fire (log at HEAD 9e99bae) also minted `MISCHIEF-DF-75` (metrics result vocabulary omits `not_landed` until observed) and `MISCHIEF-DF-76` (a pending row's acceptance criterion cites a `health` verb the binary does not ship), and `DOC-27`/`DOC-28`/`DOC-29` remain open — two documented incident commands exit 2 as printed. Documentation ships with a release, so those are release-facing.
+
+## Pass-4 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate parity | `git rev-parse HEAD origin/main` = both 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0; `git status --porcelain` on the canonical checkout 0 lines before and after the fetch; `git pull --ff-only` fast-forwarded 819e691 → 4a7cf09 | PASS |
+| Carrier delta | `git diff --name-status 819e691..4a7cf09` = 3 paths, all under `.coding-hermes/` (audit artifact, `board/tasks.jsonl`, `board/events.jsonl`); product-path change count 0 | PASS (measurement carried) |
+| Commit inventory | `git rev-list --count` 567 / `--no-merges --count` 478 over `v0.1.0..4a7cf09`; feat 1, fix 19, perf 0, chore 12, docs 38, refactor 0, test 1, ci 1, other 406 (sum 478); typed-bang 0, line-start BREAKING footers 0 | v0.2.0 proposal |
+| Exact-tip CI | Run 43683916602, workflow CI, event push, headSha 4a7cf094ecc634b4b22bdf09f3e4dbe7952312a0, completed/success; job `Build & Test (1.24)` completed/success, 15 steps, 0 failed | PASS |
+| Build at exact tip | Throwaway detached worktree at 4a7cf09, 0 dirty, go1.26.9: `go build ./...` rc=0; `go vet ./...` rc=0 | PASS |
+| Release rehearsal | Same worktree: `make release-dry` → goreleaser check, 1 config validated, rc=0; `make dist` → snapshot rc=0, linux_amd64 + linux_arm64 archives (3.6 MB / 3.3 MB), `checksums.txt`, `artifacts.json`, `metadata.json`, per-arch shim libs. Snapshot-only, not publishable | PASS strategy evidence |
+| Release surface | `git ls-remote --tags origin` → only annotated `v0.1.0` (tag object af9a38f, peeled b123b4e); `gh release list` → only published `v0.1.0` (2026-10-07) | PASS for namespace availability; v0.2.0 absent by design |
+| GitReins | `git ls-tree -r --name-only 4a7cf09 -- .gitreins` empty: no tracked config, no candidate-bound verdict in the candidate tree | UNVERIFIED / blocker (unchanged) |
+| Blockers at tip | QA-MISCHIEF-002-R2 `failed` P1 (last updated 2026-10-29); QA-MISCHIEF-CHAOS-4 `pending` P3 phantom target; INT-CI-10 `pending` P3 (act runner-env, exitcode 127); QA-MISCHIEF-FOREMAN-1 `in_progress` P1; QA-MISCHIEF-FOREMAN-2 `in_progress` P2 | BLOCKING (unchanged) |
+| Product in flight | PROF-002 `review` P0 (three-value outcome); PROF-003 `in_progress` P0 (`mischief profile run` executor) | BLOCKING (new reason) |
+| Documentation defects | DOC-27 P2, DOC-29 P2 (two documented incident commands exit 2), DOC-28 P3, MISCHIEF-DF-75 P3, MISCHIEF-DF-76 P3 — all `pending` | RELEASE-FACING / open |
+| Deployed binary | `/home/kara/.local/bin/mischief` still reports v0.1.0 (built 2026-10-16); predates the candidate | STALE |
+| Rolling row | RELEASE-013 refreshed in place (`pending` P1) with candidate 4a7cf09, CI 43683916602 and this artifact path; no duplicate readiness row minted | PASS |
 
 ## Pass-3 re-anchor (2026-11-15)
 
