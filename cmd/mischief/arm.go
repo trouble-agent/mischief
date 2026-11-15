@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trouble-agent/mischief/internal/daemon"
 	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/reverter"
 	"github.com/trouble-agent/mischief/internal/sanction"
@@ -174,7 +175,7 @@ func cmdArm(args []string) int {
 		return 1
 	}
 	fmt.Printf("armed %s fault=%s target=%s ttl=%s dir=%s\n", id, *fault, *target, *ttl, *dir)
-	fmt.Printf("write-ahead: inverse + check durable in the journal (SPEC-04); serve reverts at TTL\n")
+	fmt.Printf("write-ahead: inverse + check durable in the journal (SPEC-04); serve reverts at TTL; maximum overshoot after expiry=%s (HeartbeatInterval)\n", daemon.HeartbeatInterval)
 	return 0
 }
 

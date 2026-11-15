@@ -310,6 +310,9 @@ func TestArmOutputNamesOnlySupportedRevertRoute(t *testing.T) {
 	if !strings.Contains(out, "serve reverts at TTL") {
 		t.Fatalf("arm output does not name the supported serve/TTL route: %q", out)
 	}
+	if !strings.Contains(out, "maximum overshoot after expiry=5s (HeartbeatInterval)") {
+		t.Fatalf("arm output does not name the maximum sweep overshoot: %q", out)
+	}
 	if strings.Contains(out, "Detach") {
 		t.Fatalf("arm output advertises the unreachable Detach path: %q", out)
 	}

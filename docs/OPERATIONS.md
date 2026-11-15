@@ -45,6 +45,18 @@ WantedBy=multi-user.target
 supervisor must bring it back and the metric/exposition gap (below) is what makes that visible
 instead of silent.
 
+## TTL sweep timing
+
+`mischief serve` runs the hold sweep every `HeartbeatInterval`, which is 5s in
+`internal/daemon/daemon.go`. A hold is reverted at the next sweep after its
+expiry, so it is never reverted before its declared TTL and the maximum
+overshoot after expiry is at most 5s. Operationally, a 6s TTL can therefore
+contain a fault for up to about 11s (`6s + 5s`) before the next sweep. The
+executable regression `internal/daemon/daemon_test.go::TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval`
+asserts both bounds through the real journal and daemon loop.
+
+ch:trace row=MISCHIEF-DF-59-R2 spec=internal/reverter/doc.go#HeartbeatInterval wave=.coding-hermes/waves/mischief-foreman-2026-11-15-05-54-19.json#MISCHIEF-DF-59-R2 test=internal/daemon/daemon_test.go::TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval doc=README.md+docs/OPERATIONS.md prompt=/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-15-05-54-19/attempt-01/MISCHIEF-DF-59-R2-brief.txt evidence=docs/OPERATIONS.md+README.md witness=none:worker-local-live-sweep verdict=none:foreman-will-judge commit=WORKER_SHA memory=none:worker
+
 ## Health document (unchanged)
 
 `mischief serve` writes `<run dir>/health.json` ATOMICALLY (temp + rename) on every state change

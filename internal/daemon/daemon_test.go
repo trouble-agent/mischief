@@ -133,6 +133,71 @@ func TestDaemonJournalRevertRoundtrip(t *testing.T) {
 	}
 }
 
+// TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval is the executable
+// timing contract for the shipped serve sweep: a declared TTL is a lower
+// bound, and the next 5s heartbeat is the upper-bound overshoot after expiry.
+// It uses the real journal, lifecycle, and daemon Run loop rather than a
+// direct revert call so this cannot pass while the sweep is unwired.
+func TestDaemonTTLNeverEarlyAndRevertsWithinHeartbeatInterval(t *testing.T) {
+	dir := localTempDir(t)
+	live, backup := scratchPair(t, dir)
+	ttl := 6 * time.Second
+	armedAt := time.Now()
+	store, err := reverter.Open(dir)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	id, err := reverter.New(store).Arm(testHold(live, backup, ttl))
+	if err != nil {
+		store.Close()
+		t.Fatalf("arm: %v", err)
+	}
+	if err := os.WriteFile(live, []byte("FAULTED\n"), 0o644); err != nil {
+		store.Close()
+		t.Fatalf("land file: %v", err)
+	}
+	if err := reverter.New(store).Land(id); err != nil {
+		store.Close()
+		t.Fatalf("land: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	d, err := New(dir)
+	if err != nil {
+		t.Fatalf("daemon new: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- d.Run(ctx) }()
+
+	deadline := armedAt.Add(ttl + HeartbeatInterval)
+	var revertedAt time.Time
+	for {
+		if b, readErr := os.ReadFile(live); readErr == nil && string(b) == "GOOD\n" {
+			revertedAt = time.Now()
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			<-done
+			t.Fatalf("daemon reverted after TTL+HeartbeatInterval: armed=%s deadline=%s", armedAt.Format(time.RFC3339Nano), deadline.Format(time.RFC3339Nano))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	if err := <-done; err != nil && err != context.Canceled {
+		t.Fatalf("daemon run: %v", err)
+	}
+	if revertedAt.Before(armedAt.Add(ttl)) {
+		t.Fatalf("daemon reverted before declared TTL: armed=%s reverted=%s ttl=%s", armedAt.Format(time.RFC3339Nano), revertedAt.Format(time.RFC3339Nano), ttl)
+	}
+	if revertedAt.After(deadline) {
+		t.Fatalf("daemon reverted after TTL+HeartbeatInterval: reverted=%s deadline=%s", revertedAt.Format(time.RFC3339Nano), deadline.Format(time.RFC3339Nano))
+	}
+}
+
 // TestDaemonHealthAtomicPublish: health.json never appears torn — the
 // publish is temp+rename, so the document on disk always parses.
 func TestDaemonHealthAtomicPublish(t *testing.T) {
