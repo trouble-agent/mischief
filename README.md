@@ -293,6 +293,12 @@ bin/mischief status --dir ~/.mischief/runs/default   # shows the armed hold + TT
 bin/mischief serve --dir ~/.mischief/runs/default    # watchdog reverts at TTL, writes health.json
 ```
 
+The serve watchdog sweeps every `HeartbeatInterval` (5s). When a hold's expiry has
+passed, the next sweep reverts it, so the maximum overshoot after expiry is 5s.
+The declared TTL is still a lower bound: a 6s TTL can contain the fault for up to
+about 11s (`6s + 5s`) before the next sweep. Keep `mischief serve` running for
+the whole hold; `mischief revert --all` remains the immediate kill switch.
+
 Decl kinds are the reverter's closed vocabulary (fail closed on unknown
 kinds): inverse — `restore-file` (params `path`,`backup`) | `remove-file`
 (param `path`); check — `file-matches-backup` (params `path`,`backup`) |
