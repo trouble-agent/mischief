@@ -326,3 +326,30 @@ The true product-open blocker set is therefore narrower than the open-row census
 **Canonical checkout, flagged and not touched.** `/home/kara/mischief` is 4 commits behind the pushed tip and carries three uncommitted `.coding-hermes/board/tasks.jsonl` lines (the `wave-20261115-095307` worktree/branch/session bindings for `DOC-28` and `MISCHIEF-DF-76`) plus one untracked wave file. Those are the 09:53 foreman wave's bookkeeping, not this lane's, and a releng lane may not commit another lane's in-flight board write. Every gate read in this pass was taken from a clean detached worktree at the exact tip, so the measurements do not depend on that checkout; the divergence itself is noted for the wave's owner.
 
 **Decision, unchanged: NO-CUT for `v0.2.0`.** The repository-owned contract is present and exercised, the exact-tip CI is green 15/15, and the release namespace is free — but two P0 product rows are unfinished and no candidate-bound QA or GitReins evidence exists. No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+## Pass-9 re-verification (same tick, carrier advance to `22484cf`)
+
+`origin/main` advanced one commit past the pass-8 carrier: `2b3aaa6` → `22484cf251d06b340c310a3a93b39bef949efe12` (*"releng(mischief): pass-8 closeout — correct evaluated_at to the tick's UTC instant"*). This pass re-reads every gate at that tip rather than inheriting pass-8's readings.
+
+**Carrier delta, measured.** `git diff --name-status 2b3aaa6 22484cf` = `.coding-hermes/audits/release/mischief-releng-2026-11-14-04-50-34-final.md` (M), `.coding-hermes/board/tasks.jsonl` (M) — **0 product paths**. Product-tree equality re-proved directly against the certified candidate: `git diff --name-only b0cac920d2208cba760edf392c7349a612a6703e 22484cf | grep -v '^.coding-hermes/'` → empty. Product measurements therefore carry by construction.
+
+**Exact-tip CI.** Run `43711703567`, workflow `CI`, event `push`, `headSha=22484cf251d06b340c310a3a93b39bef949efe12`, `completed/success`, single job `Build & Test (1.24)`, 15 steps, **0 non-success steps**.
+
+**Release surface at the tip.** `git ls-remote --tags origin` → only annotated `v0.1.0` (`git cat-file -t v0.1.0` = `tag`); `gh release list` → one published non-draft Release; `refs/tags/v0.2.0` absent. Nothing published by this pass; tag namespace still free.
+
+**Local gates re-run at `22484cf`** (detached worktree, no product-file writes):
+
+| Gate | Command | Result |
+|---|---|---|
+| build | `make build` | rc=0, no output |
+| vet | `make vet` | rc=0, no output |
+| test (authoritative) | `env -u GOTMPDIR make test` (TMPDIR = real dir) | rc=0, **22 packages ok, 0 FAIL** |
+| release rehearsal | `make release-dry` | rc=0, `goreleaser check` → "1 configuration file(s) validated" |
+| distribution | `rm -rf dist/release && make dist` | rc=0, amd64+arm64 tarballs + `checksums.txt` + `metadata.json` |
+
+**Two host contaminations measured, both false reds — one already filed, one new.** The same tree that is 22/22 green above turns red purely from where the host's temp roots point. Both were reproduced both ways at this single commit:
+
+1. `GOTMPDIR=/var/tmp/hermes-go-tmp` (a symlink to `-real`): `internal/chaos` fails `TestSymlinkEvidenceOK` (`lane_test.go:305`, resolved `…-real/TestSymlinkEvidenceOK…` vs declared primary `…/TestSymlinkEvidenceOK…`) and `TestVerifyAgainstMatches` (`lane_test.go:366`), and `cmd/mischief` fails `TestChaosCheckVerifiesInstantiatedLane` (`chaos_test.go:145`, check exit 2). With `env -u GOTMPDIR` all three pass. Already filed: **`RELEASE-014`**.
+2. Stray `/tmp/catalog` (11 fault YAMLs, mtime 2026-10-19 22:52, owned by `kara`) — an ancestor of `/tmp`, so with `TMPDIR=/tmp` the repo-root walk-up in `internal/catalog` resolves outside the worktree: `TestLoadDefaultFindsRepoRootFromSubdir` fails `catalog_test.go:532: LoadDefault resolved outside the repo`. With `TMPDIR=/var/tmp/hermes-scratch` (no ancestor catalog) the same package is `ok`. Host residue, not a product defect — hosted CI cannot see it because ubuntu's `/tmp` has no catalog. Newly measured this pass; filed as **`RELEASE-016`**.
+
+**Decision, unchanged: NO-CUT for `v0.2.0`.** Carrier is green and the release namespace is free, but the gate set is unchanged: `PROF-002` (`review`, P0), `PROF-003` (`in_progress`, P0), `QA-MISCHIEF-002-R2` (`failed`, P1) remain unfinished product work, and both candidate-bound evidence gates (clean-machine QA/dogfood battery, GitReins verdict) remain structurally absent. No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
