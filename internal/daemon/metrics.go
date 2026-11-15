@@ -9,9 +9,10 @@
 // its health surface (health.json is a file in the run dir), so the metric
 // port is the daemon's only socket and it binds loopback by default.
 //
-// Bounded labels only: `result` is the journal's closed Outcome vocabulary
-// (reverted/revert_failed) and `reason` is a fixed classification of the
-// daemon's own error paths, so a scrape can never mint an unbounded series.
+// Bounded labels only: `result` is the reverter's closed Outcome vocabulary
+// plus the daemon's no_hold classification, and `reason` is a fixed
+// classification of the daemon's own error paths, so a scrape can never mint
+// an unbounded series.
 package daemon
 
 import (
@@ -24,6 +25,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/trouble-agent/mischief/internal/reverter"
 )
 
 // MetricsAddrEnv names the environment variable that selects the metrics
@@ -230,17 +233,30 @@ func (m *Metrics) render(w io.Writer) error {
 	return err
 }
 
-// knownOutcomes returns the union of the closed outcome vocabulary and any
-// observed key, sorted, so the exposition is stable scrape to scrape.
+// knownOutcomes returns the union of the reverter's closed outcome
+// vocabulary, the daemon's no_hold classification, and any observed key,
+// sorted so the exposition is stable scrape to scrape.
 func knownOutcomes(seen map[string]uint64) []string {
-	keys := []string{"no_hold", "reverted", "revert_failed"}
+	keys := []string{"no_hold"}
+	for _, outcome := range reverter.DeclaredOutcomes() {
+		keys = append(keys, string(outcome))
+	}
 	for k := range seen {
-		if k != "no_hold" && k != "reverted" && k != "revert_failed" {
+		if k != "no_hold" && !contains(keys, k) {
 			keys = append(keys, k)
 		}
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func contains(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 // knownReasons is the errors counterpart of knownOutcomes.
