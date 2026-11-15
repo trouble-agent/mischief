@@ -147,7 +147,7 @@ flat `mischiefd_cycles_total`.
 The daemon's durable state is the run-dir journal (`.jsonl` records) plus the terminal proofs it
 writes. It is append-only and small; there is no database to dump. Two operator paths:
 
-- `mischief retention --dir <run dir>` — report old run dirs; `--apply` rotates them. Report-only
+- `mischief retention --runs-dir <run dir>` — report old run dirs; `--apply` rotates them. Report-only
   by default, so a cron can run it without deleting evidence.
 - Snapshot the run dir with the filesystem's own snapshot/backup while the daemon runs (the
   journal is append-only, so a file copy is consistent enough for a restore into a scratch dir;
