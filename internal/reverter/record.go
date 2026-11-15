@@ -73,6 +73,13 @@ const (
 	OutcomeNotLanded Outcome = "not_landed"
 )
 
+// DeclaredOutcomes returns the closed outcome vocabulary used by revert proofs.
+// The returned slice is a fresh copy so callers cannot mutate the canonical
+// definitions used by record validation and other surfaces.
+func DeclaredOutcomes() []Outcome {
+	return []Outcome{OutcomeReverted, OutcomeRevertFailed, OutcomeNotLanded}
+}
+
 // Valid reports whether o is a declared outcome value.
 func (o Outcome) Valid() bool {
 	switch o {

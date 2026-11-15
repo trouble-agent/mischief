@@ -76,6 +76,40 @@ func TestMetrics_UnknownPathIs404AndNonGetRefused(t *testing.T) {
 	}
 }
 
+// TestMetrics_FreshScrapeIncludesAllRevertOutcomes proves a fresh daemon
+// exposes every closed result series before any revert has happened. In
+// particular, not_landed must not appear lazily after its first event.
+func TestMetrics_FreshScrapeIncludesAllRevertOutcomes(t *testing.T) {
+	dir := localTempDir(t)
+	d, err := New(dir)
+	if err != nil {
+		t.Fatalf("new daemon: %v", err)
+	}
+	defer d.store.Close()
+
+	body, code := scrape(t, d.Metrics.Handler(), "/metrics")
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	want := []string{
+		"mischiefd_revert_total{result=\"no_hold\"} 0",
+		"mischiefd_revert_total{result=\"not_landed\"} 0",
+		"mischiefd_revert_total{result=\"revert_failed\"} 0",
+		"mischiefd_revert_total{result=\"reverted\"} 0",
+	}
+	previous := -1
+	for _, line := range want {
+		at := strings.Index(body, line)
+		if at < 0 {
+			t.Fatalf("fresh exposition missing %q:\n%s", line, body)
+		}
+		if at <= previous {
+			t.Fatalf("fresh outcome exposition is not stable/sorted:\n%s", body)
+		}
+		previous = at
+	}
+}
+
 // TestMetrics_CountersAndHistogram pins the arithmetic: counts per outcome,
 // cumulative buckets, a sum, and +Inf equal to count.
 func TestMetrics_CountersAndHistogram(t *testing.T) {

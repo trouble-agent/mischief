@@ -90,7 +90,7 @@ containment: losing the metric surface must never stop the daemon from reverting
 | `mischiefd_start_time_seconds` | gauge | process start (unix seconds) |
 | `mischiefd_cycles_total` | counter | completed heartbeat/sweep cycles |
 | `mischiefd_scrapes_total` | counter | scrapes served |
-| `mischiefd_revert_total{result}` | counter | revert attempts by the journal's closed outcome vocabulary: `reverted`, `revert_failed`, `no_hold` (the hold vanished between snapshot and revert — reported, not fatal) |
+| `mischiefd_revert_total{result}` | counter | revert attempts by the journal's closed outcome vocabulary: `no_hold`, `not_landed`, `revert_failed`, `reverted` (`no_hold` means the hold vanished between snapshot and revert — reported, not fatal) |
 | `mischiefd_errors_total{reason}` | counter | daemon error paths: `refold` (Journal corruption held for the render — DEGRADED, the loop survives), `revert` (a revert attempt failed fatally), `health_write` (health.json publish failed) |
 | `mischiefd_revert_duration_seconds` | histogram | one revert attempt end to end (action + measured check), buckets 5 ms … 10 s |
 
