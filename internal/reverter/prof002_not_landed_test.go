@@ -1,5 +1,10 @@
 package reverter
 
+// ch:trace row=MISCHIEF-DF-74 spec=internal/reverter/record.go#OutcomeNotLanded wave=.coding-hermes/waves/mischief-foreman-2026-11-15-05-54-19.json#MISCHIEF-DF-74 test=internal/reverter/prof002_not_landed_test.go::TestRevertUnlandedHoldStillCleansUp doc=none:comment-only safety reconciliation prompt=/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-15-05-54-19/attempt-01/MISCHIEF-DF-74-brief.txt evidence=internal/reverter/prof002_not_landed_test.go witness=none:local regression only verdict=none:foreman-will-judge commit=none:worker memory=none:worker
+// STATUS: complete
+// TIER: T1
+// EVIDENCE: internal/reverter/prof002_not_landed_test.go
+
 import (
 	"context"
 	"os"

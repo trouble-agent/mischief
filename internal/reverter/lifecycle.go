@@ -323,10 +323,11 @@ func (l *Lifecycle) revertNow(holdID string, arm armPayload, reason string, role
 	// harms: the journal cannot prove a fault was NOT applied (an operator may
 	// have faulted the target out-of-band, and no production path records a
 	// land today), so skipping cleanup would risk leaving a live fault —
-	// a SIGSTOPped process, a truncated file — which is the one thing a fault
-	// injector must never do. A redundant restore of the arm-time backup is
-	// recoverable; a fault left live is not. So the cleanup duty is
-	// unconditionally honoured and only the GRADE changes.
+	// a SIGSTOPped process, a truncated file — which is the one thing a
+	// fault injector must never do. A redundant restore of the arm-time backup
+	// is recoverable; a fault left live is not. So the cleanup duty is
+	// unconditionally honoured and only the GRADE changes. record.go's
+	// OutcomeNotLanded comment records the same cleanup-first policy.
 	s.mu.Lock()
 	neverLanded := false
 	if st, ok := s.holds[holdID]; ok {
