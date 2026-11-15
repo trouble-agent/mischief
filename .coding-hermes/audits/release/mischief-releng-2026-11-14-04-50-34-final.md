@@ -85,6 +85,54 @@ The release gate remains blocked by the existing rolling row RELEASE-013: QA-MIS
 
 No tag, GitHub Release, artifact publication, deployed-binary mutation, or force-move was performed by this pass.
 
+## Pass-6 re-anchor (2026-11-15, current delivery)
+
+The previous pass certified `1126bcbea56cd86958816c148e828e09bae89181`. The fetched canonical default-branch tip is now `edd03537bbaeb04ff50fbad895d802dcd86ebd47`; the delta is three paths, all under `.coding-hermes/` (the release artifact, board events, and the rolling task row). The product tree is unchanged, so pass-5 product measurements carry; the candidate and hosted CI receipt are refreshed to the new exact tip.
+
+Decision remains NO-CUT. The proposed version remains `v0.2.0` (minor): no breaking marker was found in the carried census, and the single user-facing `feat(daemon)` Prometheus metrics change still drives the minor proposal. No major confirmation is needed.
+
+## Pass-6 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate identity | `git rev-parse origin/main` = `edd03537bbaeb04ff50fbad895d802dcd86ebd47`; `git ls-remote --heads origin refs/heads/main` agrees; product-path delta from `1126bcb` is 0 | PASS |
+| Candidate movement | `1126bcb..edd0353` changes only `.coding-hermes/audits/release/mischief-releng-2026-11-14-04-50-34-final.md`, `.coding-hermes/board/events.jsonl`, and `.coding-hermes/board/tasks.jsonl` | BOOKKEEPING-ONLY; pass-5 product evidence carried |
+| Commit inventory | Carried from exact product tree at `1126bcb`: 578 total / 487 non-merge; strict conventional census has `feat=1`, `fix=20`, `perf=0`, `chore=13`, `docs=40`, `refactor=0`, `test=1`, `ci=1`, `other=409`; typed-bang=0; line-start BREAKING CHANGE footers=0 | v0.2.0 proposal |
+| Exact-tip hosted CI | GitHub run `43687404249`, workflow `CI`, push event, exact `headSha=edd03537bbaeb04ff50fbad895d802dcd86ebd47`, completed/success; `Build & Test (1.24)` completed with 15/15 steps successful and 0 failed/skipped | PASS |
+| Local required gates | Carried from the unchanged product tree at `1126bcb`: `go build ./...` rc=0, `go vet ./...` rc=0, `make release-dry` rc=0, `make dist` rc=0 with Linux amd64/arm64 snapshot archives, checksums, and per-arch shims | PASS strategy evidence |
+| Local full tests | Carried failure at `1126bcb`: `go test -count=1 ./...` rc=1 in `internal/chaos` (`TestSymlinkEvidenceOK`, `TestVerifyAgainstMatches` resolve `/var/tmp/hermes-go-tmp-real` instead of `/var/tmp/hermes-go-tmp`); attribution is not cleared by the bookkeeping-only move | FAIL / release blocker |
+| GitReins | `git ls-tree -r --name-only edd0353 -- .gitreins` is empty; no candidate-bound config/history verdict exists in the candidate tree | UNVERIFIED / blocker |
+| Dogfood / QA | Existing rolling evidence remains partial: failed P1 `QA-MISCHIEF-002-R2`, pending phantom-target `QA-MISCHIEF-CHAOS-4`, in-progress `QA-MISCHIEF-FOREMAN-1/2`; latest dogfood has act `ci-pass` UNVERIFIED and no complete candidate-bound release battery | BLOCKING |
+| Product work | `PROF-002` remains `review` P0; `PROF-003`, `PROF-011`, `PROF-012`, and `PROF-013` remain in progress | BLOCKING |
+| Release tooling | Repository-owned `docs/RELEASE.md`, `Makefile` targets `release-dry`/`dist`/`tags`, `.goreleaser.yml`, and tag-triggered `.github/workflows/release.yml` are present; use this path, not `gh release create` fallback | PASS |
+| Release surface | Remote has only annotated `v0.1.0` peeled to `b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`; `gh release list` shows one published release; `v0.2.0` tag and Release are absent | PASS / unchanged |
+| Deployed binary | `/home/kara/.local/bin/mischief` mtime `2026-10-16`, reports `mischief v0.1.0`; it predates the candidate | STALE / blocker |
+| Version hygiene | No `CHANGELOG.md` or `Unreleased` heading; release contract is documented, but future v0.2.0 version-facing claims still need review | PREP needed |
+
+## Known issues
+
+- `QA-MISCHIEF-002-R2` remains failed P1: the fresh JIT-agent TTL-owner recurrence is unresolved.
+- `QA-MISCHIEF-CHAOS-4` remains pending: scheduler satellites still point at the nonexistent `mischief-chaos` path; this is outside the product tree.
+- `QA-MISCHIEF-FOREMAN-1/2` remain in progress; act or stale premise evidence does not replace candidate-bound release evidence.
+- Candidate-bound GitReins is unavailable; historical/local untracked verdicts are not evidence for `edd0353`.
+- `PROF-002`/`PROF-003`/`PROF-011`/`PROF-012`/`PROF-013` remain unfinished product work.
+- The deployed `/home/kara/.local/bin/mischief` remains the v0.1.0 binary.
+- The required local full-suite failure remains unresolved or unattributed in a clean environment.
+
+## Unblock
+
+1. Reproduce or cleanly attribute the `internal/chaos` symlink-root test failure and obtain a fresh full-suite pass.
+2. Resolve `QA-MISCHIEF-002-R2` with a fresh JIT-agent receipt or an explicitly accepted release ruling.
+3. Correct the scheduler database and mirror for `QA-MISCHIEF-CHAOS-4`, then prove a bare-dispatched tick resolves `/home/kara/mischief`.
+4. Obtain candidate-bound GitReins evidence or an explicitly accepted equivalent gate.
+5. Finish/reconcile the open P0/P1 product rows and rerun releng at a stable candidate; only then follow `docs/RELEASE.md` for the annotated tag and tag-triggered draft Release.
+
+## Decision
+
+NO-CUT. Do not create or move `v0.2.0`, do not create a GitHub Release, do not mutate deployed artifacts, and do not force-move any tag. Exact-tip hosted CI is green, but the release gate is not: the unchanged product tree carries a failed required local full suite, candidate-bound GitReins is unavailable, QA/dogfood evidence is incomplete, open P0/P1 work remains, and the deployed binary is stale.
+
+No tag, GitHub Release, artifact publication, deployed-binary mutation, or force-move was performed by this pass.
+
 ## Pass-2 re-anchor (same tick, second pass)
 
 The header parity lines above were true at pass 1 and aged by this artifact's own carrier commit; they are superseded by this block, not wrong. Live tip at pass 2 is `4d931642d165ed291d9dd7db2a6dd83d53751a7b`. The delta `d6d605929a50071524b543016e7dc8a9052a1439..4d93164` is exactly one file — this artifact — with 0 product-path changes. Exact-tip CI run 43559322323 (workflow CI, push, headSha 4d93164, completed success) covers it; pass-1 CI run 43541516784 was green on d6d6059.
