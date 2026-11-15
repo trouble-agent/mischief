@@ -3,8 +3,8 @@
 Target: trouble-agent/mischief
 Canonical checkout: /home/kara/mischief
 Forge/client: GitHub / gh
-Certified candidate: 1126bcbea56cd86958816c148e828e09bae89181
-Remote/default parity: local main == origin/main == origin/HEAD at 1126bcbea56cd86958816c148e828e09bae89181; ahead/behind 0/0.
+Certified candidate: b0cac920d2208cba760edf392c7349a612a6703e
+Remote/default parity: certified candidate `b0cac920d2208cba760edf392c7349a612a6703e` equals `origin/main` and `git ls-remote origin refs/heads/main`; the detached candidate is 0/0 against the fetched default branch.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
 
 ## Pass-4 re-anchor (2026-11-15, daily readiness sweep)
@@ -249,5 +249,54 @@ Decision is unchanged, **NO-CUT for v0.2.0**, but two of pass 6's stated grounds
 2. Land or explicitly defer the two open P0s; if `PROF-003` is deferred, say so on the row so the release does not ship a half-exposed surface.
 3. Fix `RELEASE-014` so a symlinked temp root stops reddening the required local gate, and `RELEASE-015` so a snapshot build cannot wear a published tag.
 4. Then re-run this sweep against a stable candidate and cut only through `docs/RELEASE.md`: annotated `v0.2.0` tag, tag CI, DRAFT Release review, publish, verify the full asset set, and refresh the deployed binary.
+
+No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+## Pass-8 re-anchor (2026-11-15, tick mischief-chaos-releng-2026-11-15-11-18-38)
+
+The prior certified product tree was `a3bf6ec649ac72bd82159d23ddd76ff85623e5b3`. The fetched canonical default-branch tip is `b0cac920d2208cba760edf392c7349a612a6703e`; its delta from `a3bf6ec` is exactly three `.coding-hermes/` paths (the prior release artifact and board files), with zero product-path changes. The previous product measurements therefore carry, while candidate CI and all release-surface readings were refreshed at the new tip.
+
+## Decision
+
+NO-CUT for proposed `v0.2.0`. The repository-owned release contract is present and the exact candidate CI and local rehearsal gates are green, but release-grade evidence is still incomplete and the existing rolling row remains an explicit NO-GO. No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed.
+
+The semver proposal remains `v0.2.0` minor: `v0.1.0..b0cac920d2208cba760edf392c7349a612a6703e` contains 590 commits including merges and 498 non-merge commits. Strict conventional-subject classification over the captured non-merge subjects yields feat 1, fix 20, perf 0, chore 14, docs 42, refactor 0, test 1, ci 1, other conventional 390, and non-conventional 29; the buckets sum to 498. Typed-bang subjects are 0 and line-start BREAKING CHANGE footers are 0. No major confirmation is required.
+
+## Evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate identity | `origin/main`, `git ls-remote origin refs/heads/main`, and the detached candidate all resolve to `b0cac920d2208cba760edf392c7349a612a6703e`; the candidate is the GitHub default branch `main` | PASS |
+| Candidate movement | `a3bf6ec..b0cac92` changes only `.coding-hermes/audits/release/mischief-releng-2026-11-14-04-50-34-final.md`, `.coding-hermes/board/events.jsonl`, and `.coding-hermes/board/tasks.jsonl`; product-path count 0 | BOOKKEEPING-ONLY; prior product measurements carried |
+| Commit census | `v0.1.0..b0cac92`: 590 total / 498 non-merge / 92 merge; feat 1, fix 20, perf 0, chore 14, docs 42, refactor 0, test 1, ci 1, other conventional 390, non-conventional 29; typed-bang 0; BREAKING footers 0 | v0.2.0 proposal |
+| Exact-tip hosted CI | GitHub run `43707532116`, workflow `CI`, push event, exact `headSha=b0cac920d2208cba760edf392c7349a612a6703e`, completed success. `Build & Test (1.24)` ran 15 successful steps, including build, vet, docs twins, test, selftest, N-012 battery, per-arch shim live proof, shim drift, and row-status drift | PASS |
+| Local candidate gates | Clean detached candidate: `env -u GOTMPDIR go build ./...` rc=0; `go vet ./...` rc=0; `go test -count=1 ./...` rc=0 with 22 package results; `make release-dry` rc=0; `make dist` rc=0; `tools/shim-build.sh --smoke` rc=0 with amd64 and arm64 EIO/live-proof hits=1 | PASS strategy evidence |
+| Release rehearsal | Snapshot produced both Linux archives, `checksums.txt`, metadata, and per-arch shim libraries. GoReleaser reports snapshot version `0.1.0-SNAPSHOT-b0cac92` while archive names follow the repository's current-tag-derived `v0.1.0` template; this is rehearsal evidence only and is the still-open RELEASE-015 documentation drift | PASS with non-blocking drift |
+| Release surface | Remote has only annotated tag `v0.1.0`, peeled `b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`, and one published non-draft GitHub Release. `v0.2.0` tag and Release are absent | PASS / namespace available |
+| Repository-owned tooling | `docs/RELEASE.md`, Makefile `release-dry`/`dist`/`tags`, `.goreleaser.yml`, and tag-triggered `.github/workflows/release.yml` are present; the owned path was exercised and generic `gh release create` was not used | PASS |
+| GitReins | Candidate tree has 0 tracked `.gitreins` paths. Live checkout has 236 untracked verdict files; freshest `c7695518` is bound to `742166fd`, not the candidate, and is internally inconsistent (`merge_recommendation=no_concerns_found` while top-level `passed=false`) | UNVERIFIED / blocker |
+| Dogfood / QA | Latest durable dogfood is `docs/dogfood/2026-11-14-2243-dogfood.md` at `04e7bfc`, an ancestor with works-but-overselled findings, not a candidate-bound release battery. The latest QA annotation proves hosted CI `43700982860` green at `882edb0a` and native tests 22/22, but its act failure is the known missing docker CLI/daemon environment defect and does not clear candidate-bound clean-machine evidence | PARTIAL / blocker |
+| Open release blockers | Existing rolling `RELEASE-013` remains pending/NO-GO. `QA-MISCHIEF-002-R2` is failed P1; `QA-MISCHIEF-CHAOS-4` is pending on a phantom scheduler target; `QA-MISCHIEF-FOREMAN-1` is in progress; `PROF-002` is review P0 and `PROF-003` is in progress P0. `INT-CI-10`, `DOC-29`, `MISCHIEF-DF-75`, `RELEASE-014`, and `RELEASE-015` remain open rows | BLOCKING |
+| Deployed binary | `/home/kara/.local/bin/mischief` remains the stale `mischief v0.1.0` deployment (mtime 2026-10-16) | STALE / owner action |
+| Version hygiene | No `CHANGELOG.md` or `Unreleased` heading; release contract is documented, but v0.2.0 prep must review release-facing claims before any tag | PREP needed |
+| Authorization | No board row authorizes cutting `v0.2.0`; `RELEASE-013` explicitly remains NO-CUT. The scheduler template is not authorization | NO-CUT |
+
+## Known issues
+
+- `QA-MISCHIEF-002-R2` remains failed P1: the fresh JIT-agent TTL-owner recurrence is unresolved.
+- `QA-MISCHIEF-CHAOS-4` remains pending on the nonexistent `local:/home/kara/mischief-chaos` / `/home/kara/wojons/mischief-chaos` target; it is a scheduler/config-owner defect.
+- `QA-MISCHIEF-FOREMAN-1` remains in progress; act evidence is environment-limited and does not substitute for hosted exact-head release evidence.
+- Candidate-bound GitReins is unavailable; the live untracked verdicts are not release evidence for `b0cac920d2208cba760edf392c7349a612a6703e`.
+- `PROF-002`/`PROF-003` and additional PROF P1 rows remain unfinished product work.
+- The deployed binary remains `v0.1.0`.
+- `RELEASE-015` documents an incorrect snapshot stamp claim; the rehearsal itself passed.
+
+## Unblock
+
+1. Obtain a candidate-bound clean-machine QA/dogfood battery with the JIT-agent mechanism required by `QA-MISCHIEF-002-R2`, or record an explicit accepted release ruling.
+2. Resolve or explicitly defer the unfinished P0/P1 product rows before publishing this product surface.
+3. Correct the scheduler target owned by `QA-MISCHIEF-CHAOS-4` and prove a bare-dispatched tick resolves `/home/kara/mischief`.
+4. Obtain candidate-bound GitReins evidence or an explicitly accepted equivalent gate.
+5. Re-run releng at a stable candidate. Only after all gates and authorization are present should the foreman follow `docs/RELEASE.md`: annotated `v0.2.0` tag, tag CI, draft Release asset review, publish, and post-release verification.
 
 No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
