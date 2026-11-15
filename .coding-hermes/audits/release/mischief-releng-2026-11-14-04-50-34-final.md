@@ -353,3 +353,57 @@ The true product-open blocker set is therefore narrower than the open-row census
 2. Stray `/tmp/catalog` (11 fault YAMLs, mtime 2026-10-19 22:52, owned by `kara`) — an ancestor of `/tmp`, so with `TMPDIR=/tmp` the repo-root walk-up in `internal/catalog` resolves outside the worktree: `TestLoadDefaultFindsRepoRootFromSubdir` fails `catalog_test.go:532: LoadDefault resolved outside the repo`. With `TMPDIR=/var/tmp/hermes-scratch` (no ancestor catalog) the same package is `ok`. Host residue, not a product defect — hosted CI cannot see it because ubuntu's `/tmp` has no catalog. Newly measured this pass; filed as **`RELEASE-016`**.
 
 **Decision, unchanged: NO-CUT for `v0.2.0`.** Carrier is green and the release namespace is free, but the gate set is unchanged: `PROF-002` (`review`, P0), `PROF-003` (`in_progress`, P0), `QA-MISCHIEF-002-R2` (`failed`, P1) remain unfinished product work, and both candidate-bound evidence gates (clean-machine QA/dogfood battery, GitReins verdict) remain structurally absent. No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+## Pass-10 re-verification (same tick, carrier advance to `419d80c`)
+
+This tick re-fired. `origin/main` advanced one commit past pass-9's measured carrier (`22484cf` → `419d80c6099a12fe4f137463b880929891ef78d8`, *"releng(mischief): pass-9 re-verification at 22484cf - NO-CUT holds"*). Every gate below was re-read at that pushed tip; nothing is inherited from pass-8 or pass-9 except measurements that are provably carried by an unchanged product tree.
+
+**Carrier and parity.** `git rev-parse origin/main` and `git ls-remote origin refs/heads/main` both return `419d80c6099a12fe4f137463b880929891ef78d8`. The delta from the certified product candidate `b0cac92` is five commits — `bb3c0c1` (`docs(releng)`), `50d8d31` (`chore(board)`), `2b3aaa6` (`fix(board)`), `22484cf` (`docs(releng)`), `419d80c` (`releng(mischief)`) — and `git diff --name-only b0cac92 419d80c | grep -v '^.coding-hermes/'` is empty, i.e. **0 product-path changes**. The parity line at the top of this artifact is pass-3-scoped; at this tip the true statement is that the pushed carrier equals the remote default branch and equals the certified product tree.
+
+**Exact-tip hosted CI.** Run `43714702401`, workflow `CI`, event `push`, `headSha=419d80c6099a12fe4f137463b880929891ef78d8`, `completed/success`. Its single job `Build & Test (1.24)` reports 15 steps and **0 non-success steps**.
+
+**Local gates re-run at the exact tip**, in a detached worktree at `419d80c` (no tracked modifications, one untracked diagnostic stub, go1.26.9), with `GOTMPDIR`/`TMPDIR` pointed at `/var/tmp/hermes-go-tmp-real` — a real directory, deliberately not the symlink this host exports — so no ambient contamination is in play:
+
+| Gate | Command | Result |
+|---|---|---|
+| build | `go build ./...` | rc=0 |
+| vet | `go vet ./...` | rc=0 |
+| test | `go test -count=1 ./...` | rc=0, **22 packages ok, 0 FAIL**, 0 packages without tests |
+| release rehearsal | `make release-dry` | rc=0, `goreleaser check` → "1 configuration file(s) validated" |
+
+**Release surface at the tip.** `git ls-remote --tags origin` returns only the annotated `v0.1.0` (peeled `b123b4e`); `git ls-remote --tags origin refs/tags/v0.2.0` returns 0 refs; `gh release list` returns exactly one Release — `v0.1.0`, `isDraft=false`, `isPrerelease=false`. The `v0.2.0` namespace is free and nothing was published.
+
+**Census over `v0.1.0..419d80c`**, NUL-safe conventional-subject classification: 595 commits total, 503 non-merge, 92 merges. feat 1, fix 21, perf 0, chore 15, docs 44, refactor 0, test 1, ci 1, other conventional 333, non-conventional 87 — buckets sum to 503, so the inventory is fully accounted for. Typed-bang subjects 0 and line-start `BREAKING CHANGE:`/`BREAKING-CHANGE:` footers 0; exactly one commit in the range contains that string anywhere in its message — a releng body (`da477fd`) whose line reads "BREAKING CHANGE 0", i.e. prose reporting the zero, not a footer. The proposal remains **v0.2.0 (minor)** and no major confirmation is required. The +1 fix / +1 chore / +2 docs over pass-9's census are exactly the five bookkeeping subjects listed above, not product commits.
+
+**Both filed blocker rows were re-run exactly as written at the tip**, which is the one thing this pass adds that is not a restatement:
+
+- **RELEASE-014 is live.** `GOTMPDIR=/var/tmp/hermes-go-tmp go test -count=1 ./internal/chaos/` fails today at `419d80c` with `TestSymlinkEvidenceOK` (`lane_test.go:305`) and `TestVerifyAgainstMatches` (`lane_test.go:366`). Same tree, same suite, with `GOTMPDIR` unset: all packages ok. The row's premise and its reproduces-both-ways claim both hold at this tip.
+- **RELEASE-016's defect is live, and its acceptance criterion is unfalsifiable on this host without an extra qualifier.** The row's described red reproduces exactly: `env -u GOTMPDIR TMPDIR=/tmp go test -count=1 ./internal/catalog -run TestLoadDefaultFindsRepoRootFromSubdir` fails at `catalog_test.go:532` ("LoadDefault resolved outside the repo"), because the repo-root walk from the test's temp dir reaches `/tmp`, finds the stray `/tmp/catalog/faults`, and `LoadDefault` returns it. But AC1 as written — *"on a host carrying /tmp/catalog/faults, `TMPDIR=/tmp go test …` exits 0, or the test skips with a printed reason"* — **passes today**, and would keep passing after no fix at all, because `GOTMPDIR` is exported here and Go derives `t.TempDir()` from `GOTMPDIR` when set, so `TMPDIR=/tmp` never moves the temp root: a throwaway probe at the tip logged `os.TempDir()` = `/tmp` while `t.TempDir()` landed under `GOTMPDIR`. A worker reading AC1 verbatim would run it, see green, and report the row already satisfied with the defect untouched. The row was therefore clarified **additively** — items 1 and 2 are prefixed with `env -u GOTMPDIR`, and a PASS 5 clause records the mechanism — rather than rewritten or closed. The probe file was never committed (comment-only stub in the disposable worktree).
+
+**Evidence gates that remain candidate-unbound.** No clean-machine QA or dogfood battery binds `419d80c`. QA: the newest mischief entry in the QA ledger is `mischief-qa-2026-11-13-16-54-26` with `tested_sha` UNVERIFIED and controller head `d0b3630` (an ancestor), and the newest evidence directory under `/home/kara/.hermes/qa/evidence` — `mischief-chaos-qa-20261114-005814` — carries commit-like hashes that do not resolve in this repository at all. Dogfood does exist, and is ancestor-bound: `docs/dogfood/2026-11-14-2243-dogfood.md` (added by `56607bf`) states its target as *"`mischief` @ `04e7bfc` (HEAD)"* and its verdict as *"works, and the containment promise holds — but late, and three separate places where the documentation or the output tells a user something the binary does not do"*, with no code change and its findings filed as board rows. That is useful prior evidence about the product, not evidence about this candidate. GitReins is likewise unbound: `git ls-tree -r --name-only 419d80c -- .gitreins` is empty, and the 236 untracked verdicts in the live store name no commit at this tip.
+
+- **Bookkeeping repaired, not just restated.** The rolling row still carried the pass-8 title and an `artifact_sha256` of `97f49cfa…` that did not match the carrier on disk (`6e2a2777…` immediately before this append), so the row could not be used to find the evidence it cited. This pass rebinds `artifact_sha256` to the post-append carrier, advances `candidate` to `419d80c`, records the carried CI run (`43709691390` @ `2b3aaa6`), and appends this section to the same carrier file the row names.
+
+**No row authorizes a cut.** Every row's `title`, `blocked_reason`, `reasoning`, `acceptance_criteria` and `foreman_note` was scanned for authorization language (`authoriz`, `approved to cut`, `go-ahead`, `sign-off`, `approval`): 0 hits that authorize a `v0.2.0` release. The only release rows are `RELEASE-013` (rolling NO-GO), `RELEASE-014`, `RELEASE-015` and `RELEASE-016` (gate repairs). Board-authorized-cut condition is therefore unmet independently of the green gates.
+
+
+**Decision, unchanged: NO-CUT for `v0.2.0`.** The repository-owned release contract is present and exercised, the exact-tip CI is 15/15, the local gate set is green and the tag namespace is free — but two P0 product rows are unfinished (`PROF-002` `review` — three-value outcome; `PROF-003` `in_progress` — the `profile run` executor), one P1 QA row is `failed` (`QA-MISCHIEF-002-R2`), neither candidate-bound evidence gate is met (QA `tested_sha` UNVERIFIED, zero GitReins verdicts on this tip, newest dogfood aimed at ancestor `04e7bfc`), no board row authorizes a cut, three release-tooling rows are open (`RELEASE-014`, `RELEASE-016`, and `RELEASE-015` where `make dist` stamps the *previous* release tag into snapshot binaries and archive names), and the deployed binary is still `v0.1.0` (mtime 2026-10-16 09:31, consistent with that stamping defect). No tag, GitHub Release, artifact publication, deployment mutation, or force-move was performed by this pass.
+
+### Pass-10 evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate parity | `git rev-parse origin/main` = `git ls-remote origin refs/heads/main` = `419d80c6099a12fe4f137463b880929891ef78d8` | PASS |
+| Carrier delta | `b0cac92..419d80c` = 5 commits, all bookkeeping subjects; product-path change count 0 | PASS (product measurements carry) |
+| Census | 595 total / 503 non-merge / 92 merges; feat 1, fix 21, perf 0, chore 15, docs 44, refactor 0, test 1, ci 1, other 333, non-conventional 87 (sum 503); bang 0, breaking footers 0 | v0.2.0 proposal |
+| Exact-tip CI | Run 43714702401, `CI`, push, `headSha=419d80c`, `completed/success`; job `Build & Test (1.24)`, 15 steps, 0 failed | PASS |
+| Local gates | Detached worktree at `419d80c`, real tmp root: build rc=0, vet rc=0, `go test -count=1 ./...` 22 ok / 0 FAIL, `make release-dry` rc=0 | PASS |
+| Release surface | only annotated `v0.1.0` (peeled `b123b4e`); `refs/tags/v0.2.0` = 0 refs; 1 published non-draft Release | PASS for namespace; v0.2.0 absent |
+| RELEASE-014 liveness | AC1 at tip: `GOTMPDIR=/var/tmp/hermes-go-tmp go test ./internal/chaos/` red on `TestSymlinkEvidenceOK`, `TestVerifyAgainstMatches` | PREMISE LIVE |
+| RELEASE-016 liveness | red reproduced at `catalog_test.go:532` under `env -u GOTMPDIR TMPDIR=/tmp …`; AC1 as filed passes regardless of the fix because `GOTMPDIR` masks `TMPDIR`; ACs clarified additively (PASS 5 + `env -u GOTMPDIR` prefixes) | PREMISE LIVE, AC CLARIFIED |
+| GitReins | `git ls-tree -r --name-only 419d80c -- .gitreins` empty; 236 untracked verdicts, none on this tip | UNVERIFIED / blocker |
+| QA + dogfood | QA ledger newest `mischief-qa-2026-11-13-16-54-26` (`tested_sha` UNVERIFIED, head `d0b3630`); evidence dir `mischief-chaos-qa-20261114-005814` hashes do not resolve here; newest dogfood `docs/dogfood/2026-11-14-2243-dogfood.md` targets ancestor `04e7bfc` | NOT CANDIDATE-BOUND / blocker |
+| Product open | `PROF-002` `review` P0; `PROF-003` `in_progress` P0; `QA-MISCHIEF-002-R2` `failed` P1 | BLOCKING |
+| Authorization | scan of all rows' title/blocked_reason/reasoning/acceptance_criteria/foreman_note: 0 rows authorize a cut | NONE GRANTED |
+| Deployed binary | `/home/kara/.local/bin/mischief` reports `v0.1.0`, mtime 2026-10-16 09:31 | STALE |
+| Rolling row | `RELEASE-013` refreshed and rebound to the post-append artifact digest; `RELEASE-016` AC corrected | PASS |
