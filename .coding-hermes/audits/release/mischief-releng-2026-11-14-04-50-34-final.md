@@ -3,9 +3,55 @@
 Target: trouble-agent/mischief
 Canonical checkout: /home/kara/mischief
 Forge/client: GitHub / gh
-Certified candidate: d6d605929a50071524b543016e7dc8a9052a1439
-Remote/default parity: local main == origin/main == origin/HEAD at d6d605929a50071524b543016e7dc8a9052a1439; ahead/behind 0/0.
+Certified candidate: 819e6913509703fa493e0d9e2ddc40f2bd214171
+Remote/default parity: local main == origin/main == origin/HEAD at 819e6913509703fa493e0d9e2ddc40f2bd214171; ahead/behind 0/0.
 Baseline: v0.1.0, peeled commit b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb.
+
+## Pass-3 re-anchor (2026-11-15)
+
+The prior pass-2 artifact named 4d93164 as its live tip and d6d6059 as its certified candidate. The fetched default branch now certifies 819e6913509703fa493e0d9e2ddc40f2bd214171; this pass refreshes the header and records the newly measured state.
+
+Decision remains NO-CUT. The proposed bump is v0.2.0 (minor): the range v0.1.0..819e691 contains 565 commits including merges and 476 non-merge commits. Strict conventional-subject census: feat 1, fix 19, perf 0, chore 12, docs 38, refactor 0, test 1, ci 1, other 404; typed-bang subjects 0 and BREAKING CHANGE footers 0. The user-facing feature remains 0b52fb8 `feat(daemon): serve Prometheus metrics on a separately bound listener (MISCHIEF-OPS-001)`; no major signal.
+
+Exact-head hosted CI is green: GitHub run 43659623328, workflow CI, push event, headSha 819e6913509703fa493e0d9e2ddc40f2bd214171, completed success. Its only job `Build & Test (1.24)` completed success with every listed step successful, and the commit has 1 successful check-run and 1 successful check-suite. The release workflow is tag-triggered, so no v0.2.0 tag CI exists because no tag was created.
+
+Repository-owned tooling was exercised from a clean detached checkout at the certified candidate: `make release-dry` rc=0; `make dist` rc=0. The snapshot produced Linux amd64 and arm64 archives, checksums, and per-arch shim libraries. These are snapshot strategy evidence, not publishable assets.
+
+The release gate remains blocked by the existing rolling row RELEASE-013: QA-MISCHIEF-002-R2 is failed P1; QA-MISCHIEF-CHAOS-4 is pending with a phantom scheduler target; QA-MISCHIEF-FOREMAN-1 is in progress; candidate-bound GitReins remains unverified because `.gitreins/config.yaml` and history verdicts are absent from the candidate tree; and `/home/kara/.local/bin/mischief` remains the v0.1.0 binary built from b123b4e. The latest clean-machine evidence recorded in the board remains partial and includes an INT-CI-10 runner-environment failure, so it does not clear the gate. No release-cut authorization row naming this repository and v0.2.0 was found; the existing rolling row explicitly remains NO-CUT.
+
+## Evidence table
+
+| Surface | Evidence | Result |
+|---|---|---|
+| Candidate parity | `git rev-list --left-right --count HEAD...origin/main` = `0 0`; HEAD and origin/main = `819e6913509703fa493e0d9e2ddc40f2bd214171`; tree object `5c57f18c62a3003407b94686940ec14215aee43a` | PASS |
+| Commit inventory | `v0.1.0..819e691`: 565 total / 476 non-merge; feat 1, fix 19, perf 0, chore 12, docs 38, refactor 0, test 1, ci 1, other 404; product-path diff excluding `.coding-hermes/**` and `.gitreins/**` has 208 changed paths | v0.2.0 proposal |
+| Exact-head CI | Run 43659623328; exact `headSha` 819e691; completed success; job `Build & Test (1.24)` and all listed steps success; check-runs=1 success, check-suites=1 success | PASS |
+| Recent CI history | `gh run list --repo trouble-agent/mischief --limit 20`: latest run 43659623328 and all 20 listed runs completed success on their own SHAs | PASS for main; tag CI not applicable |
+| Release tooling | `docs/RELEASE.md`, `Makefile` targets `release-dry`/`dist`/`tags`, `.goreleaser.yml`, tag-triggered `.github/workflows/release.yml`; repository-owned path used, no generic fallback | PASS |
+| Release rehearsal | Clean detached checkout at 819e691: `make release-dry` rc=0; `make dist` rc=0; outputs include `mischief_v0.1.0_linux_amd64.tar.gz`, `mischief_v0.1.0_linux_arm64.tar.gz`, `checksums.txt`, and both per-arch shim `.so` files; snapshot metadata reports synthetic snapshot provenance | PASS strategy evidence |
+| GitReins | Working tree contains untracked local `.gitreins/` files, but the candidate tree has zero tracked `.gitreins` paths, no `.gitreins/config.yaml`, and no candidate-bound history verdict | UNVERIFIED / blocker |
+| Dogfood / clean machine | Latest durable board evidence: 2026-11-14 battery on ancestor 933233a with zero product-path drift to prior candidate, partial cell set including 16 OK, 5 N/A, 2 INFO, 1 PASS, 1 UNVERIFIED, 1 FAIL owned by INT-CI-10; the latest dogfood log also records a 2026-11-14 fresh ephemeral install leg with native tests OK but act `ci-pass` UNVERIFIED. Neither is a complete candidate-bound release battery | PARTIAL / blocker |
+| Deployed binary | `/home/kara/.local/bin/mischief`, mtime 2026-10-16 09:31:43 -0500, reports `mischief v0.1.0`, `vcs.revision=b123b4e6dd2541b5b4d1ce89af42ef8922bae2bb`, `vcs.modified=false` | STALE |
+| Release surface | Remote tag list contains only annotated `v0.1.0` peeled to b123b4e; `gh release list` contains only published v0.1.0; no v0.2.0 ref or Release object | PASS for namespace availability |
+| Version hygiene | No `CHANGELOG.md` and no `Unreleased` heading; v0.1.0 references are historical release examples. A future v0.2.0 prep should review release-facing version claims before tagging | PREP / review needed |
+| Open blockers | RELEASE-013 pending P1; QA-MISCHIEF-002-R2 failed P1; QA-MISCHIEF-CHAOS-4 pending P3; QA-MISCHIEF-FOREMAN-1 in progress P1; PROF-002 review P0; PROF-003 in progress P0; additional PROF P1 work remains open | BLOCKING |
+
+## Known issues
+
+- QA-MISCHIEF-002-R2 remains failed P1: fresh JIT-agent TTL-owner recurrence is unresolved; its evidence is not a candidate-bound release pass.
+- QA-MISCHIEF-CHAOS-4 remains pending: six enabled scheduler satellites still point at the nonexistent `local:/home/kara/mischief-chaos` / `/home/kara/wojons/mischief-chaos`; this is an owner-gated scheduler/config defect outside the product tree.
+- QA-MISCHIEF-FOREMAN-1 remains in progress: act battery evidence is not a substitute for hosted exact-head CI.
+- Candidate-bound GitReins is unavailable: `.gitreins/config.yaml` and history verdicts are not in the candidate tree; the local untracked `.gitreins` files were not treated as release evidence.
+- `/home/kara/.local/bin/mischief` remains a stale v0.1.0 deployment and must be refreshed by its owner after a future cut.
+
+## Unblock
+
+1. Resolve QA-MISCHIEF-002-R2 with a fresh JIT-agent receipt that records the failing/passing cells and mechanism, or an explicit accepted ruling that the existing recurrence is not release-blocking.
+2. Correct the scheduler database and regenerate the fleet mirror for QA-MISCHIEF-CHAOS-4, then prove a bare-dispatched tick resolves `/home/kara/mischief` without hand-exported target variables.
+3. Obtain candidate-bound GitReins history or an explicitly accepted alternative exact-candidate gate.
+4. Re-run releng at a stable candidate; only then follow `docs/RELEASE.md` to create the annotated v0.2.0 tag and let tag CI/release workflow produce the draft for review. Do not use `gh release create` fallback while the repo-owned flow exists.
+
+No tag, GitHub Release, artifact publication, deployed-binary mutation, or force-move was performed by this pass.
 
 ## Pass-2 re-anchor (same tick, second pass)
 
