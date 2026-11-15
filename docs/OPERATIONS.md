@@ -153,8 +153,8 @@ writes. It is append-only and small; there is no database to dump. Two operator 
   journal is append-only, so a file copy is consistent enough for a restore into a scratch dir;
   there is no `VACUUM`-style live-mutation hazard because nothing rewrites the journal in place).
 
-Restore drill: copy a run dir to a scratch path and read it with a second, throwaway daemon —
-`mischief status --journal-dir <scratch>` prints the folded holds without touching the live run
+Restore drill: copy a run dir to a scratch path and read it with the CLI —
+`mischief status --dir <scratch>` prints the folded holds and proofs without touching the live run
 dir, which is the cheap restore verification.
 
 ## Troubleshooting
