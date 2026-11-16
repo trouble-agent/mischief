@@ -398,8 +398,41 @@ func SymlinkEvidence(laneDir string) (*BoardSymlink, error) {
 	return &BoardSymlink{Link: link, Raw: raw, Resolved: resolved, IsSymlink: true}, nil
 }
 
+// CanonicalPath reduces p to the absolute, symlink-free path the OS would
+// actually open: filepath.Abs, then filepath.EvalSymlinks, falling back to
+// filepath.Clean when p cannot be made absolute or resolved (a declared
+// path that does not exist must compare as a PATH, never panic and never
+// silently agree).
+//
+// MISCHIEF-DF-077: both sides of the board-symlink comparison go through
+// this seam, so a declared path traversing symlinked ancestors (the fleet
+// harness's TMPDIR) and a readlink resolution of the same directory
+// compare EQUAL.
+func CanonicalPath(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return filepath.Clean(p)
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return filepath.Clean(abs)
+	}
+	return filepath.Clean(resolved)
+}
+
 // VerifyAgainst checks the evidence against the lane's declared primary
 // board: the symlink must resolve to exactly that dir.
+//
+// The evidence side is already symlink-resolved (SymlinkEvidence), but the
+// declared primary is the RAW path the lane file spells — and on the fleet
+// harness that path routinely traverses a symlinked ancestor
+// (TMPDIR/GOTMPDIR=/var/tmp/hermes-go-tmp -> /var/tmp/hermes-go-tmp-real),
+// so a raw-string comparison refuses a correctly-instantiated lane. Both
+// sides are therefore canonicalized first (MISCHIEF-DF-077).
+//
+// The comparison is EQUALITY of canonical paths only — never prefix or
+// containment matching: a resolved .../board-real must not satisfy a
+// declared .../board.
 func VerifyAgainst(l *Lane, ev *BoardSymlink) error {
 	if err := ValidateLane(l); err != nil {
 		return err
@@ -407,8 +440,10 @@ func VerifyAgainst(l *Lane, ev *BoardSymlink) error {
 	if !ev.IsSymlink {
 		return fmt.Errorf("chaos lane %s: %s is not a symlink", l.Lane, ev.Link)
 	}
-	if filepath.Clean(ev.Resolved) != filepath.Clean(l.PrimaryBoard) {
-		return fmt.Errorf("chaos lane %s: board symlink %s resolves to %q, want the declared primary board %q", l.Lane, ev.Link, ev.Resolved, l.PrimaryBoard)
+	resolved := CanonicalPath(ev.Resolved)
+	declared := CanonicalPath(l.PrimaryBoard)
+	if resolved != declared {
+		return fmt.Errorf("chaos lane %s: board symlink %s resolves to %q (canonical %q), want the declared primary board %q (canonical %q)", l.Lane, ev.Link, ev.Resolved, resolved, l.PrimaryBoard, declared)
 	}
 	return nil
 }

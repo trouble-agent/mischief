@@ -174,6 +174,81 @@ func TestChaosCheckRefusesSeveredLane(t *testing.T) {
 	}
 }
 
+// TestChaosCheckAcceptsSymlinkedPrimaryAncestor is MISCHIEF-DF-077's
+// env-independent proof: the declared primary board's path traverses a
+// symlinked ANCESTOR (the fleet harness's TMPDIR shape,
+// /var/tmp/hermes-go-tmp -> .../-real) while the lane's board symlink
+// carries the resolved target. The check must accept — a raw-string
+// comparison refuses a correctly-instantiated lane.
+func TestChaosCheckAcceptsSymlinkedPrimaryAncestor(t *testing.T) {
+	base := t.TempDir()
+	realRoot := filepath.Join(base, "board-root-real")
+	resolved := filepath.Join(realRoot, "board")
+	if err := os.MkdirAll(resolved, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(base, "board-root")
+	if err := os.Symlink(realRoot, alias); err != nil { // the symlinked ancestor
+		t.Fatal(err)
+	}
+	declared := filepath.Join(alias, "board")
+
+	laneDir := t.TempDir()
+	link := filepath.Join(laneDir, ".coding-hermes", "board")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(resolved, link); err != nil {
+		t.Fatal(err)
+	}
+	lanePath := filepath.Join(laneDir, "chaos-lane.yaml")
+	body := strings.ReplaceAll(instantiatedLaneYAML, "%s", declared)
+	if err := os.WriteFile(lanePath, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out := captureStdout(t, func() int {
+		return run([]string{"chaos", "check", "--lane", lanePath})
+	})
+	if code != 0 {
+		t.Fatalf("check exit %d for a correctly-instantiated lane across a symlinked ancestor\nstdout:\n%s", code, out)
+	}
+	// The readlink evidence survives: the raw target and the resolution.
+	if canon := chaos.CanonicalPath(resolved); !strings.Contains(out, "->") || !strings.Contains(out, canon) {
+		t.Errorf("check output carries no readlink evidence (%q):\n%s", canon, out)
+	}
+}
+
+// TestChaosCheckRefusesForeignBoardSymlink is the negative control: a lane
+// whose board symlink resolves to a DIFFERENT directory still refuses with
+// exit 2 and the declared-board message. Canonicalization must not weaken
+// the gate.
+func TestChaosCheckRefusesForeignBoardSymlink(t *testing.T) {
+	primary := t.TempDir()
+	foreign := t.TempDir()
+	laneDir := t.TempDir()
+	link := filepath.Join(laneDir, ".coding-hermes", "board")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(foreign, link); err != nil {
+		t.Fatal(err)
+	}
+	lanePath := filepath.Join(laneDir, "chaos-lane.yaml")
+	body := strings.ReplaceAll(instantiatedLaneYAML, "%s", primary)
+	if err := os.WriteFile(lanePath, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, stderr := captureStderr(t, func() int {
+		return run([]string{"chaos", "check", "--lane", lanePath})
+	})
+	if code != 2 {
+		t.Fatalf("check exit %d for a lane whose board resolves to a foreign dir, want 2\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "want the declared primary board") {
+		t.Errorf("refusal does not name the declared primary board: %s", stderr)
+	}
+}
+
 // TestChaosFindingFilesSampleRow is the mechanical findings-as-rows
 // demonstration, on a SCRATCH board (never the live board): one finding,
 // filed as a validated board-vocabulary row, read back and asserted.

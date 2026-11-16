@@ -301,7 +301,11 @@ func TestSymlinkEvidenceOK(t *testing.T) {
 	if ev.Raw != primary && ev.Raw != "." && !strings.HasSuffix(filepath.Clean(ev.Raw), filepath.Base(primary)) {
 		t.Errorf("raw readlink target unexpected: %q", ev.Raw)
 	}
-	if ev.Resolved != primary {
+	// Canonical comparison: t.TempDir() may live under a symlinked ancestor
+	// (the fleet harness's TMPDIR=/var/tmp/hermes-go-tmp -> ...-real), so
+	// the resolved path and the declared spelling differ as strings while
+	// naming the same directory (MISCHIEF-DF-077).
+	if CanonicalPath(ev.Resolved) != CanonicalPath(primary) {
 		t.Errorf("resolved %q, want the primary board %q", ev.Resolved, primary)
 	}
 }
@@ -384,8 +388,95 @@ func TestVerifyAgainstMismatch(t *testing.T) {
 	l := validLane(t)
 	l.PrimaryBoard = t.TempDir() // declared primary is yet another dir
 	l.Findings.Board = l.PrimaryBoard
-	if err := VerifyAgainst(&l, ev); err == nil {
+	err = VerifyAgainst(&l, ev)
+	if err == nil {
 		t.Fatal("symlink to a foreign board accepted")
+	}
+	if !strings.Contains(err.Error(), "want the declared primary board") {
+		t.Errorf("refusal does not name the declared primary board: %v", err)
+	}
+}
+
+// TestVerifyAgainstAcceptsSymlinkedPrimaryAncestor is the MISCHIEF-DF-077
+// regression. The fleet harness runs with TMPDIR/GOTMPDIR under
+// /var/tmp/hermes-go-tmp, itself a symlink to .../-real, so the declared
+// primary board's path traverses a symlinked ANCESTOR while the readlink
+// evidence is the resolved target. A correctly-instantiated lane must be
+// accepted: the comparison is equality of CANONICAL paths, never strings.
+func TestVerifyAgainstAcceptsSymlinkedPrimaryAncestor(t *testing.T) {
+	base := t.TempDir()
+	realRoot := filepath.Join(base, "board-root-real")
+	resolved := filepath.Join(realRoot, "board")
+	if err := os.MkdirAll(resolved, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(base, "board-root")
+	if err := os.Symlink(realRoot, alias); err != nil { // the symlinked ancestor
+		t.Fatal(err)
+	}
+	declared := filepath.Join(alias, "board") // what the lane file says
+
+	laneDir := t.TempDir()
+	link := filepath.Join(laneDir, ".coding-hermes", "board")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(resolved, link); err != nil {
+		t.Fatal(err)
+	}
+	ev, err := SymlinkEvidence(laneDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Premise: the two spellings are DIFFERENT strings, so a raw-string
+	// comparison refuses this lane. Without this the test could pass for
+	// the wrong reason.
+	if filepath.Clean(ev.Resolved) == filepath.Clean(declared) {
+		t.Fatalf("premise broken: resolved %q and declared %q are the same string", ev.Resolved, declared)
+	}
+	l := validLane(t)
+	l.PrimaryBoard = declared
+	l.Findings.Board = declared
+	if err := VerifyAgainst(&l, ev); err != nil {
+		t.Fatalf("correctly-instantiated lane refused across a symlinked ancestor: %v", err)
+	}
+}
+
+// TestVerifyAgainstRefusesSiblingPath is the no-containment half of the
+// same fix: a board symlink resolving to a SIBLING directory must still
+// refuse, even though one path is a string prefix of the other. Equality
+// of canonical paths only — a resolved .../board-real never satisfies a
+// declared .../board.
+func TestVerifyAgainstRefusesSiblingPath(t *testing.T) {
+	base := t.TempDir()
+	declared := filepath.Join(base, "board")
+	sibling := filepath.Join(base, "board-real")
+	for _, d := range []string{declared, sibling} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	laneDir := t.TempDir()
+	link := filepath.Join(laneDir, ".coding-hermes", "board")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(sibling, link); err != nil {
+		t.Fatal(err)
+	}
+	ev, err := SymlinkEvidence(laneDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := validLane(t)
+	l.PrimaryBoard = declared
+	l.Findings.Board = declared
+	err = VerifyAgainst(&l, ev)
+	if err == nil {
+		t.Fatalf("symlink to the sibling dir %q accepted for declared %q — path containment leaked in", sibling, declared)
+	}
+	if !strings.Contains(err.Error(), "want the declared primary board") {
+		t.Errorf("refusal does not name the declared primary board: %v", err)
 	}
 }
 
