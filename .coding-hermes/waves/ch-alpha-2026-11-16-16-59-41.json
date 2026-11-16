@@ -15,8 +15,18 @@
       "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-077",
       "branch": "wt/MISCHIEF-DF-077",
       "base_sha": "a1ad4e7",
-      "gitreins": {"created": true, "started": true},
-      "brief": "/home/kara/.hermes/cache/scratch/brief_DF077.txt"
+      "gitreins": {
+        "tier1": "PASS",
+        "tier2": "PASS",
+        "overall": "PASS",
+        "evidence_run": "0462cf45"
+      },
+      "brief": "/home/kara/.hermes/cache/scratch/brief_DF077.txt",
+      "commit": "00415a4cf8c87b468d61f3dc6557158b43b92064",
+      "merge_commit": "19509eca1cb5812a63eff86dfeba89136565370f",
+      "gate": "go build ./... ok; go test -count=1 ./internal/chaos/ ./cmd/mischief/ ok; ambient TestChaosCheckVerifiesInstantiatedLane ok",
+      "ci": "success",
+      "note": "first dispatch (pid 1033142) produced nothing; re-dispatched pid 1550521"
     },
     {
       "task": "DOC-28",
@@ -24,13 +34,39 @@
       "worktree": "/home/kara/worktrees/mischief-DOC-28",
       "branch": "wt/DOC-28",
       "base_sha": "882edb0",
-      "gitreins": {"created": true, "started": true},
-      "brief": "/home/kara/.hermes/cache/scratch/brief_DOC28.txt"
+      "gitreins": {
+        "tier1": "PASS",
+        "tier2": "PASS",
+        "overall": "PASS",
+        "evidence_run": "47a0dc6c"
+      },
+      "brief": "/home/kara/.hermes/cache/scratch/brief_DOC28.txt",
+      "commit": "f5c26834181b0a60c447a49289a48ba93028d0ae",
+      "merge_commit": "adf78e714e811820b4ba773c46019589f8e4ec29",
+      "gate": "GOCACHE=/home/kara/.cache/go-build go test -count=1 ./internal/daemon/ ok (45.7s); mutation red-proof both arms pass",
+      "ci": "success",
+      "note": "STEP 0 premise: AC1 already met at a1ad4e7, worker scoped to AC2"
     }
   ],
   "not_in_wave": [
-    {"task": "MISCHIEF-DF-73", "reason": "executed foreman-inline this tick; AC1-AC5 green; closure blocked on TR-251 evidence-run gate"},
-    {"task": "MISCHIEF-DF-76", "reason": "board-plane only; foreman handles inline while the wave runs"},
-    {"task": "MISCHIEF-DF-74/75, DOC-27/29, PROF-002", "reason": "all blocked on the pre-existing tier1 red that MISCHIEF-DF-077 fixes"}
+    {
+      "task": "MISCHIEF-DF-73",
+      "reason": "executed foreman-inline this tick; AC1-AC5 green; closure blocked on TR-251 evidence-run gate"
+    },
+    {
+      "task": "MISCHIEF-DF-76",
+      "reason": "board-plane only; foreman handles inline while the wave runs"
+    },
+    {
+      "task": "MISCHIEF-DF-74/75, DOC-27/29, PROF-002",
+      "reason": "all blocked on the pre-existing tier1 red that MISCHIEF-DF-077 fixes"
+    }
+  ],
+  "status": "merged",
+  "completed_at": "2026-11-16T18:10:00-05:00",
+  "independence_verified": true,
+  "merge_order": [
+    "MISCHIEF-DF-077",
+    "DOC-28"
   ]
 }
