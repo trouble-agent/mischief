@@ -1,0 +1,36 @@
+{
+  "tick": "ch-alpha-2026-11-16-16-59-41",
+  "project": "mischief",
+  "created_at": "2026-11-16T17:20:00-05:00",
+  "base_ref": "origin/main",
+  "base_sha": "a1ad4e7",
+  "wave_budget": 6,
+  "worker_model": "openai/gpt-6.1-terra",
+  "worker_provider": "xkiro",
+  "independence_note": "MISCHIEF-DF-077 touches internal/chaos/lane.go + internal/chaos/lane_test.go + cmd/mischief/chaos_test.go. DOC-28 touches internal/daemon/metrics_doc_census_test.go (new) and possibly docs/OPERATIONS.md. No shared file, no depends_on edge in either row.",
+  "workers": [
+    {
+      "task": "MISCHIEF-DF-077",
+      "kind": "new-row-filed-this-tick",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-077",
+      "branch": "wt/MISCHIEF-DF-077",
+      "base_sha": "a1ad4e7",
+      "gitreins": {"created": true, "started": true},
+      "brief": "/home/kara/.hermes/cache/scratch/brief_DF077.txt"
+    },
+    {
+      "task": "DOC-28",
+      "kind": "existing-row",
+      "worktree": "/home/kara/worktrees/mischief-DOC-28",
+      "branch": "wt/DOC-28",
+      "base_sha": "882edb0",
+      "gitreins": {"created": true, "started": true},
+      "brief": "/home/kara/.hermes/cache/scratch/brief_DOC28.txt"
+    }
+  ],
+  "not_in_wave": [
+    {"task": "MISCHIEF-DF-73", "reason": "executed foreman-inline this tick; AC1-AC5 green; closure blocked on TR-251 evidence-run gate"},
+    {"task": "MISCHIEF-DF-76", "reason": "board-plane only; foreman handles inline while the wave runs"},
+    {"task": "MISCHIEF-DF-74/75, DOC-27/29, PROF-002", "reason": "all blocked on the pre-existing tier1 red that MISCHIEF-DF-077 fixes"}
+  ]
+}
