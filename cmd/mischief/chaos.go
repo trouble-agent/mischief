@@ -190,7 +190,16 @@ func cmdChaosCheck(args []string) int {
 		return 2
 	}
 	fmt.Printf("chaos lane %s: template contract OK (isolation, sanction, project scope, findings-on-owning-board)\n", l.Lane)
-	fmt.Printf("board symlink: %s -> %s (resolves to %s = the primary's board)\n", ev.Link, ev.Raw, ev.Resolved)
+	// The evidence keeps the raw readlink target AND the resolution, and
+	// names the canonical form the comparison used whenever the declared
+	// primary traverses a symlinked ancestor (the fleet harness's TMPDIR,
+	// MISCHIEF-DF-077) — so "resolves to X = the primary's board" stays
+	// checkable instead of looking like two different directories.
+	if canon := chaos.CanonicalPath(l.PrimaryBoard); canon != filepath.Clean(l.PrimaryBoard) {
+		fmt.Printf("board symlink: %s -> %s (resolves to %s; declared primary %s canonicalizes to %s)\n", ev.Link, ev.Raw, ev.Resolved, l.PrimaryBoard, canon)
+	} else {
+		fmt.Printf("board symlink: %s -> %s (resolves to %s = the primary's board)\n", ev.Link, ev.Raw, ev.Resolved)
+	}
 	return 0
 }
 
