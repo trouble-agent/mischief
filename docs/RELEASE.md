@@ -74,8 +74,21 @@ make dist                        # local snapshot dry-run: gates + goreleaser --
 - `make bin` → the git sha (`-X main.gitSha=$(git rev-parse --short=12 HEAD)`).
 - A real release (goreleaser from the tag) → **the literal tag**
   (`-X main.gitSha=v0.1.0`): the binary reports the version it was cut from.
-- `--snapshot` dry-runs → goreleaser's synthetic `v0.0.0` (measured
-  locally) — visibly a dry-run, never a borrowed tag.
+- `--snapshot` dry-runs → `0.0.0-SNAPSHOT-<shortsha>`: measured on the
+  RELEASE-015 tree, `make dist` at `7914291` printed
+  `mischief 0.0.0-SNAPSHOT-7914291` and named the archives
+  `mischief_0.0.0-SNAPSHOT-7914291_linux_{amd64,arm64}.tar.gz` (the
+  pre-change config on that same commit printed `mischief v0.1.0` and
+  `mischief_v0.1.0_linux_*.tar.gz` — a dry run wearing the published tag).
+
+  This is an explicit `snapshot.version_template` in `.goreleaser.yml`, not
+  goreleaser's default: the default snapshot version is derived from the last
+  reachable tag (it measured `0.1.0-SNAPSHOT-7914291`, 607 commits past
+  `v0.1.0`) **and** `.Tag` still resolves to that tag in snapshot mode, so a
+  template reading `.Tag` unconditionally stamps the *previous release* —
+  which is exactly the drift this form removes (`RELEASE-015`). The ldflags
+  and archive `name_template` branch on `.IsSnapshot`, so a real tag release
+  still stamps and names `vX.Y.Z`.
 
 ## Cutting a release (foreman checklist)
 
@@ -96,6 +109,9 @@ release stays a draft and is deleted by hand; nothing consumes tags.
 
 `goreleaser release --snapshot --clean` with the shim pre-built produces the
 exact archive set a tag would (under `dist/release/`), cross-compiled for
-both arches, each tarball carrying its arch's shim. What it cannot prove
-locally is the GitHub upload step — that part is CI's, and the release lands
-as a draft for exactly that reason.
+both arches, each tarball carrying its arch's shim — named and stamped
+`0.0.0-SNAPSHOT-<shortsha>` so a local dry-run output cannot be mistaken for
+a published tag (`mischief_0.0.0-SNAPSHOT-<shortsha>_linux_<arch>.tar.gz`,
+`mischief version` → `mischief 0.0.0-SNAPSHOT-<shortsha>`). What it cannot
+prove locally is the GitHub upload step — that part is CI's, and the release
+lands as a draft for exactly that reason.

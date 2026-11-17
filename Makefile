@@ -55,9 +55,11 @@ shim:
 # dist: a LOCAL dry-run of the release: gates first (build/vet/selftest/
 # one battery cell), then goreleaser with --snapshot --clean. Produces
 # dist/release/*.tar.gz, each carrying its arch's shim .so (mode 0755),
-# plus checksums — and stamps main.gitSha with goreleaser's synthetic
-# v0.0.0 (a snapshot must never wear a tag it was not cut from; a real
-# tag release stamps the literal tag). No GitHub call, no tag required.
+# plus checksums — and stamps main.gitSha with the snapshot version
+# 0.0.0-SNAPSHOT-<shortsha> from .goreleaser.yml's snapshot.version_template
+# (a snapshot must never wear a tag it was not cut from: the measured default
+# would borrow the previous tag, see RELEASE-015; a real tag release stamps
+# the literal tag). No GitHub call, no tag required.
 # Requires goreleaser on PATH.
 dist: bin shim
 	CGO_ENABLED=0 goreleaser release --snapshot --clean

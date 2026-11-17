@@ -13,13 +13,30 @@
 # empty shim slot.
 #
 # Version stamping: main.gitSha is stamped with the LITERAL tag ({{ .Tag }},
-# e.g. v0.1.0) so `mischief version` reports the tag verbatim; a --snapshot
-# dry-run (`make dist`) stamps goreleaser's synthetic v0.0.0 — a dry-run
-# build must never wear a tag it was not cut from. The Makefile path keeps
+# e.g. v0.1.0) on a real tag release so `mischief version` reports the tag
+# verbatim; a --snapshot dry-run (`make dist`) stamps
+# `snapshot.version_template` (0.0.0-SNAPSHOT-<shortsha>) — a dry-run build
+# must never wear a tag it was not cut from. The Makefile path keeps
 # stamping the git sha.
+#
+# MEASURED (RELEASE-015 at 7914291, 607 commits past v0.1.0): goreleaser's
+# DEFAULT snapshot version is derived from the last reachable tag
+# (`0.1.0-SNAPSHOT-7914291`) and, in snapshot mode, `.Tag` still resolves to
+# that tag — so an unconditional `{{ .Tag }}` in ldflags/archives made a
+# dry-run stamp `mischief v0.1.0` and emit
+# mischief_v0.1.0_linux_{amd64,arm64}.tar.gz — a snapshot indistinguishable
+# from the published release. (The docs previously claimed that default was
+# `v0.0.0`; measured, it is not.) Hence the explicit
+# `snapshot.version_template` plus the `.IsSnapshot` branches below: `.Tag`
+# stays load-bearing ONLY on a real tag release.
 version: 2
 
 project_name: mischief
+
+# snapshot: the version every --snapshot artifact reports and is named after.
+# An explicitly unpublished form, so it cannot be confused with a cut release.
+snapshot:
+  version_template: "0.0.0-SNAPSHOT-{{ .ShortCommit }}"
 
 # dist/release — NOT the default dist/: --clean wipes this dir, and the
 # per-arch shim .so it packages live one level up in dist/shim (built by
@@ -39,15 +56,22 @@ builds:
       - amd64
       - arm64
     ldflags:
-      # the literal tag on a real release; goreleaser synthesizes the tag
-      # v0.0.0 in --snapshot dry-runs (measured: the binary stamps v0.0.0)
-      # and the else-arm is the never-empty guard
-      - -s -w -X main.gitSha={{ if .Tag }}{{ .Tag }}{{ else }}dev{{ end }}
+      # A real tag release stamps the LITERAL tag ({{ .Tag }}, e.g. v0.1.0):
+      # the binary reports the version it was cut from. A --snapshot dry-run
+      # stamps the snapshot version above (0.0.0-SNAPSHOT-<shortsha>) — NEVER
+      # `.Tag`, which still resolves to the last reachable tag in snapshot
+      # mode (measured: `mischief v0.1.0` from a 607-commits-past dry run).
+      # The `dev` arm stays the never-empty guard for a tagless build.
+      - -s -w -X main.gitSha={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ if .Tag }}{{ .Tag }}{{ else }}dev{{ end }}{{ end }}
 
 archives:
   - id: mischief
     formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    # A real release keeps the v-prefixed tag in the name
+    # (mischief_v0.1.0_linux_amd64.tar.gz, docs/RELEASE.md). A snapshot uses
+    # the snapshot version instead, so a dry-run archive can never be mistaken
+    # for a published one.
+    name_template: "{{ .ProjectName }}_{{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ .Tag }}{{ end }}_{{ .Os }}_{{ .Arch }}"
     files:
       - src: dist/shim/libfault-anchored_linux_{{ .Arch }}.so
         dst: libfault-anchored.so
