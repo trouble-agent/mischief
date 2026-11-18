@@ -1,0 +1,56 @@
+{
+ "tick_id": "mischief-foreman-2026-11-18-21-49-43",
+ "created_at": "2026-11-18T21:55:00Z",
+ "base_sha": "e055ea6",
+ "wave_budget": 11,
+ "tasks": [
+  {
+   "task_id": "DOC-33",
+   "worktree": "/home/kara/worktrees/mischief-DOC-33",
+   "branch": "wt/DOC-33",
+   "base": "origin/main",
+   "base_sha": "e055ea6",
+   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-33-brief.md",
+   "worker_model": "openai/gpt-6.1-terra",
+   "worker_provider": "xkiro",
+   "status": "prepared",
+   "commit": null
+  },
+  {
+   "task_id": "DOC-34",
+   "worktree": "/home/kara/worktrees/mischief-DOC-34",
+   "branch": "wt/DOC-34",
+   "base": "origin/main",
+   "base_sha": "e055ea6",
+   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-34-brief.md",
+   "worker_model": "openai/gpt-6.1-terra",
+   "worker_provider": "xkiro",
+   "status": "prepared",
+   "commit": null
+  },
+  {
+   "task_id": "DOC-36",
+   "worktree": "/home/kara/worktrees/mischief-DOC-36",
+   "branch": "wt/DOC-36",
+   "base": "origin/main",
+   "base_sha": "e055ea6",
+   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-36-brief.md",
+   "worker_model": "openai/gpt-6.1-terra",
+   "worker_provider": "xkiro",
+   "status": "prepared",
+   "commit": null
+  },
+  {
+   "task_id": "DOC-38",
+   "worktree": "/home/kara/worktrees/mischief-DOC-38",
+   "branch": "wt/DOC-38",
+   "base": "origin/main",
+   "base_sha": "e055ea6",
+   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-38-brief.md",
+   "worker_model": "openai/gpt-6.1-terra",
+   "worker_provider": "xkiro",
+   "status": "prepared",
+   "commit": null
+  }
+ ]
+}
