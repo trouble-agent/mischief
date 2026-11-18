@@ -1,0 +1,40 @@
+{
+  "tick_id": "mischief-foreman-2026-11-17-23-36-42",
+  "project": "mischief",
+  "base": "92ac5bf452f269b2d7d763ad13f9c73993031fdd",
+  "state": "open",
+  "created_at": "2026-11-18T00:03:00+00:00",
+  "workers": [
+    {
+      "task_id": "RELEASE-016",
+      "worktree": "/home/kara/worktrees/mischief-RELEASE-016",
+      "branch": "wt/RELEASE-016",
+      "base_sha": "92ac5bf452f269b2d7d763ad13f9c73993031fdd",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-17-23-36-42/RELEASE-016-brief.md",
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "status": "prepared",
+      "commit": null,
+      "merge_commit": null,
+      "verdict_run_id": null,
+      "note": "authoritative lane openai/gpt-6.1-terra@xkiro unavailable (probe rc=124 x2, empty output); sanctioned fallback deepseek-v4-flash@deepseek (probe rc=0 OK)",
+      "reap": null
+    },
+    {
+      "task_id": "MISCHIEF-DF-71",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71",
+      "branch": "wt/MISCHIEF-DF-71",
+      "base_sha": "92ac5bf452f269b2d7d763ad13f9c73993031fdd",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-foreman-2026-11-17-23-36-42/MISCHIEF-DF-71-brief.md",
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "status": "prepared",
+      "commit": null,
+      "merge_commit": null,
+      "verdict_run_id": null,
+      "note": "requeue of failed 2026-10-28 zero-diff attempt; fresh branch replaces stale wt/MISCHIEF-DF-71-20261028-234930 (0-ahead, preserved as evidence); lane switch as leg 1",
+      "reap": null
+    }
+  ],
+  "finished_at": null
+}
