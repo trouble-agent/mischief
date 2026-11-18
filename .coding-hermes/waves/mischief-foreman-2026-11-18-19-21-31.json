@@ -1,0 +1,73 @@
+{
+  "tick_id": "mischief-foreman-2026-11-18-19-21-31",
+  "created_at": "2026-11-18T19:35:00Z",
+  "base_sha": "c97b138",
+  "wave_budget": 5,
+  "tasks": [
+    {
+      "task_id": "DOC-30",
+      "worktree": "/home/kara/worktrees/mischief-DOC-30",
+      "branch": "wt/DOC-30",
+      "base": "origin/main",
+      "base_sha": "c97b138",
+      "brief": "/tmp/mf-mischief-foreman-2026-11-18-19-21-31-DOC-30-brief.md",
+      "worker_model": "openai/gpt-6.1-terra",
+      "worker_provider": "xkiro",
+      "status": "prepared",
+      "commit": null,
+      "title": "OPERATIONS.md run-dir default and MISCHIEF_RUN_DIR env var do not exist"
+    },
+    {
+      "task_id": "DOC-31",
+      "worktree": "/home/kara/worktrees/mischief-DOC-31",
+      "branch": "wt/DOC-31",
+      "base": "origin/main",
+      "base_sha": "c97b138",
+      "brief": "/tmp/mf-mischief-foreman-2026-11-18-19-21-31-DOC-31-brief.md",
+      "worker_model": "openai/gpt-6.1-terra",
+      "worker_provider": "xkiro",
+      "status": "prepared",
+      "commit": null,
+      "title": "skills/mischief-usage omits the land verb; worked loop ends in false not_landed"
+    },
+    {
+      "task_id": "DOC-32",
+      "worktree": "/home/kara/worktrees/mischief-DOC-32",
+      "branch": "wt/DOC-32",
+      "base": "origin/main",
+      "base_sha": "c97b138",
+      "brief": "/tmp/mf-mischief-foreman-2026-11-18-19-21-31-DOC-32-brief.md",
+      "worker_model": "openai/gpt-6.1-terra",
+      "worker_provider": "xkiro",
+      "status": "prepared",
+      "commit": null,
+      "title": "FAULT-CATALOG.md ships-as-files count wrong (ten vs 18) and no shipped-id listing"
+    },
+    {
+      "task_id": "DOC-35",
+      "worktree": "/home/kara/worktrees/mischief-DOC-35",
+      "branch": "wt/DOC-35",
+      "base": "origin/main",
+      "base_sha": "c97b138",
+      "brief": "/tmp/mf-mischief-foreman-2026-11-18-19-21-31-DOC-35-brief.md",
+      "worker_model": "openai/gpt-6.1-terra",
+      "worker_provider": "xkiro",
+      "status": "prepared",
+      "commit": null,
+      "title": "check_cli_table.py wired into no gate and cannot detect a missing verb or flag"
+    },
+    {
+      "task_id": "DOC-17-R2",
+      "worktree": "/home/kara/worktrees/mischief-DOC-17-R2",
+      "branch": "wt/DOC-17-R2",
+      "base": "origin/main",
+      "base_sha": "c97b138",
+      "brief": "/tmp/mf-mischief-foreman-2026-11-18-19-21-31-DOC-17-R2-brief.md",
+      "worker_model": "openai/gpt-6.1-terra",
+      "worker_provider": "xkiro",
+      "status": "prepared",
+      "commit": null,
+      "title": "operator.md claims 'every environment variable'; MISCHIEFD_METRICS_ADDR missing (recurrence)"
+    }
+  ]
+}
