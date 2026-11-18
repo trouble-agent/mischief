@@ -11,9 +11,10 @@ scrape and alert on it.
 | `mischief` | one static Go binary (`make bin`, `.goreleaser.yml` for releases) | CLI: `plan`, `arm`, `land`, `status`, `revert`, `doctor`, `selftest`, `install`, `uninstall`, `audit`, `retention`, `battery`, `chaos`, `sim`, `plane` |
 | `mischiefd` | `mischief serve` | reverter daemon: owns TTLs, reconciles previous-boot leftovers, writes `health.json`, and (since MISCHIEF-OPS-001) serves Prometheus metrics |
 
-The daemon owns ONE run dir (`--dir`, default `$MISCHIEF_RUN_DIR` / `~/.mischief/run`-style
-resolution from `defaultRunDir()`); the journal in that dir is the durable state. A supervisor
-may run one daemon per run dir.
+The daemon owns ONE run dir; the journal in that dir is the durable state. The default is
+`$HOME/.mischief/runs/default` (resolved by `defaultRunDir()`, `cmd/mischief/main.go:221-229`).
+No environment variable selects the run dir: `--dir` on each journal-touching verb is the only
+override. A supervisor may run one daemon per run dir.
 
 ## Supervision
 
