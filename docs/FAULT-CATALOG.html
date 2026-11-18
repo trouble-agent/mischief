@@ -204,7 +204,8 @@ tier: L1
 backend: shim
 maturity: L1-only         # L1-only | proven | fielded
 selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)</code></pre>
-<p>Every row in the tables above is publishable in this form; ten of them ship as real files in <code>catalog/faults/</code>, and the four replay cases ship in <code>catalog/experiments/</code>.</p>
+<p>Every row in the tables above is publishable in this form; eighteen ship as real files in <code>catalog/faults/</code>, and the four replay cases ship in <code>catalog/experiments/</code>.</p>
+<p>(filenames are <code>&lt;id&gt;-&lt;name&gt;.yaml</code>); at this commit it is: C-009, F-008, F-009, I-002, N-001, N-012, P-001, P-020, R-001, S-001, S-004, S-011, S-020, S-021, S-022, S-023, S-024, T-001. Shipping a descriptor documents a primitive; it does not claim <code>mischief selftest --primitive &lt;id&gt;</code> is green today — each descriptor's <code>selftest:</code> field and the maturity ladder below carry that state.</p>
 <h2>Maturity ladder (which primitives may run where)</h2>
 <table><thead><tr><th>rung</th><th>requirement</th><th>reachable scope</th></tr></thead><tbody>
 <tr><td><code>L1-only</code></td><td>no selftest yet</td><td>L0 scratch target only</td></tr>
