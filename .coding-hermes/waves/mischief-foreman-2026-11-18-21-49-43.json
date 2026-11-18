@@ -11,10 +11,11 @@
    "base": "origin/main",
    "base_sha": "e055ea6",
    "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-33-brief.md",
-   "worker_model": "openai/gpt-6.1-terra",
-   "worker_provider": "xkiro",
+   "worker_model": "glm-5.3-flash",
+   "worker_provider": "zai-glm-default",
    "status": "prepared",
-   "commit": null
+   "commit": null,
+   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
   },
   {
    "task_id": "DOC-34",
@@ -23,10 +24,11 @@
    "base": "origin/main",
    "base_sha": "e055ea6",
    "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-34-brief.md",
-   "worker_model": "openai/gpt-6.1-terra",
-   "worker_provider": "xkiro",
+   "worker_model": "glm-5.3-flash",
+   "worker_provider": "zai-glm-default",
    "status": "prepared",
-   "commit": null
+   "commit": null,
+   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
   },
   {
    "task_id": "DOC-36",
@@ -35,10 +37,11 @@
    "base": "origin/main",
    "base_sha": "e055ea6",
    "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-36-brief.md",
-   "worker_model": "openai/gpt-6.1-terra",
-   "worker_provider": "xkiro",
+   "worker_model": "glm-5.3-flash",
+   "worker_provider": "zai-glm-default",
    "status": "prepared",
-   "commit": null
+   "commit": null,
+   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
   },
   {
    "task_id": "DOC-38",
@@ -47,10 +50,12 @@
    "base": "origin/main",
    "base_sha": "e055ea6",
    "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-38-brief.md",
-   "worker_model": "openai/gpt-6.1-terra",
-   "worker_provider": "xkiro",
+   "worker_model": "glm-5.3-flash",
+   "worker_provider": "zai-glm-default",
    "status": "prepared",
-   "commit": null
+   "commit": null,
+   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
   }
- ]
+ ],
+ "amended_at": "2026-11-18T22:20:00Z"
 }
