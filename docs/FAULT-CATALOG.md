@@ -248,8 +248,14 @@ maturity: L1-only         # L1-only | proven | fielded
 selftest: unknown         # optional; green | missing | failing | unknown (absent = unknown)
 ```
 
-Every row in the tables above is publishable in this form; ten of them ship as real
-files in `catalog/faults/`, and the four replay cases ship in `catalog/experiments/`.
+Every row in the tables above is publishable in this form; eighteen ship as real files
+in `catalog/faults/`, and the four replay cases ship in `catalog/experiments/`.
+The shipped set is derivable at any commit with `ls catalog/faults/ | sed 's/\.yaml$//'`
+(filenames are `<id>-<name>.yaml`); at this commit it is: C-009, F-008, F-009, I-002,
+N-001, N-012, P-001, P-020, R-001, S-001, S-004, S-011, S-020, S-021, S-022, S-023,
+S-024, T-001. Shipping a descriptor documents a primitive; it does not claim
+`mischief selftest --primitive <id>` is green today — each descriptor's `selftest:`
+field and the maturity ladder below carry that state.
 
 ## Maturity ladder (which primitives may run where)
 
