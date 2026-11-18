@@ -61,15 +61,13 @@ SUPPORTED_LINE = re.compile(r"supported:\s*(\S.*)")
 # nothing here — their real flags are already listed by --help.
 PROBE_FLAG = "--__mischief_checker_probe__"
 
-# DOC-35 pending-table exception (documented allowlist): `land` ships in
-# cmd/mischief (run() dispatch, PROF-002) and the binary's own usage lists
-# it, but skills/mischief-usage/SKILL.md has no `land` row yet — that row is
-# being added by DOC-31 in a DIFFERENT branch and this checker must not edit
-# the skill. Until the row lands, a missing `land` is a labeled WARNING, not
-# a failure; every other missing verb is a hard FAIL. When DOC-31 lands,
-# REMOVE the entry — the checker prints a NOTE if a pending verb becomes
-# documented while its entry is still here, so the allowlist cannot rot.
-PENDING_TABLE_VERBS = {"land"}
+# DOC-35 pending-table exception (documented allowlist): verbs that ship but
+# whose table row is not yet documented land here as labeled WARNings so the
+# committed tree stays green; every other missing verb is a hard FAIL. The
+# checker prints a NOTE if a pending verb becomes documented while its entry
+# is still here, so the allowlist cannot rot. (2026-11-18: DOC-31 landed the
+# `land` row, so the entry was retired; the set is empty again.)
+PENDING_TABLE_VERBS: set[str] = set()
 
 
 def flag_name(flag: str) -> str:
