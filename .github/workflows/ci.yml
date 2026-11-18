@@ -38,6 +38,13 @@ jobs:
       - name: Docs twins
         run: python3 tools/gen-docs.py --check
 
+      # DOC-35 — the checker drives the built binary (its --help / refusal
+      # output is the source of truth), so build bin/mischief first.
+      - name: CLI table gate (tools/check_cli_table.py — shipped verbs + per-verb flags vs skills/mischief-usage/SKILL.md)
+        run: |
+          go build -o bin/mischief ./cmd/mischief
+          python3 tools/check_cli_table.py
+
       - name: Test
         # The docker selftests (docker:pause/kill/oom) grade pass-or-skip
         # by daemon/image presence; TestLiveSelftestAllGreenOrSkip demands

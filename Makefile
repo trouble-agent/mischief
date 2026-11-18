@@ -41,9 +41,15 @@ row-drift:
 	python3 tools/check_row_drift.py
 
 # docs-check: bounded, read-only documentation freshness gate. It checks the
-# generated HTML twins and current-status references without modifying files.
-docs-check: row-drift
+# generated HTML twins and current-status references without modifying files,
+# plus the CLI-table gate (DOC-35, tools/check_cli_table.py): shipped verbs
+# and per-verb flags of the built binary vs skills/mischief-usage/SKILL.md.
+# `bin` is a prerequisite because the checker drives the real binary (its
+# --help / refusal output is the source of truth; without it the checker
+# errors with a "run make bin first" hint).
+docs-check: bin row-drift
 	python3 tools/gen-docs.py --check
+	python3 tools/check_cli_table.py
 
 # shim: the per-arch shim .so from the DECIDED path (MSF-018) — the same
 # ShimSourceC the runtime compiles at arm time, via system cc (amd64) and
