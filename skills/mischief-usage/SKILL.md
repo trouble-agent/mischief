@@ -14,7 +14,7 @@ inverse + blast radius). **v0.1.0 is released**: tarballs (linux_amd64 / linux_a
 tag), or the tarball's static binary plus prebuilt `libfault-anchored.so`.
 Quick checks after install: `mischief version`, `mischief status`, `mischief doctor`.
 
-## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help` and every listed leaf's `--help`, HEAD 3352398e7963, 2026-10-24)
+## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help` and every listed leaf's `--help`, HEAD 3352398e7963, 2026-10-24; `land` row verified against the c97b138 build's `land --help`, 2026-11-18, DOC-31)
 
 ```text
 plan      -f <exp.yaml> [--catalog-dir D] [--json] [--plan-only-sanction-skip] [--scratch-dir D] [--journal-dir D]  # zero side effects (AC-1);
@@ -24,6 +24,9 @@ status    [--dir D] [--all] [--json]   # ACTIVE holds (armed/stuck) + TTL remain
 revert    (--all | --hold <id> [--retry]) [--dir D]         # `revert --all` = the kill switch;
                               # --retry re-executes a revert_failed hold's recorded inverse
 arm       --fault ID --target SEL --ttl D --inverse-kind K --inverse-params k=v,.. --check-kind K --check-params k=v,.. [--catalog-dir D] [--dir D]
+land      (--hold <id> | --all) [--dir D]         # record that the fault was actually applied
+                              # (arm is write-ahead only). Skipping land makes the later revert grade
+                              # not_landed and exit 3, which reads as a failed revert.
 serve     --dir D             # reverter daemon: TTLs + boot reconcile + health.json
 doctor    [--catalog-dir D] [--json] [--ops] [--prefix P] [--self-check]         # exit 1 = a check FAILED
 battery   [--catalog-dir D] [--dir D] [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
@@ -46,7 +49,7 @@ version                      # stamped git sha (tag on release builds)
 Safety floor (every landing path): no default target; protected targets refuse at
 resolution; sanction-marker gate (SPEC-13) fails closed; load gate on landings.
 
-## Arming + serving a hold (the loop from the CLI — verified live 2026-10-16)
+## Arming + serving a hold (the loop from the CLI — verified live 2026-10-16; the land step re-verified live 2026-11-18 on the c97b138 build: arm → land → inject → `revert --all` grades `outcome=reverted` rc=0, while the same arm WITHOUT land grades `outcome=not_landed` rc=3)
 
 ```sh
 # closed vocabulary, validated per-slot at ARM time (MISCHIEF-DF-29 and its
@@ -64,7 +67,12 @@ MISCHIEF_SANCTION=1 MISCHIEF_SANCTION_FILE=/tmp/mc-scratch/marker bin/mischief a
   --check-params path=/tmp/mc-scratch/target/config.toml,backup=/tmp/mc-scratch/target/config.toml.bak \
   --dir /tmp/mc-scratch/runs          # marker file must carry a reason line
 bin/mischief status --dir /tmp/mc-scratch/runs    # armed + ttl_remaining
-# LAND the fault yourself (arm writes the hold only; printf FAULTED > file, etc.)
+bin/mischief land --hold <id> --dir /tmp/mc-scratch/runs  # <id> is the one the arm line printed.
+                              # MANDATORY: arm is write-ahead only, so until land records the fault as
+                              # applied the journal cannot know it. Skipping land makes the later revert
+                              # grade not_landed and exit 3, which reads as a failed revert even though
+                              # the cleanup inverse ran and restored the target.
+# INJECT the fault yourself (arm and land only write the journal; printf FAULTED > file, etc.)
 bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: TTL fold + boot reconcile + health.json
 # ORDER NO LONGER MATTERS (MISCHIEF-DF-30 fixed; re-proven live 2026-10-20 on 337ebe5):
 # a hold armed while serve is ALREADY running IS folded and reverted at TTL — an arm
