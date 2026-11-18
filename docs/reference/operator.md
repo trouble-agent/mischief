@@ -1,10 +1,22 @@
-# mischief — operator reference: sanction, reverter + shim environment variables
+# mischief — operator reference: sanction, reverter, shim + daemon-metrics environment variables
 
-Every environment variable mischief reads has a section below: what it does,
-who sets it, its default, safe override values, a troubleshooting note, and
-whether it is a **supported knob** (documented, stable, safe to set in
-production) or **internal-only** (set by the binary itself; do not set it by
-hand outside tests/debugging). The sanction variables are the exception to the
+Every environment variable in the `MISCHIEF*` / `MCFAULT*` families that the
+binary reads has a section below: what it does, who sets it, its default, safe
+override values, a troubleshooting note, and whether it is a **supported knob**
+(documented, stable, safe to set in production) or **internal-only** (set by
+the binary itself; do not set it by hand outside tests/debugging). The
+inventory is mechanical and the claim is kept true by construction:
+`grep -rhoE '"(MISCHIEF[A-Z0-9_]*|MCFAULT[A-Z0-9_]*)"' --include='*.go' cmd
+internal | sort -u` must resolve to exactly the variable sections below (its
+one non-variable hit, bare `"MISCHIEF"`, is a test fixture in
+`internal/battery/findingid_test.go`, not an env read). Variables outside
+those families that mischief only touches incidentally — it sets `LD_PRELOAD`
+and reads `PATH` (via `exec.LookPath` for external binaries), `HOME`
+(home-dir lookup), and `XDG_RUNTIME_DIR` (reverter probe) — are standard
+environment, not mischief knobs, and appear only in "Related variables" where
+relevant. The operator runbook for the daemon metrics surface (unit files,
+metric families, scraping) lives in `docs/OPERATIONS.md`. The sanction
+variables are the exception to the
 old "you never need any of these" rule: they are host-admission controls, and
 one of the two sanction halves must admit the host before a gated verb can run.
 
@@ -299,6 +311,39 @@ rule never has exceptions.
 
 ---
 
+## Serve daemon: metrics surface (mischief serve)
+
+`mischief serve` deliberately serves no HTTP on its health path, so the
+metrics surface is a separately bound listener exposing Prometheus text at
+`GET /metrics` (MISCHIEF-OPS-001). One variable selects its address.
+
+### MISCHIEFD_METRICS_ADDR — supported knob
+
+- **Purpose:** listen address for the daemon's metrics exposition
+  (`GET /metrics`). Loopback-only by design: the surface is for a monitor on
+  the same host (or an authenticated proxy), never a public socket.
+- **Who sets it:** the operator. `mischief serve` reads it once at startup
+  (`metricsAddr`, `cmd/mischief/main.go:621`) and, unless disabled, binds the
+  listener in a background goroutine and prints
+  `mischiefd: metrics=http://<addr>/metrics`.
+- **Default:** `127.0.0.1:9464` (`DefaultMetricsAddr`,
+  `internal/daemon/metrics.go:38`).
+- **Accepted values:** the raw value is whitespace-trimmed, then: unset or
+  empty → the loopback default; `off` or `disabled` → the metrics surface is
+  not bound at all; anything else is used as the literal listen address. The
+  disable words are lowercase-exact — `OFF` does not disable, it is treated
+  as an address (and then simply fails to bind).
+- **Failure mode — logged and non-fatal:** a bind failure (port taken, bad
+  address) is printed once to stderr as
+  `serve: metrics: daemon: metrics listen …` and the daemon keeps running:
+  losing the metric surface must never stop containment, so revert and health
+  behavior are unaffected. Metrics silent + daemon alive → check this
+  variable first (troubleshooting row in `docs/OPERATIONS.md`).
+- **Where else documented:** `docs/OPERATIONS.md` § "Metrics endpoint
+  (MISCHIEF-OPS-001)" — the variable's table row is `docs/OPERATIONS.md:75` —
+  including a systemd unit example and the full `mischiefd_*` metric-family
+  table.
+
 ## Related variables (not mischief's, listed for completeness)
 
 - `LD_PRELOAD` — the standard dynamic-loader variable; mischief sets it to
@@ -319,4 +364,7 @@ Source of truth for every claim above:
 `detachSetsid`, `ownerEnvPairs`, `ParseOwnerArgs`), `internal/backend_signal/rule.go`
 (`Rule`, `ParseRule`, `WithBudget`, `Env`, `DeriveProofPath`),
 `internal/backend_signal/shim.go` (`ArmShim`, `Prove`), and
-`tools/shim-extracted.c` (shim constructor, budget/proof handling, match logic).
+`tools/shim-extracted.c` (shim constructor, budget/proof handling, match
+logic). For the metrics variable: `internal/daemon/metrics.go`
+(`MetricsAddrEnv`, `DefaultMetricsAddr`, `Metrics.Serve`) and
+`cmd/mischief/main.go` (`metricsAddr`, the serve-side metrics goroutine).
