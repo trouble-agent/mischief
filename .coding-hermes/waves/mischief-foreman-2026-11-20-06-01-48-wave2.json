@@ -1,0 +1,32 @@
+{
+  "tick_id": "mischief-foreman-2026-11-20-06-01-48",
+  "wave": 2,
+  "created_at": "2026-11-20T07:30:00Z",
+  "base_sha": "6158b79",
+  "wave_budget": 7,
+  "workers_dispatched": 2,
+  "recovery_complete": true,
+  "worker_model": "openai/gpt-6.1-terra",
+  "worker_provider": "xkiro",
+  "tasks": [
+    {
+      "id": "DOC-39",
+      "branch": "wt/DOC-39",
+      "worktree": "/home/kara/worktrees/mischief-DOC-39",
+      "files_expected": ["README.md"],
+      "premise": "README:102 shows `mischief doctor --catalog-dir /path/to/mischief/catalog`; the loader reads *.yaml at the top level only, so that path fails (measured: 'catalog load FAILED: no .yaml files in catalog', rc=1) while catalog/faults loads 18 primitives.",
+      "status": "dispatched",
+      "merge": null
+    },
+    {
+      "id": "DOC-22-R2",
+      "branch": "wt/DOC-22-R2",
+      "worktree": "/home/kara/worktrees/mischief-DOC-22-R2",
+      "files_expected": ["skills/mischief-usage/SKILL.md"],
+      "premise": "SKILL.md states the shipped loader serves exactly 11 ids; catalog/faults holds 18 yaml rows and doctor reports 'catalog ok loaded (18 primitives)'.",
+      "status": "dispatched",
+      "merge": null
+    }
+  ],
+  "independence": "DOC-39 touches README.md; DOC-22-R2 touches skills/mischief-usage/SKILL.md. No shared file, no depends_on edge between the rows (both depends_on [])."
+}

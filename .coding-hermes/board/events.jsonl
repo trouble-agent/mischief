@@ -615,3 +615,6 @@
 {"id":530,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T06:51:12+00:00","event_type":"task_completed","task_id":"INT-CI-11","tick":null,"marker":null,"detail":"{\"status\":\"complete\"}"}
 {"id":531,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T07:22:12+00:00","event_type":"task_completed","task_id":"DOC-36","tick":null,"marker":null,"detail":"{\"status\":\"complete\"}"}
 {"id":532,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T07:22:12+00:00","event_type":"task_completed","task_id":"DOC-38","tick":null,"marker":null,"detail":"{\"status\":\"complete\"}"}
+{"id":533,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T07:25:48+00:00","event_type":"task_completed","task_id":"DOC-24-R3","tick":null,"marker":null,"detail":"{\"status\":\"complete\"}"}
+{"id":534,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T07:27:00+00:00","event_type":"task_updated","task_id":"DOC-39","tick":null,"marker":null,"detail":"{\"status\":\"in_progress\"}"}
+{"id":535,"actor":"foreman","created_at":null,"timestamp":"2026-11-20T07:27:00+00:00","event_type":"task_updated","task_id":"DOC-22-R2","tick":null,"marker":null,"detail":"{\"status\":\"in_progress\"}"}
