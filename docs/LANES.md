@@ -117,7 +117,7 @@ named SKIP for the tick, never a retry loop.
 
 ch:trace row=DOC-11 spec=docs/LANES.md#the-lane-set wave=mischief-foreman-2026-10-24-14-52-45#DOC-11 test=sqlite3 -readonly ~/.hermes/coding-hermes/scheduler.db "SELECT name, admission_mode, cooldown_s, enabled, workdir, COALESCE(cooldown_pin_s,'-') FROM projects WHERE name LIKE 'mischief%' ORDER BY name;" evidence=docs/LANES.md witness=none:live-db-query-and-doc-table-reconciled verdict=none:pending commit=none:pending memory=none:not-written
 
-ch:trace row=DOC-12 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-12 test=none:docs-only-greps doc=docs/LANES.md prompt=/tmp/mf-20261028-1931-DOC-12-brief.txt evidence=commit witness=none:docs-greps verdict=none:pending-foreman-judge commit=self memory=none:board-row
+ch:trace row=DOC-12 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-12 test=none:docs-only-greps doc=docs/LANES.md prompt=none:brief-not-retained evidence=commit witness=none:docs-greps verdict=none:pending-foreman-judge commit=a45bb1f memory=none:board-row
 STATUS: complete
 TIER: T1 (edits + greps invoked and observed)
 EVIDENCE: commit
