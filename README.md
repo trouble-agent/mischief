@@ -48,9 +48,9 @@ archive hole behind an untested restore path) were found by hand or not at all.
 | `catalog/` | machine-readable fault and experiment examples |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | operator runbook (MISCHIEF-OPS-001): what runs, how `mischiefd` is supervised per run dir, the health document, and the Prometheus metrics surface for the fleet monitor to scrape and alert on |
 | [docs/reference/operator.md](docs/reference/operator.md) | operator reference: every `MISCHIEF*`/`MCFAULT*` environment variable with its default, safe override values, supported-knob vs internal-only status, and troubleshooting notes |
-| [docs/RELEASE.md](docs/RELEASE.md) | the one release flow (MSF-018): cutting a `v*` tag, the gates `release.yml` reruns, and the human-reviewed draft step before publish |
-| [docs/LANES.md](docs/LANES.md) | lane doctrine (MSF-022): mischief's 21 scheduler rows — admission modes, cooldowns, workdirs — and why the scheduler DB (not `fleet.toml`) is the source of truth |
-| [docs/CHAOS-LANE.md](docs/CHAOS-LANE.md) | chaos plane doctrine (MSF-017): one fault-matrix satellite lane per adopting project, its board-symlink convention and the never-run-faults-on-the-scheduler-host isolation contract |
+| [docs/RELEASE.md](docs/RELEASE.md) | the one release flow: cutting a `v*` tag, the gates `release.yml` reruns, and the human-reviewed draft step before publish |
+| [docs/LANES.md](docs/LANES.md) | lane doctrine: mischief's 21 scheduler rows — admission modes, cooldowns, workdirs — and why the scheduler DB (not `fleet.toml`) is the source of truth |
+| [docs/CHAOS-LANE.md](docs/CHAOS-LANE.md) | chaos plane doctrine: one fault-matrix satellite lane per adopting project, its board-symlink convention and the never-run-faults-on-the-scheduler-host isolation contract |
 | [docs/traceability-doctrine.md](docs/traceability-doctrine.md) | the `ch:trace` marker contract: the fields every closed claim carries to link the spec it came from, the run that produced it, and the evidence that proves it |
 
 ## Install
