@@ -194,8 +194,10 @@ mkdir -p /tmp/mischief-shim && install -m 0755 libfault-anchored.so /tmp/mischie
 ```
 
 Two caveats for a tarball-only install: `mischief doctor` needs the in-repo
-`catalog/faults` directory (resolved from the cwd upward) and exits 1 when it cannot
-load it — run it from a checkout, or point `--catalog-dir` at that directory. And
+`catalog/faults` directory (resolved from the cwd upward to the nearest repo root —
+the directory holding `go.mod` — and never from an ancestor above it) and exits 1
+when it cannot load it — run it from a checkout, or point `--catalog-dir` at that
+directory. And
 verbs that actually land faults (`selftest`, `battery`) additionally require the
 SPEC-13 sanction marker and a sanctioned host, so they are checkout+sanction
 operations, not quickstart steps.

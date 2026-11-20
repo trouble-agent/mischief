@@ -1,33 +1,19 @@
 package selftest
 
 import (
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/trouble-agent/mischief/internal/catalog"
 )
 
-// loadCatalogForTest loads the in-repo catalog for corpus coverage tests
-// (skipped when the catalog is not reachable from the test cwd).
+// loadCatalogForTest loads the in-repo catalog for corpus coverage tests.
+// It delegates to catalog.LoadDefault so repo-root resolution lives in ONE
+// place: a duplicate walk-up here would drift from the loader's own boundary
+// (and re-open the out-of-repo defect for every corpus coverage test).
 func loadCatalogForTest() (*catalog.Catalog, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	for {
-		cand := filepath.Join(wd, catalog.DefaultDir)
-		if st, statErr := os.Stat(cand); statErr == nil && st.IsDir() {
-			return catalog.LoadDir(cand)
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			return nil, os.ErrNotExist
-		}
-		wd = parent
-	}
+	return catalog.LoadDefault()
 }
 
 // TestEverySkipLandableNamesItsPiece: each recorded-skip landable must

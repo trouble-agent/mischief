@@ -526,11 +526,14 @@ func TestLoadDefaultFindsRepoRootFromSubdir(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chdir(wd)
-	if err := os.Chdir(t.TempDir()); err == nil {
-		// a temp dir outside the repo must NOT resolve
-		if _, err := LoadDefault(); err == nil {
-			t.Fatal("LoadDefault resolved outside the repo")
-		}
+	// A temp dir outside the repo must NOT resolve. Fatal (not skipped) on a
+	// chdir failure: a silent chdir error would retire this rejection arm while
+	// the test still reported PASS.
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatalf("chdir temp dir: %v", err)
+	}
+	if _, err := LoadDefault(); err == nil {
+		t.Fatal("LoadDefault resolved outside the repo")
 	}
 	if err := os.Chdir(wd); err != nil {
 		t.Fatal(err)
@@ -553,6 +556,113 @@ func TestLoadDefaultFindsRepoRootFromSubdir(t *testing.T) {
 	if _, err := LoadDefault(); err != nil {
 		t.Fatalf("LoadDefault from internal/catalog/testdata: %v", err)
 	}
+}
+
+// TestLoadDefaultRefusesCatalogOutsideRepo pins the repo-root boundary: a
+// catalog planted in an ancestor that is NOT a repo root (no go.mod) must be
+// REFUSED, and the very same tree must resolve once that ancestor becomes the
+// repo root. The rejecting ancestor is built inside the test's own temp tree,
+// so the guard is proven on every run without depending on any host stray
+// (e.g. /tmp/catalog) or on where the temp root points.
+//
+// Both arms are load-bearing: a walk-up that consults ancestor catalogs (the
+// defect) fails arm 1, and a guard that refuses every catalog not directly
+// under the cwd fails arm 2.
+func TestLoadDefaultRefusesCatalogOutsideRepo(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	base := t.TempDir()
+	if root, ok := ancestorRepoRoot(base); ok {
+		t.Skipf("temp root %s sits inside repo root %s; cannot build an out-of-repo ancestor", base, root)
+	}
+	root := filepath.Join(base, "stray")
+	faults := filepath.Join(root, DefaultDir)
+	if err := os.MkdirAll(faults, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Plant a real descriptor so a resolved catalog genuinely LOADS in arm 2.
+	name, raw, err := firstCorpusDescriptor(filepath.Join(wd, "..", "..", "catalog", "faults"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(faults, name), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(root, "a", "b")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(nested); err != nil {
+		t.Fatal(err)
+	}
+
+	// ARM 1 (the bite): the planted ancestor is outside any repo root -> refuse,
+	// and name the ancestor that was declined.
+	if cat, err := LoadDefault(); err == nil {
+		t.Fatalf("LoadDefault resolved a catalog outside any repo root (%d primitives, source %s)", cat.Len(), cat.SourceDir)
+	} else if !strings.Contains(err.Error(), faults) {
+		t.Fatalf("refusal does not name the refused ancestor %s: %v", faults, err)
+	}
+
+	// ARM 2 (positive control): make the ancestor the repo root; the same cwd
+	// must now resolve exactly that catalog — proving arm 1 is a boundary, not
+	// a blanket refusal.
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/stray\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat, err := LoadDefault()
+	if err != nil {
+		t.Fatalf("LoadDefault after %s became a repo root: %v", root, err)
+	}
+	if cat.SourceDir != faults {
+		t.Fatalf("resolved %s, want the planted %s", cat.SourceDir, faults)
+	}
+	if cat.Len() != 1 {
+		t.Fatalf("resolved catalog has %d primitives, want the 1 planted", cat.Len())
+	}
+}
+
+// ancestorRepoRoot reports the nearest directory at or above start holding a
+// go.mod, so the refusal test can prove its temp tree really is outside a repo.
+func ancestorRepoRoot(start string) (string, bool) {
+	for dir := start; ; {
+		if st, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil && !st.IsDir() {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
+// firstCorpusDescriptor returns the name and bytes of the first (sorted) .yaml
+// descriptor in dir, so the refusal test plants a descriptor that really loads.
+func firstCorpusDescriptor(dir string) (string, []byte, error) {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return "", nil, err
+	}
+	var names []string
+	for _, e := range ents {
+		if !e.IsDir() && filepath.Ext(e.Name()) == ".yaml" {
+			names = append(names, e.Name())
+		}
+	}
+	if len(names) == 0 {
+		return "", nil, fmt.Errorf("no .yaml descriptors in %s", dir)
+	}
+	sort.Strings(names)
+	raw, err := os.ReadFile(filepath.Join(dir, names[0]))
+	if err != nil {
+		return "", nil, err
+	}
+	return names[0], raw, nil
 }
 
 // TestLoadDirMissingDirNamesReason.

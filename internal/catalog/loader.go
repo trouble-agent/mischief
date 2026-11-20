@@ -214,6 +214,8 @@ const DefaultDir = "catalog/faults"
 // LoadDefault loads the in-repo catalog (catalog/faults), resolving the
 // directory from the process working directory upward to the repo root (the
 // directory holding go.mod), so a future cmd/ binary can call it from any cwd.
+// Resolution is pinned INSIDE that repo root: a catalog directory found above
+// it (a stray sibling of the temp root, say) is never consulted.
 func LoadDefault() (*Catalog, error) {
 	dir, err := findDefaultDir()
 	if err != nil {
@@ -222,22 +224,50 @@ func LoadDefault() (*Catalog, error) {
 	return LoadDir(dir)
 }
 
+// findDefaultDir walks up from the cwd to the nearest repo root (the directory
+// holding go.mod) and returns <root>/catalog/faults. It never walks PAST that
+// root looking for a catalog, so an out-of-repo ancestor carrying
+// catalog/faults can neither satisfy nor shadow the in-repo corpus — that
+// walk-up was the defect that made the suite depend on where the temp root
+// pointed (a stray /tmp/catalog made a temp-dir cwd resolve "successfully").
 func findDefaultDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", &LoadError{Reason: fmt.Sprintf("cwd: %v", err)}
 	}
-	for {
-		cand := filepath.Join(wd, DefaultDir)
-		if st, statErr := os.Stat(cand); statErr == nil && st.IsDir() {
-			return cand, nil
+	// stray is the nearest out-of-repo catalog seen while walking; kept only so
+	// a refusal can name the ancestor it declined to consult.
+	var stray string
+	for dir := wd; ; {
+		if st, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr == nil && !st.IsDir() {
+			// dir is the repo root: the catalog must live here, never above.
+			cand := filepath.Join(dir, DefaultDir)
+			if isDir(cand) {
+				return cand, nil
+			}
+			return "", &LoadError{Reason: fmt.Sprintf("%s not found from cwd upward (repo root %s has none)", DefaultDir, dir)}
 		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			return "", &LoadError{Reason: fmt.Sprintf("%s not found from cwd upward", DefaultDir)}
+		if stray == "" {
+			if cand := filepath.Join(dir, DefaultDir); isDir(cand) {
+				stray = cand
+			}
 		}
-		wd = parent
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
 	}
+	if stray != "" {
+		return "", &LoadError{Reason: fmt.Sprintf("%s not found from cwd upward (refused %s: outside any repo root)", DefaultDir, stray)}
+	}
+	return "", &LoadError{Reason: fmt.Sprintf("%s not found from cwd upward", DefaultDir)}
+}
+
+// isDir reports whether path is an existing directory.
+func isDir(path string) bool {
+	st, err := os.Stat(path)
+	return err == nil && st.IsDir()
 }
 
 // versionInput is one file's contribution to the content version.
