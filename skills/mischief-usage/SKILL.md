@@ -34,6 +34,10 @@ chaos matrix  --project P [--catalog-dir D] [--markdown] [--tier-max N] [--out D
 chaos check   --lane F [--lane-dir D]
 chaos finding --project P --board D --title T --reason R [--priority P] [--primitive ID] [--verdict V]
 sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD] [--destroy-class C]
+profile run  <class>/<name> --target SEL [--json] [--seed N] [--dir D] [--profiles-dir D] [--catalog-dir D]
+                              # applies the profile's steps and grades them: exit 0 passed /
+                              # 1 failed / 3 inconclusive / 2 refused; --json = one finding document
+profile list  [--profiles-dir D]                              # profile ids under catalog/profiles/
 install   [--user U] [--prefix P] [--dry-run] [--no-drop-in]
 uninstall [--prefix P] [--dry-run] [--keep-count N] [--keep-days D] [--runs-dir D]
 audit     [--prefix P] [--json] [--user U]

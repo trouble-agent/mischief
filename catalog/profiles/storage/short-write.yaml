@@ -1,0 +1,54 @@
+# Testing profile: storage / short-write
+#
+# Class : storage
+# Intent: does the target's write path land every byte it was asked to write
+#         when the kernel returns a SHORT write — fewer bytes than requested,
+#         with no error?
+#
+# The bug class: POSIX permits a successful write(2) to land FEWER bytes than it
+# was given. A writer that reads "no error" as "everything landed" drops the
+# remainder SILENTLY: the file is short, nothing reports it, and the caller
+# believes it succeeded. This is the quiet sibling of S-001 (write EIO), which
+# at least returns -1.
+#
+# Runnable today: every step names a primitive that exists in catalog/faults/
+# (S-004) and the executor ships an actuator for it. See catalog/profiles/README.md
+# for the schema and for what this build does NOT promise.
+schema: mischief.profile/v1
+name: short-write
+class: storage
+version: 1.0.0
+seed: 7
+
+summary: >
+  A write() that returns half the requested bytes with no error. Catches write
+  paths that treat a short write as complete: the record is truncated, the
+  caller is told nothing, and the store keeps a lie.
+
+requires:
+  - cc: a C compiler on PATH (the fault is an LD_PRELOAD shim, built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: short-write-append
+    fault: S-004 # catalog/faults/S-004-short-write.yaml
+    params:
+      # The scenario target must carry this substring, or the rule would never
+      # match and the step cannot land (inconclusive, named).
+      path_substr: mischief-profile-target
+      # Land half of the requested bytes on the shortened write.
+      fraction: "0.5"
+      # Shorten exactly ONE matching write, so a retrying writer can finish.
+      # 0 would shorten every write and hang a correct loop.
+      budget: "1"
+    probe: payload-complete
+    cause_class: storage:silent-short-write
+
+cause_classes:
+  storage:silent-short-write:
+    hint: >
+      The write path did not loop on a short write. Every write must advance by
+      the returned count and continue until the whole buffer is on the file, and
+      a return of 0 is an error (Go: io.ErrShortWrite; C: loop on write(2) and
+      treat 0 as failure). Checking only for -1 is the bug this probe found.
