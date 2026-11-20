@@ -1,61 +1,69 @@
 {
- "tick_id": "mischief-foreman-2026-11-18-21-49-43",
- "created_at": "2026-11-18T21:55:00Z",
- "base_sha": "e055ea6",
- "wave_budget": 11,
- "tasks": [
-  {
-   "task_id": "DOC-33",
-   "worktree": "/home/kara/worktrees/mischief-DOC-33",
-   "branch": "wt/DOC-33",
-   "base": "origin/main",
-   "base_sha": "e055ea6",
-   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-33-brief.md",
-   "worker_model": "glm-5.3-flash",
-   "worker_provider": "zai-glm-default",
-   "status": "prepared",
-   "commit": null,
-   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
-  },
-  {
-   "task_id": "DOC-34",
-   "worktree": "/home/kara/worktrees/mischief-DOC-34",
-   "branch": "wt/DOC-34",
-   "base": "origin/main",
-   "base_sha": "e055ea6",
-   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-34-brief.md",
-   "worker_model": "glm-5.3-flash",
-   "worker_provider": "zai-glm-default",
-   "status": "prepared",
-   "commit": null,
-   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
-  },
-  {
-   "task_id": "DOC-36",
-   "worktree": "/home/kara/worktrees/mischief-DOC-36",
-   "branch": "wt/DOC-36",
-   "base": "origin/main",
-   "base_sha": "e055ea6",
-   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-36-brief.md",
-   "worker_model": "glm-5.3-flash",
-   "worker_provider": "zai-glm-default",
-   "status": "prepared",
-   "commit": null,
-   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
-  },
-  {
-   "task_id": "DOC-38",
-   "worktree": "/home/kara/worktrees/mischief-DOC-38",
-   "branch": "wt/DOC-38",
-   "base": "origin/main",
-   "base_sha": "e055ea6",
-   "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-38-brief.md",
-   "worker_model": "glm-5.3-flash",
-   "worker_provider": "zai-glm-default",
-   "status": "prepared",
-   "commit": null,
-   "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
+  "tick_id": "mischief-foreman-2026-11-18-21-49-43",
+  "created_at": "2026-11-18T21:55:00Z",
+  "base_sha": "e055ea6",
+  "wave_budget": 11,
+  "tasks": [
+    {
+      "task_id": "DOC-33",
+      "worktree": "/home/kara/worktrees/mischief-DOC-33",
+      "branch": "wt/DOC-33",
+      "base": "origin/main",
+      "base_sha": "e055ea6",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-33-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default",
+      "status": "prepared",
+      "commit": null,
+      "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
+    },
+    {
+      "task_id": "DOC-34",
+      "worktree": "/home/kara/worktrees/mischief-DOC-34",
+      "branch": "wt/DOC-34",
+      "base": "origin/main",
+      "base_sha": "e055ea6",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-34-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default",
+      "status": "prepared",
+      "commit": null,
+      "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
+    },
+    {
+      "task_id": "DOC-36",
+      "worktree": "/home/kara/worktrees/mischief-DOC-36",
+      "branch": "wt/DOC-36",
+      "base": "origin/main",
+      "base_sha": "e055ea6",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-36-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default",
+      "status": "prepared",
+      "commit": null,
+      "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
+    },
+    {
+      "task_id": "DOC-38",
+      "worktree": "/home/kara/worktrees/mischief-DOC-38",
+      "branch": "wt/DOC-38",
+      "base": "origin/main",
+      "base_sha": "e055ea6",
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-tick-20261118-2149/briefs/mischief-foreman-2026-11-18-21-49-43-DOC-38-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm-default",
+      "status": "prepared",
+      "commit": null,
+      "lane_switch": "openai/gpt-6.1-terra@xkiro 503 scheduled maintenance until 2026-11-19T16:2x (probe rc=124, worker 0-edit retry hang killed) -> glm-5.3-flash@zai-glm-default probe rc=0; deepseek-v4-flash probe rc=124 also dead; per skill sanctioned fallback"
+    }
+  ],
+  "amended_at": "2026-11-18T22:20:00Z",
+  "finished_at": "2026-11-20T07:23:36Z",
+  "recovered_by": "mischief-foreman-2026-11-20-06-01-48",
+  "recovery_summary": {
+    "DOC-33": "merged f21e652 (README docs index rows; rebased off stale base, closed-row ids dropped)",
+    "DOC-34": "merged 1b4ddff (run-dir journal schema; rebased off stale base)",
+    "DOC-36": "merged 0398513 (seven ch:trace markers rebound to real shas; re-cut after zero-commit dead branch)",
+    "DOC-38": "merged 6c0a25e (full health.json schema vs live capture; follow-up 02bb8b4 kept one status example)"
   }
- ],
- "amended_at": "2026-11-18T22:20:00Z"
 }

@@ -61,5 +61,14 @@
       "status": "prepared",
       "commit": null
     }
-  ]
+  ],
+  "finished_at": "2026-11-20T07:23:36Z",
+  "head_sha": "0398513d7f8e9ed84f69d39c3620702469aed72b",
+  "recovery_summary": {
+    "DOC-33": "merged f21e652 (README docs index rows; rebased off stale base, closed-row ids dropped)",
+    "DOC-34": "merged 1b4ddff (run-dir journal schema; rebased off stale base)",
+    "DOC-36": "merged 0398513 (seven ch:trace markers rebound to real shas; re-cut after zero-commit dead branch)",
+    "DOC-38": "merged 6c0a25e (full health.json schema vs live capture; follow-up 02bb8b4 kept one status example)"
+  },
+  "new_wave": "none \u2014 recovery consumed the tick; WAVE_BUDGET 7 unused"
 }
