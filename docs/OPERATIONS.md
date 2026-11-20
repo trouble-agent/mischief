@@ -158,6 +158,55 @@ Restore drill: copy a run dir to a scratch path and read it with the CLI —
 `mischief status --dir <scratch>` prints the folded holds and proofs without touching the live run
 dir, which is the cheap restore verification.
 
+## Run-dir journal record schema
+
+The run-dir journals are JSONL — one record per line, appended by the verb that owns that phase
+of the run. `plan.jsonl` (written by `plan --journal-dir D`), `selftest.jsonl` and
+`battery.jsonl` share the same record envelope (`internal/journal/record.go`), so a reader that
+folds one folds all of them.
+
+The envelope — each line is one `Record` (`internal/journal/record.go:52-67`):
+
+| field | type | presence | meaning |
+|---|---|---|---|
+| `type` | string, closed set of ten | always | the record type (vocabulary below). The write path refuses an unknown type and the read path fails loudly on one rather than folding it into a summary. |
+| `run_id` | string | always | the content-derived run id, 16 hex chars: `hex(sha256("seed\n<seed>\n" + spec_bytes))[:8]` (`RunID`, `internal/journal/experiment.go:419`). Scrubbed on write like any free-form field. |
+| `seq` | int | always | the run-local sequence number: 0-based, monotonic in append order |
+| `ts` | int64 | always | unix timestamp, seconds |
+| `verdict` | string, closed vocabulary | only on `verdict` and `run_closed` records | the graded verdict value: `recovered`, `degraded`, `not_recovered`, `hung`, `corrupted`, `no_op`, `aborted`, `flaky` (PRD §6.4). Write validation refuses a verdict on any other record type. |
+| `fields` | object (string → string) | optional, omitted when empty | record-specific detail. Every value is a JSON string — never a number; numeric-looking values ride as strings (see the example below). Values are scrubbed on write, and the fully serialised line gets a byte-level scrub backstop. |
+
+### The ten record types
+
+Each `type` and when the binary writes it (`internal/journal/record.go:16-34`; write sites as
+named — "no writer yet" is grep-provable in the current tree):
+
+| `type` | written when |
+|---|---|
+| `run_planned` | the resolved plan before any side effect (AC-1): once per `plan --journal-dir D`, and as the opening record of the `selftest` and `battery` journals |
+| `fault_armed` | the fault actuator is armed, pre-land (`selftest`) |
+| `fault_landed` | carrying the landing proof (`selftest`, `battery`) |
+| `probe_sample` | one probe observation — declared in the vocabulary; no writer yet in the current tree |
+| `assertion_result` | one probe/assertion grading — declared in the vocabulary; no writer yet in the current tree |
+| `observe_result` | the observe.trouble outcome (AC-14) — the record builder lives in `internal/observe`; wiring a verb to it is tracked as future (`internal/battery/matrix.go`) |
+| `fault_reverted` | carrying the revert proof (AC-4) (`selftest`, `battery`) |
+| `verdict` | the graded verdict value (AC-9): appended by the `selftest` and `battery` graders and rendered by the verdict engine (`Result.Record`, `internal/verdict/engine.go:379`) |
+| `run_closed` | the run's terminal record, carrying the same verdict (`selftest`, `battery`) |
+| `finding` | a finding filed from the run (AC-18 shape) — declared in the vocabulary; no writer yet in the current tree |
+
+### Example (captured, not hand-written)
+
+`MISCHIEF_SANCTION=1 MISCHIEF_SANCTION_FILE=<marker file> mischief plan -f
+catalog/experiments/ex-001-noop-detector.yaml --journal-dir <scratch>/j` appends one line to
+`<scratch>/j/plan.jsonl`, verbatim:
+
+```json
+{"type":"run_planned","run_id":"84c8a84cecf315c1","seq":0,"ts":1795040158,"fields":{"catalog_version":"6ba6eda1a66b080788f89193011d5ee45e33281895553748b620a7dddf999556","experiment":"ex-001-noop-detector","faults":"F-008","faults_count":"1","kind":"plan","mode":"preview","refusals":"0","seed":"20260927","target_kind":"host","target_selector":"host:."}}
+```
+
+`"faults_count":"1"` and `"refusals":"0"` are the envelope rule in action: counters ride
+`fields` as JSON strings, never numbers.
+
 ## Troubleshooting
 
 | symptom | first probe |

@@ -126,7 +126,8 @@ hold. An operator who wants the preview on disk asks for it — `plan
 --journal-dir D` appends one `run_planned` record (the `run_id` the render
 printed, the experiment, the resolved fault set, the target and the refusal
 tally) to `D/plan.jsonl`, the same per-verb journal convention
-`selftest.jsonl` and `battery.jsonl` follow. Run on an unsanctioned host,
+`selftest.jsonl` and `battery.jsonl` follow — the shared record envelope is
+documented in `docs/OPERATIONS.md` ("Run-dir journal record schema"). Run on an unsanctioned host,
 though, and the verb refuses: mischief only runs on a **sanctioned host**
 (SPEC-13). On a fresh machine the gate refuses with `host_not_sanctioned`
 until you export `MISCHIEF_SANCTION=1` (the env half of the sanction marker;
