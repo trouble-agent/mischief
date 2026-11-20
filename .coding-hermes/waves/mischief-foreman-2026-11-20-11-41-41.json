@@ -1,0 +1,80 @@
+{
+  "tick_id": "mischief-foreman-2026-11-20-11-41-41",
+  "created_at": "2026-11-20T16:58:00Z",
+  "base_sha": "3894101",
+  "wave_budget": 6,
+  "wave_size": 5,
+  "wave_size_reason": "7 ready candidates; PROF-010 and QA-MISCHIEF-FOREMAN-1 are foreman-plane harvests of existing landed-ready commits (3e0ccbd, 7b84be5) not worker slots; worker concurrency capped at 5 with host loadavg 12.7-15.3 (elevated, falling) in mind.",
+  "harvests": [
+    {"task_id": "PROF-010", "branch": "wt/PROF-010", "tip": "3e0ccbd", "merge": "e8f909f", "gate": "build+vet rc=0, env -u GOTMPDIR make test rc=0 (22 pkgs), selftest S-010 = SKIP (SPEC-13 sanction rail, host-gated, owner call)"},
+    {"task_id": "QA-MISCHIEF-FOREMAN-1", "branch": "wt/QA-MISCHIEF-FOREMAN-1", "tip": "7b84be5", "merge": "3894101-merge", "gate": "make docs-check rc=0 (WARN = open DOC-20-R2, pre-existing)"}
+  ],
+  "pre_dispatch_reconciliation": "Two crashed prior sessions found with uncommitted RED half-done work: mischief-PROF-003 (profile scaffolding, cmd tests failing) and mischief-MISCHIEF-DF-71 (reverter duplicate-fold red test, unimplemented). No live writer (ps verified). Archived to ~/.hermes/cache/scratch/mischief-crashed-20261120T065317/, worktrees force-removed, branches deleted, re-cut fresh from 3894101. RELEASE-016 stale zero-commit branch also deleted.",
+  "tasks": [
+    {
+      "task_id": "PROF-003",
+      "priority": "P0",
+      "worktree": "/home/kara/worktrees/mischief-PROF-003",
+      "branch": "wt/PROF-003",
+      "base": "origin/main",
+      "base_sha": "3894101",
+      "brief": "/tmp/mischief-foreman-2026-11-20-11-41-41-PROF-003-brief.md",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "max_turns": 2000,
+      "run_budget": 7200
+    },
+    {
+      "task_id": "MISCHIEF-DF-69",
+      "priority": "P2",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-69",
+      "branch": "wt/MISCHIEF-DF-69",
+      "base": "origin/main",
+      "base_sha": "3894101",
+      "brief": "/tmp/mischief-foreman-2026-11-20-11-41-41-MISCHIEF-DF-69-brief.md",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "max_turns": 1500,
+      "run_budget": 7200
+    },
+    {
+      "task_id": "MISCHIEF-DF-70",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-70",
+      "branch": "wt/MISCHIEF-DF-70",
+      "base": "origin/main",
+      "base_sha": "3894101",
+      "brief": "/tmp/mischief-foreman-2026-11-20-11-41-41-MISCHIEF-DF-70-brief.md",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "max_turns": 1000,
+      "run_budget": 5400
+    },
+    {
+      "task_id": "MISCHIEF-DF-71",
+      "priority": "P3",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-71",
+      "branch": "wt/MISCHIEF-DF-71",
+      "base": "origin/main",
+      "base_sha": "3894101",
+      "brief": "/tmp/mischief-foreman-2026-11-20-11-41-41-MISCHIEF-DF-71-brief.md",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "max_turns": 1500,
+      "run_budget": 7200
+    },
+    {
+      "task_id": "RELEASE-016",
+      "priority": "P2",
+      "worktree": "/home/kara/worktrees/mischief-RELEASE-016",
+      "branch": "wt/RELEASE-016",
+      "base": "origin/main",
+      "base_sha": "3894101",
+      "brief": "/tmp/mischief-foreman-2026-11-20-11-41-41-RELEASE-016-brief.md",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "max_turns": 1000,
+      "run_budget": 5400
+    }
+  ]
+}
