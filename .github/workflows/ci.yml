@@ -13,6 +13,7 @@ on:
     branches: [main]
 
 jobs:
+  # act 0.2.89 selects this job by ID: use `-j build`; the display name is Build & Test.
   build:
     name: Build & Test
     runs-on: ubuntu-latest
