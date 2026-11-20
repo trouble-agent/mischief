@@ -113,7 +113,7 @@ func TestUninstallCLINoStutter(t *testing.T) {
 	}
 }
 
-// ch:trace row=MISCHIEF-DF-56 spec=none:dogfood-row wave=mischief-foreman-2026-10-28-19-31-37.json#MISCHIEF-DF-56 test=cmd/mischief/df56_test.go::TestErrorPrefixNoStutter doc=none:cli-help-output prompt=/tmp/mf-20261028-1931-MISCHIEF-DF-56-brief.txt evidence=commit witness=none:unit-test verdict=none:pending-foreman-judge commit=self memory=none:board-row
+// ch:trace row=MISCHIEF-DF-56 spec=none:dogfood-row wave=mischief-foreman-2026-10-28-19-31-37.json#MISCHIEF-DF-56 test=cmd/mischief/df56_test.go::TestErrorPrefixNoStutter doc=none:cli-help-output prompt=none:brief-not-retained evidence=commit witness=none:unit-test verdict=none:pending-foreman-judge commit=a801bce memory=none:board-row
 // STATUS: complete
 // TIER: T2 (helper + targeted test + full package suite invoked and observed)
 // EVIDENCE: commit
