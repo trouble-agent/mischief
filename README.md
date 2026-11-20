@@ -288,6 +288,7 @@ expires** (no detached owner process is shipped: the owner machinery in
 verb spawns it). `mischief revert --all` is the kill switch.
 
 ```sh
+cd "$(git rev-parse --show-toplevel)"   # the checkout root: bin/ and catalog/faults both live here
 mkdir -p /tmp/mischief-scratch
 echo 'original' > /tmp/mischief-scratch/config.toml   # the file the fault will target — create it before backing it up
 cp /tmp/mischief-scratch/config.toml /tmp/mischief-scratch/config.toml.bak
@@ -298,11 +299,25 @@ bin/mischief arm \
   --inverse-params path=/tmp/mischief-scratch/config.toml,backup=/tmp/mischief-scratch/config.toml.bak \
   --check-kind file-matches-backup \
   --check-params path=/tmp/mischief-scratch/config.toml,backup=/tmp/mischief-scratch/config.toml.bak \
+  --catalog-dir catalog/faults \
   --dir ~/.mischief/runs/default
 
 bin/mischief status --dir ~/.mischief/runs/default   # shows the armed hold + TTL remaining
 bin/mischief serve --dir ~/.mischief/runs/default    # watchdog reverts at TTL, writes health.json
 ```
+
+`--catalog-dir` is the fault-id check's catalog: the `catalog/faults`
+directory, where the `*.yaml` rows live. The loader reads that one flat
+directory and does not recurse — point it at `catalog/faults`, never at
+`catalog/` (with `faults/` beneath, it loads nothing and refuses with
+`arm: no .yaml files in <dir>`, exit 1). Without the flag `arm`
+resolves the directory from the cwd upward, the same rule `doctor` follows, so
+the recipe above states its working directory (the checkout root) and passes
+the flag explicitly. Invoked from outside a checkout — an installed binary run
+from `/tmp`, say — the walk-up finds nothing and `arm` refuses before the
+sanction gate with `arm: catalog/faults not found from cwd upward` (exit 1,
+nothing written). Driving a catalog that lives elsewhere works the same way:
+`--catalog-dir /path/to/checkout/catalog/faults`.
 
 The serve watchdog sweeps every `HeartbeatInterval` (5s). When a hold's expiry has
 passed, the next sweep reverts it, so the maximum overshoot after expiry is 5s.
@@ -366,7 +381,7 @@ skipping cleanup: an out-of-band fault must still be undone), and the command
 exits **3** rather than reporting a clean sweep:
 
 ```sh
-bin/mischief arm  ... --ttl 30s              # armed, nothing injected
+bin/mischief arm  ... --catalog-dir catalog/faults --ttl 30s   # armed, nothing injected
 bin/mischief revert --all                    # not_landed, exit 3 (cleanup still runs)
 bin/mischief land --all && bin/mischief revert --all   # reverted, exit 0
 ```

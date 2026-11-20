@@ -60,6 +60,13 @@ resolution; sanction-marker gate (SPEC-13) fails closed; load gate on landings.
 # 29-R2 re-cur, both closed; verified live on HEAD 8e8fd4f 2026-10-20):
 #   inverse: restore-file (params path,backup) | remove-file (param path)
 #   check:   file-matches-backup (params path,backup) | file-absent (param path)
+# RUN FROM THE CHECKOUT ROOT: `bin/mischief` is repo-relative and arm resolves
+# its fault catalog (`catalog/faults`) from the cwd upward. From any other cwd
+# use <repo>/bin/mischief and pass `--catalog-dir <repo>/catalog/faults` — else
+# arm refuses with "arm: catalog/faults not found from cwd upward" (rc=1)
+# before the sanction gate. The loader reads ONE flat directory and does NOT
+# recurse: point at .../catalog/faults, never .../catalog (`arm: no .yaml files
+# in <dir>`, rc=1).
 mkdir -p /tmp/mc-scratch/{runs,target}
 printf 'original\n' > /tmp/mc-scratch/target/config.toml
 cp /tmp/mc-scratch/target/config.toml /tmp/mc-scratch/target/config.toml.bak
@@ -69,6 +76,7 @@ MISCHIEF_SANCTION=1 MISCHIEF_SANCTION_FILE=/tmp/mc-scratch/marker bin/mischief a
   --inverse-params path=/tmp/mc-scratch/target/config.toml,backup=/tmp/mc-scratch/target/config.toml.bak \
   --check-kind file-matches-backup \
   --check-params path=/tmp/mc-scratch/target/config.toml,backup=/tmp/mc-scratch/target/config.toml.bak \
+  --catalog-dir catalog/faults \
   --dir /tmp/mc-scratch/runs          # marker file must carry a reason line
 bin/mischief status --dir /tmp/mc-scratch/runs    # armed + ttl_remaining
 bin/mischief land --hold <id> --dir /tmp/mc-scratch/runs  # <id> is the one the arm line printed.
@@ -350,8 +358,9 @@ frictions MISCHIEF-DF-36/37/38 (all closed) left two lasting rules of thumb:
   not exist (a bare Debian user has none). Rescue: `mkdir -p ~/.local/bin`
   first, or use `install -Dm 0755` (GNU -D creates the dir) — the README's
   Install section now leads with the mkdir.
-- `plan` and catalog-backed verbs need the `catalog/` tree from a checkout
-  (or `--catalog-dir`); the tarball ships none — `doctor` names the in-repo
+- `plan` and catalog-backed verbs need the checkout's `catalog/faults`
+  directory (or `--catalog-dir`); the loader reads that one flat directory and
+  does not recurse. The tarball ships no catalog — `doctor` names the in-repo
   `catalog/faults` requirement and exits 1 without it.
 - Matching a newer catalog to the older release binary turns `selftest --all`
   red with `unknown primitive "F-008": not in the selftest corpus` and NO
