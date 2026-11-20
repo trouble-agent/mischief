@@ -85,7 +85,7 @@ read off a live capture, not off the struct alone):
 
 `holds` is the COMPLETE listing, and that is NOT the surface `mischief status` shows by default:
 `status` lists ACTIVE holds only (`armed` / `stuck`) and keeps terminal rows off that listing —
-`mischief status --all` is the surface that matches this document. So a `reverted` or `not_landed`
+passing `--all` to that same command is the surface that matches this document. So a `reverted` or `not_landed`
 row here is history, not a live fault: do not read a populated `holds` as "faults are live", and do
 not read `status`'s `holds: 0` as "the journal knows no holds". The `reverted`, `revert_failed` and
 `not_landed` counters are derived from exactly the terminal rows the active-only default omits.
@@ -153,11 +153,11 @@ hold while the daemon serves it:
 ```
 $ jq -c '.holds' $D/health.json     # health: the COMPLETE listing
 [{"hold_id":"0db0b502ec63ebca","fault_id":"S-001","target":"scratch:/tmp/doc38-cap/term/t","status":"reverted"}]
-$ mischief status --dir $D          # status: ACTIVE only
-holds: 0
-$ mischief status --all --dir $D    # --all: the surface that matches health.json
-holds: 1
 ```
+
+Read the same run dir through the CLI and the counts disagree on purpose: `status` reports
+`holds: 0` (active rows only) while `status --all` reports `holds: 1`, matching this document.
+Use `--all` whenever you are reconciling against `health.json`.
 
 ## Metrics endpoint (MISCHIEF-OPS-001)
 
