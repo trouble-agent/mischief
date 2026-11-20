@@ -97,7 +97,7 @@ func simLoadGateCheck() error {
 func cmdSim(args []string) int {
 	fs := flag.NewFlagSet("sim", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	shapeID := fs.String("shape", "", "the layer-I catalog id to simulate (I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014)")
+	shapeID := fs.String("shape", "", "the catalog id to simulate (I-003..I-014 or S-010)")
 	path := fs.String("path", "/fault", "request path the sim serves")
 	logPath := fs.String("log", "", "sim request log path (default <tmpdir>/mischief-sim-<shape>.log)")
 	destroyClass := fs.String("destroy-class", "reversible", "the requested fault's destroy class, closed vocabulary reversible | permanent (permanent refuses outright in v0.1)")
@@ -109,12 +109,12 @@ func cmdSim(args []string) int {
 	}
 
 	if *shapeID == "" {
-		fmt.Fprintln(os.Stderr, "mischief sim: --shape is required (one of I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014)")
+		fmt.Fprintln(os.Stderr, "mischief sim: --shape is required (one of I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014, S-010)")
 		return 2
 	}
 	shape, ok := simShapeFor(*shapeID)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "mischief sim: unknown layer-I shape %q — the simulator covers I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014\n", *shapeID)
+		fmt.Fprintf(os.Stderr, "mischief sim: unknown simulator shape %q — the simulator covers I-003, I-004, I-005, I-006, I-010, I-011, I-012, I-013, I-014, S-010\n", *shapeID)
 		return 2
 	}
 
@@ -239,6 +239,8 @@ func simShapeFor(id string) (backend_sim.Shape, bool) {
 		return backend_sim.Shape{Kind: backend_sim.ShapeSnapshotStale, StaleSeconds: 120}, true
 	case "I-014":
 		return backend_sim.Shape{Kind: backend_sim.ShapeDNSPropagation, StaleSeconds: 30, Burst: 0}, true
+	case "S-010":
+		return backend_sim.Shape{Kind: backend_sim.ShapeFsyncLie, DurabilityPaths: []string{"/durability/selftest.db"}}, true
 	}
 	return backend_sim.Shape{}, false
 }
@@ -255,13 +257,15 @@ func simPathFor(sh backend_sim.Shape, operatorPath string) string {
 		return "/obj/ac17-probe"
 	case backend_sim.ShapeDNSPropagation:
 		return "/dns/resolve?name=api.internal&resolver=resolver-b"
+	case backend_sim.ShapeFsyncLie:
+		return "/durability/selftest.db"
 	}
 	return operatorPath
 }
 
 // simCoveredIDs is the operator-facing list of sim-covered layer-I ids,
 // used by usage and by the catalog cross-check test.
-var simCoveredIDs = []string{"I-003", "I-004", "I-005", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014"}
+var simCoveredIDs = []string{"I-003", "I-004", "I-005", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014", "S-010"}
 
 // simLandWithProof drives the AC-17 redirect with the per-shape request
 // choreography the proof requires: LandInSimOnRefusal issues ONE GET, but
@@ -291,6 +295,38 @@ func simLandWithProof(sim *backend_sim.Simulator, primitive string, sh backend_s
 		st, _, err := sim.SelfCall(path)
 		if err != nil {
 			return "", fmt.Errorf("backend_sim: %s: sim request: %w", primitive, err)
+		}
+		return simProofFromLog(sim, primitive, path, sh.Kind, st)
+	case backend_sim.ShapeFsyncLie:
+		// Exercise the durability surface through real HTTP requests. The
+		// write establishes live state; fsync returns success while the
+		// stable view remains empty; crash proves the external loss.
+		if _, _, err := sim.SelfDurabilityWrite(path, []byte("uncommitted")); err != nil {
+			return "", fmt.Errorf("backend_sim: %s: durability write: %w", primitive, err)
+		}
+		st, _, err := sim.SelfDurabilityCall(path, "fsync", "")
+		if err != nil {
+			return "", fmt.Errorf("backend_sim: %s: fsync: %w", primitive, err)
+		}
+		if st != 200 {
+			return "", fmt.Errorf("backend_sim: %s: fsync status %d", primitive, st)
+		}
+		_, stable, err := sim.SelfDurabilityCall(path, "read", "stable")
+		if err != nil {
+			return "", fmt.Errorf("backend_sim: %s: stable read: %w", primitive, err)
+		}
+		if len(stable) != 0 {
+			return "", fmt.Errorf("backend_sim: %s: fsync advanced stable storage unexpectedly", primitive)
+		}
+		if _, _, err := sim.SelfDurabilityCall(path, "crash", ""); err != nil {
+			return "", fmt.Errorf("backend_sim: %s: simulated crash: %w", primitive, err)
+		}
+		_, live, err := sim.SelfDurabilityCall(path, "read", "")
+		if err != nil {
+			return "", fmt.Errorf("backend_sim: %s: post-crash read: %w", primitive, err)
+		}
+		if len(live) != 0 {
+			return "", fmt.Errorf("backend_sim: %s: crash retained data after false fsync", primitive)
 		}
 		return simProofFromLog(sim, primitive, path, sh.Kind, st)
 	case backend_sim.ShapeAPI5xx:

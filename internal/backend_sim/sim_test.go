@@ -396,13 +396,75 @@ func TestRequestLogIsDurableTwin(t *testing.T) {
 	}
 }
 
-// TestSortedShapeKindsPinned: the declared vocabulary is exactly the nine
-// layer-I shapes the catalog names (docs and tests iterate deterministically).
+// TestFsyncLieExternalWitness proves S-010 from outside the simulated target:
+// the durable request log observes the successful sync call, while the
+// simulator's stable-storage view remains empty and a crash loses the write.
+func TestFsyncLieExternalWitness(t *testing.T) {
+	s := startSim(t)
+	path := "/data/state.db"
+	if err := s.Arm(Shape{Kind: ShapeFsyncLie, DurabilityPaths: []string{path}}); err != nil {
+		t.Fatal(err)
+	}
+	if st, _, err := s.SelfDurabilityWrite(path, []byte("committed-by-app")); err != nil || st != http.StatusOK {
+		t.Fatalf("write: status=%d err=%v", st, err)
+	}
+	if st, _, err := s.SelfDurabilityCall(path, "fsync", ""); err != nil || st != http.StatusOK {
+		t.Fatalf("fsync lie: status=%d err=%v", st, err)
+	}
+	_, stable, err := s.SelfDurabilityCall(path, "read", "stable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stable) != 0 {
+		t.Fatalf("faulted fsync advanced stable storage: %q", stable)
+	}
+	entries, err := ReadRequestLog(s.LogPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	for _, e := range entries {
+		if e.Faulted && e.Shape == ShapeFsyncLie && strings.Contains(e.Detail, "fsync returned success") {
+			calls++
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("external request-log witness observed %d successful fsync lie calls, want 1", calls)
+	}
+	if st, _, err := s.SelfDurabilityCall(path, "crash", ""); err != nil || st != http.StatusOK {
+		t.Fatalf("simulated crash: status=%d err=%v", st, err)
+	}
+	_, recovered, err := s.SelfDurabilityCall(path, "read", "live")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recovered) != 0 {
+		t.Fatalf("crash preserved data after lied-about fsync: %q", recovered)
+	}
+}
+
+// TestFsyncLieRefusesUnconfiguredPath proves S-010 is fail-closed.
+func TestFsyncLieRefusesUnconfiguredPath(t *testing.T) {
+	s := startSim(t)
+	if err := s.Arm(Shape{Kind: ShapeFsyncLie, DurabilityPaths: []string{"/data/allowed.db"}}); err != nil {
+		t.Fatal(err)
+	}
+	st, _, err := s.SelfDurabilityCall("/data/other.db", "fsync", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st != http.StatusBadRequest {
+		t.Fatalf("unconfigured path status=%d, want %d", st, http.StatusBadRequest)
+	}
+}
+
+// TestSortedShapeKindsPinned: the declared vocabulary is exactly the ten
+// simulator shapes the catalog names (docs and tests iterate deterministically).
 func TestSortedShapeKindsPinned(t *testing.T) {
 	got := SortedShapeKinds()
 	want := []string{
 		"api-5xx", "api-rate-limit", "auth-expiry", "dns-propagation",
-		"eventual-lag", "metadata-fault", "object-store", "quota-exhausted",
+		"eventual-lag", "fsync-lie", "metadata-fault", "object-store", "quota-exhausted",
 		"snapshot-stale",
 	}
 	if len(got) != len(want) {

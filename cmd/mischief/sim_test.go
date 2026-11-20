@@ -40,6 +40,7 @@ func TestSimVerbEachShapeProvesInRequestLog(t *testing.T) {
 			if !found {
 				t.Fatalf("sim %s: request log %s carries no faulted %s entry — AC-17 proof did not land", id, log, shapeKind)
 			}
+			// ch:trace row=PROF-010 spec=internal/backend_sim/sim.go#ShapeFsyncLie test=TestSimVerbEachShapeProvesInRequestLog evidence=request-log witness=none:simulated-external-witness
 		})
 	}
 }
@@ -297,7 +298,7 @@ func TestSimVerbUnknownShapeRefuses(t *testing.T) {
 // sim-case table commits to: the proof run must land every marker named
 // for that shape (I-004 both legs — malformed 5xx AND endless page).
 func TestSimShapesCoverLayerISimIDs(t *testing.T) {
-	catalogSimIDs := []string{"I-003", "I-004", "I-005", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014"}
+	catalogSimIDs := []string{"I-003", "I-004", "I-005", "I-006", "I-010", "I-011", "I-012", "I-013", "I-014", "S-010"}
 	if len(catalogSimIDs) != len(simCoveredIDs) {
 		t.Fatalf("sim coverage %v does not match catalog layer-I sim ids %v", simCoveredIDs, catalogSimIDs)
 	}
