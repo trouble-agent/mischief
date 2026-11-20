@@ -142,7 +142,7 @@ empty `status --json`, `doctor --json`, unsanctioned `plan` refusal, then sancti
 manual target land -> `serve --dir` -> TTL fold -> byte-for-byte restore. Measured on that HEAD at
 100ms resolution: a **4s** hold reverted at 8.511s (**+4.511s** late), **6s** at 10.039s
 (**+4.039s**), **10s** at 14.903s (**+4.903s**) — always LATE, never early, i.e. TTL + up to one
-~5s tick (see the fold-tick bullet above; the doc gap is filed as **MISCHIEF-DF-59-R2**).
+~5s tick (see the fold-tick bullet above; the doc gap was filed as **MISCHIEF-DF-59-R2**, since fixed).
 Verb latency on the same build is not a user-visible cost: `version` 7-8 ms, `plan` 7 ms, `arm`
 13-14 ms warm (no number worth optimising, and none filed).
 
