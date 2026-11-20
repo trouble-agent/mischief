@@ -95,11 +95,13 @@ mischief status    # folds the run dir's journal: armed/stuck holds + TTL remain
 ```
 
 `mischief doctor` is a checkout/catalog check, not a tarball-only install check.
-Run it from a checkout, or provide a checkout's catalog explicitly:
+Run it from a checkout, or provide the checkout's fault catalog explicitly — that
+is the `catalog/faults` directory, where the `*.yaml` rows live (the loader reads
+the top level only and does not recurse):
 
 ```sh
 mischief doctor
-mischief doctor --catalog-dir /path/to/mischief/catalog
+mischief doctor --catalog-dir /path/to/mischief/catalog/faults
 ```
 
 On a clean box `mischief status` is the first command that reads state — and the
@@ -193,10 +195,10 @@ mkdir -p /tmp/mischief-shim && install -m 0755 libfault-anchored.so /tmp/mischie
 
 Two caveats for a tarball-only install: `mischief doctor` needs the in-repo
 `catalog/faults` directory (resolved from the cwd upward) and exits 1 when it cannot
-load it — run it from a checkout, or point `--catalog-dir` at one. And verbs that
-actually land faults (`selftest`, `battery`) additionally require the SPEC-13 sanction
-marker and a sanctioned host, so they are checkout+sanction operations, not quickstart
-steps.
+load it — run it from a checkout, or point `--catalog-dir` at that directory. And
+verbs that actually land faults (`selftest`, `battery`) additionally require the
+SPEC-13 sanction marker and a sanctioned host, so they are checkout+sanction
+operations, not quickstart steps.
 
 ### Option B — build from source
 
