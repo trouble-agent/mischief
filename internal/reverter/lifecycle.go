@@ -238,7 +238,6 @@ func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role
 	}
 	status := st.Status
 	terminal := status == StatusReverted || status == StatusRevertFailed || status == StatusNotLanded
-	arm := st.Arm
 	expiry := st.Expiry
 	s.mu.Unlock()
 
@@ -258,7 +257,7 @@ func (l *Lifecycle) Revert(ctx context.Context, holdID, reason string, role Role
 		return Proof{}, fmt.Errorf("%w: %s (already terminal: %s)", ErrNoHold, holdID, status)
 	}
 
-	return l.revertNow(holdID, arm, reason, role)
+	return l.revertNow(holdID, attemptFirst, reason, role)
 }
 
 // RevertRetry re-executes the recorded inverse of a hold whose measured
@@ -295,21 +294,123 @@ func (l *Lifecycle) RevertRetry(ctx context.Context, holdID, reason string, role
 		return Proof{}, fmt.Errorf("%w: %s", ErrNoHold, holdID)
 	}
 	status := st.Status
-	arm := st.Arm
 	s.mu.Unlock()
 	if status != StatusRevertFailed {
 		return Proof{}, fmt.Errorf("%w: %s (status is %s)", ErrNotRetryable, holdID, status)
 	}
-	return l.revertNow(holdID, arm, reason, role)
+	return l.revertNow(holdID, attemptRetry, reason, role)
 }
 
-// revertNow is the execution core Revert and RevertRetry share: execute the
-// recorded inverse, MEASURE the check against the affected resource, append
-// the measured proof (AC-4). The two entry points differ ONLY in the hold
-// status they admit — never in how an outcome is measured or recorded, so a
-// proof appended by a retry is the same evidence a first attempt produces.
-func (l *Lifecycle) revertNow(holdID string, arm armPayload, reason string, role Role) (Proof, error) {
+// attemptMode selects the admission rule the revert claim's post-lock
+// re-check applies. The two entry points differ ONLY here: Revert admits one
+// attempt per LIVE hold, RevertRetry admits a second attempt over a hold
+// whose measured revert is TERMINAL revert_failed (MISCHIEF-DF-52).
+type attemptMode int
+
+const (
+	// attemptFirst is Revert's rule: exactly one attempt per live hold.
+	attemptFirst attemptMode = iota
+	// attemptRetry is RevertRetry's rule: a retry exists only for a
+	// revert_failed hold (the fault may still be live).
+	attemptRetry
+)
+
+// admitAttempt is the admission rule re-checked UNDER the revert claim. The
+// pre-claim check in Revert/RevertRetry grades the caller's own fold; this
+// one grades the LATEST durable record, i.e. it is the check that makes the
+// claim worth taking (MISCHIEF-DF-71 AC3). Every refusal here means another
+// attempt already executed this hold's recorded inverse, so the undo is NOT
+// run a second time and nothing is written:
+//
+//   - attemptFirst over a hold that is no longer live (reverted /
+//     not_landed / revert_failed) declines with ErrAlreadyAttempted — the
+//     refusal names the existing evidence, and for a revert_failed winner it
+//     points at the retry entry point (the only path allowed to re-execute a
+//     terminal hold's inverse);
+//   - attemptRetry over a hold a concurrent retry already finished (now
+//     reverted / not_landed) declines with ErrAlreadyAttempted, while a hold
+//     that regressed to a live status is refused with ErrNotRetryable
+//     (the retry entry point never owned that state).
+func admitAttempt(mode attemptMode, holdID string, status HoldStatus) error {
+	switch mode {
+	case attemptRetry:
+		if status == StatusRevertFailed {
+			return nil
+		}
+		if status == StatusReverted || status == StatusNotLanded {
+			return fmt.Errorf("%w: %s (status is now %s)", ErrAlreadyAttempted, holdID, status)
+		}
+		return fmt.Errorf("%w: %s (status is %s)", ErrNotRetryable, holdID, status)
+	default: // attemptFirst
+		if status == StatusArmed || status == StatusStuck {
+			return nil
+		}
+		if status == StatusRevertFailed {
+			return fmt.Errorf("%w: %s (the earlier attempt graded revert_failed — re-run with --retry to re-execute the recorded inverse)", ErrAlreadyAttempted, holdID)
+		}
+		return fmt.Errorf("%w: %s (status is now %s)", ErrAlreadyAttempted, holdID, status)
+	}
+}
+
+// rereadHold re-folds the journal from disk and reports one hold's fresh
+// write-ahead payload and status. It is the revert claim's re-check: the
+// attempt decides on the LATEST durable record, never on the fold the caller
+// looked at before taking the claim — a fold is a snapshot, and two
+// processes may both hold an armed snapshot of the same hold
+// (MISCHIEF-DF-71).
+func (l *Lifecycle) rereadHold(holdID string) (armPayload, HoldStatus, bool, error) {
 	s := l.store
+	if err := s.Refold(); err != nil {
+		return armPayload{}, "", false, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st, ok := s.holds[holdID]
+	if !ok {
+		return armPayload{}, "", false, nil
+	}
+	return st.Arm, st.Status, true, nil
+}
+
+// revertNow is the execution core Revert and RevertRetry share: take the run
+// dir's revert claim, re-check the hold against the journal it re-reads,
+// execute the recorded inverse, MEASURE the check against the affected
+// resource, append the measured proof (AC-4), release the claim. The two
+// entry points differ ONLY in the hold status they admit — never in how an
+// outcome is measured or recorded, so a proof appended by a retry is the
+// same evidence a first attempt produces.
+func (l *Lifecycle) revertNow(holdID string, mode attemptMode, reason string, role Role) (Proof, error) {
+	s := l.store
+
+	// MISCHIEF-DF-71: one hold, one undo. The claim is the run dir's
+	// cross-process lock for the WHOLE attempt (re-check → execute →
+	// record), so two folds over one journal — two serve daemons, a
+	// detached TTL owner, a concurrent `revert --hold` — cannot both
+	// execute the recorded inverse. The inverse is not assumed idempotent
+	// (a restore can overwrite a file another actor just repaired), so the
+	// loser declines instead of racing. Released on every path below,
+	// including the panics Go cannot see.
+	claim, err := claimRevert(s.Dir)
+	if err != nil {
+		return Proof{}, fmt.Errorf("reverter: revert %s: %w", holdID, err)
+	}
+	defer claim.release()
+
+	// The re-check reads the journal UNDER the claim: another process's
+	// proof is durable (append fsyncs before its claim is released) by the
+	// time we get here, so a grown status is the signal that the undo
+	// already ran somewhere else.
+	arm, status, ok, err := l.rereadHold(holdID)
+	if err != nil {
+		return Proof{}, fmt.Errorf("reverter: revert %s: refold: %w", holdID, err)
+	}
+	if !ok {
+		return Proof{}, fmt.Errorf("%w: %s", ErrNoHold, holdID)
+	}
+	if err := admitAttempt(mode, holdID, status); err != nil {
+		return Proof{}, err
+	}
+
 	start := s.Now()
 
 	// PROF-002: a hold with no landed record was never faulted, so its proof
@@ -329,11 +430,12 @@ func (l *Lifecycle) revertNow(holdID string, arm armPayload, reason string, role
 	// unconditionally honoured and only the GRADE changes. record.go's
 	// OutcomeNotLanded comment records the same cleanup-first policy.
 	s.mu.Lock()
-	neverLanded := false
+	landPID := 0
 	if st, ok := s.holds[holdID]; ok {
-		neverLanded = st.LandPID == 0
+		landPID = st.LandPID
 	}
 	s.mu.Unlock()
+	neverLanded := landPID == 0
 
 	_, actionErr := l.exec.execAction(arm.Inverse.Kind, arm.Inverse)
 	detail, checkOK, checkErr := l.exec.evalCheck(arm.Check.Kind, arm.Check)

@@ -16,6 +16,26 @@ The daemon owns ONE run dir; the journal in that dir is the durable state. The d
 No environment variable selects the run dir: `--dir` on each journal-touching verb is the only
 override. A supervisor may run one daemon per run dir.
 
+The run dir is single-writer by construction (MISCHIEF-DF-71): `serve` holds an exclusive
+`flock` on `<run dir>/mischiefd.lock` for its whole lifetime, so a second `serve --dir <the same
+dir>` is REFUSED — nonzero exit, the owning pid named on stderr, no store opened, no file
+touched:
+
+```
+$ mischief serve --dir $D; echo rc=$?
+serve: daemon: run dir is already owned by a live daemon: $D is held by live pid 4242 (one daemon per run dir — stop it or pass a different --dir)
+rc=1
+```
+
+The lock dies with its holder — a killed daemon leaves a stale lock FILE that the next `serve`
+simply adopts, so there is no stale-lock cleanup step — and `health.json` therefore has exactly
+one writer, which is why its `pid` field can only ever name the daemon that wrote that document.
+The revert path enforces the same single-owner discipline ACROSS processes: each attempt holds
+`<run dir>/revert.lock` while it re-reads the journal, executes the recorded inverse and appends
+the proof, so two daemons (or a daemon and a concurrent `revert --hold`) never execute one hold's
+inverse twice — the loser declines with `reverter: another process already executed a revert
+attempt for this hold` and writes nothing.
+
 ## Supervision
 
 There is no Dockerfile and no in-repo systemd unit: `mischief` is a single static binary and its

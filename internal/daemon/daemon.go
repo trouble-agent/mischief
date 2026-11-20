@@ -142,7 +142,38 @@ func New(dir string) (*Daemon, error) {
 // Run blocks until ctx is cancelled: heartbeat health.json, revert expired
 // holds from the journal state, repeat. Boot reconcile already ran inside
 // reverter.Open (previous-boot leftovers are stuck before the first beat).
+//
+// MISCHIEF-DF-71: Run OWNS the run dir for its duration. The ownership claim
+// is taken before the first beat, so a second daemon on the same dir is
+// refused by name instead of silently sharing it (two folders, two health
+// writers, two sweeps over the same holds). The claim and the store are both
+// released when Run returns.
 func (d *Daemon) Run(ctx context.Context) error {
+	own, err := AcquireOwner(d.Dir)
+	if err != nil {
+		_ = d.store.Close()
+		return err
+	}
+	return d.runOwned(ctx, own)
+}
+
+// RunOwned is Run for a caller that already holds the ownership claim. The
+// CLI uses it so the ownership REFUSAL happens before the store is opened at
+// all (a refused serve must not reconcile a journal or write any record); the
+// daemon adopts the claim and releases it when the loop returns.
+func (d *Daemon) RunOwned(ctx context.Context, own *Owner) error {
+	if own == nil {
+		_ = d.store.Close()
+		return fmt.Errorf("daemon: run without an ownership claim (one daemon per run dir)")
+	}
+	return d.runOwned(ctx, own)
+}
+
+// runOwned is the serving loop shared by Run and RunOwned: the caller supplies
+// an ownership claim that is already held, and releases its own resources on
+// every path out.
+func (d *Daemon) runOwned(ctx context.Context, own *Owner) error {
+	defer own.Release()
 	defer d.store.Close()
 	if err := d.writeHealth(); err != nil {
 		return err

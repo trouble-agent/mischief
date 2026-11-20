@@ -324,14 +324,43 @@ func (s *Store) appendLocked(line []byte) error {
 
 // fold rebuilds the in-memory state from the journal file on disk (the log
 // is the source of record; nothing else survives a restart).
+//
+// Every call builds a FRESH state and swaps it in atomically
+// (MISCHIEF-DF-71): a re-fold must be a RE-READ. The previous shape folded
+// the file ONTO the live maps, which appended onto the proof history on
+// every Refold — three daemon ticks turned one revert into four proofs in
+// the fold the health/status surfaces render — and, on a read that failed
+// mid-file, left a half-applied mixture standing (the "last known fold" a
+// degraded render is supposed to describe). Read under the store's lock so
+// an in-process append cannot land between the read and the swap.
 func (s *Store) fold() error {
-	path := filepath.Join(s.Dir, journalFileName)
-	fh, err := os.Open(path)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next, err := readFold(s.Dir)
+	if err != nil {
+		return err
+	}
+	s.armed, s.holds, s.expiries, s.history = next.armed, next.holds, next.expiries, next.history
+	return nil
+}
+
+// readFold folds the journal under dir into a BRAND-NEW in-memory state. It
+// never touches a live store, so a caller can fold a journal it does not own
+// (or one it must re-read without risking the fold it is currently
+// rendering). A missing journal is an empty fold, not an error: Open creates
+// the file, and an absent file means "no records yet".
+func readFold(dir string) (*Store, error) {
+	next := &Store{
+		armed:    map[string]armPayload{},
+		holds:    map[string]*holdState{},
+		expiries: map[string]time.Time{},
+	}
+	fh, err := os.Open(filepath.Join(dir, journalFileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return next, nil
 		}
-		return fmt.Errorf("reverter: journal open: %w", err)
+		return nil, fmt.Errorf("reverter: journal open: %w", err)
 	}
 	defer fh.Close()
 	sc := bufio.NewScanner(fh)
@@ -341,11 +370,14 @@ func (s *Store) fold() error {
 		if len(line) == 0 {
 			continue
 		}
-		if err := s.foldLine(line); err != nil {
-			return err
+		if err := next.foldLine(line); err != nil {
+			return nil, err
 		}
 	}
-	return sc.Err()
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	return next, nil
 }
 
 // Refold is the public re-fold (MISCHIEF-DF-30): a long-lived consumer of
