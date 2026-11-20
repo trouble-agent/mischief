@@ -96,6 +96,11 @@ func run(args []string) int {
 		return cmdChaos(args[1:])
 	case "sim":
 		return cmdSim(args[1:])
+	case "profile":
+		// PROF-003: the profile EXECUTOR. plan resolves and renders BY
+		// DESIGN and writes nothing; this verb applies the profile's faults,
+		// writes a run dir and emits the graded finding an agent reads.
+		return cmdProfile(args[1:])
 	case "serve":
 		return cmdServe(args[1:])
 	case "arm":
@@ -205,16 +210,20 @@ Usage:
   mischief battery   [--quick] [--project P] [--primitive ID] [--out D] [--file-rows] [--dry-run]
   mischief chaos     matrix --project P [--tier-max N] [--out D] | check --lane F | finding --project P --board D --title T --reason R
   mischief sim       --shape I-00N [--path P] [--log F] [--allow-real --resource TAG --spend-cap USD]
+  mischief profile   run <class>/<name> --target <selector> [--json] [--seed N] [--dir D]  (applies the profile and grades it: exit 0 passed / 1 failed / 3 inconclusive)
+  mischief profile   list [--profiles-dir D]
   mischief plane     parse-agent-id | record | selftest-verdict | fold   (bunker test-plane evidence CLI)
   mischief version   [--json]
 
 Safety floor: no default target; protected targets refuse at resolution;
 sanction-marker gate (SPEC-13) fail-closed on the landing verbs (plan, arm,
-selftest, battery, sim — unsanctioned hosts refuse exit 2); chaos matrix is
-evidence-plane and stamps its host posture into the artifact; load gate (AC-8,
+selftest, battery, sim, profile — unsanctioned hosts refuse exit 2); chaos matrix
+is evidence-plane and stamps its host posture into the artifact; load gate (AC-8,
 loadavg 12.0 / PSI io 50.0 — the doctor's run thresholds) fail-closed on the
 fault-landing verbs (selftest, battery, sim — a saturated host refuses exit 2
-with the measured numbers against the gate, nothing lands).
+with the measured numbers against the gate, nothing lands). profile run is
+sanction-gated but NOT load-gated in this build: it names that gap in the
+finding's notes rather than implying the gate ran.
 `)
 }
 

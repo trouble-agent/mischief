@@ -75,7 +75,7 @@ def flag_name(flag: str) -> str:
     return flag.lstrip("-")
 
 
-NESTED = {"matrix", "check", "finding", "parse-agent-id", "record", "selftest-verdict", "fold"}
+NESTED = {"matrix", "check", "finding", "parse-agent-id", "record", "selftest-verdict", "fold", "run", "list"}
 
 
 def table_lines(skill: Path) -> list[str]:
