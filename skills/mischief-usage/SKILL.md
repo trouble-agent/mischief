@@ -183,10 +183,12 @@ ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver t
 - `docs/FAULT-CATALOG.md` — design-only catalogue: 113 fault-id rows and 104 primitives across 8 layers
   (P14 S14 R12 F16 N18 C12 I14 T4) plus a 9-row simulated-case table under layer I
   (MSF-010: one runnable sim case per sim-covered I id, landed-proof written to the
-  per-run request log). The shipped loader serves exactly the 11 ids in
+  per-run request log). The shipped loader serves exactly the 18 ids in
   `catalog/faults/*.yaml`; ids outside that shipped boundary refuse at rc=2 with
   "not in the selftest corpus". This does not claim the product serves the design count.
-  Counts verified exactly 2026-10-09 (recompute, never eyeball).
+  Counts verified exactly 2026-11-20 (recompute, never eyeball: 113 design rows = 104
+  layer primitives + the 9-row sim table, and 18 shipped ids =
+  `ls catalog/faults/*.yaml | wc -l`).
 - `docs/SPEC-PLAN.md` — SPEC-01..12, each must falsify the PRD + carry NOT-LIST.
 - `docs/` also carries: `RELEASE.md` (release runbook), `CATALOG.md` (schema fields),
   `BATTERY-PARITY.md`, `CHAOS-LANE.md`, `LANES.md`, `TEST-PLANE.md`, `EXPERIMENTS.md`,
@@ -199,7 +201,7 @@ ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver t
   its provenance stamp (MSF-024, closed): it is the verbatim stdout of
   `capability-probe.sh @ 09eaff0b8738` — if the script is edited the stamp goes
   stale and the live output is authoritative again; re-run and diff.
-- `catalog/faults/*.yaml` (10) — each carries all five contract fields; maturity is
+- `catalog/faults/*.yaml` (18) — each carries all five contract fields; maturity is
   declared per row (mostly `L1-only` — a ladder state, not breakage).
 - `catalog/experiments/*.yaml` (4) — rehearsal artifacts; `mischief plan -f` is now
   the selector-resolution entry point (fail-closed rails resolve targets or refuse).
