@@ -63,8 +63,101 @@ ch:trace row=MISCHIEF-DF-59-R2 spec=internal/reverter/doc.go#HeartbeatInterval w
 `mischief serve` writes `<run dir>/health.json` ATOMICALLY (temp + rename) on every state change
 and on a 5 s heartbeat. It is a FILE, not a socket: a reader (`jq .ok health.json`) never needs to
 talk to the daemon. `ok:false` means either a `revert_failed` hold (a fault may still be live) or a
-journal corruption (`refold_error`). Key fields: `ok`, `daemon_boot`, `pid`, `run_dir`, `holds`,
-`stuck`, `reverted`, `revert_failed`, `not_landed`.
+journal corruption (`refold_error`).
+
+Every key the document carries (`internal/daemon/daemon.go:46-95` is the struct; the list below was
+read off a live capture, not off the struct alone):
+
+| key | meaning |
+|---|---|
+| `ok` | `true` while the daemon folds state and no hold sits in the failed terminal state; stuck leftovers from a previous boot do NOT flip it (they are a reported condition, not a daemon defect) |
+| `daemon_boot` | THIS daemon process's boot id (hex16), minted fresh at each start — key on it to tell a stale file from the live daemon's; it is NOT the reverter fold's host-boot-scoped id |
+| `pid` | the daemon process's pid |
+| `run_dir` | the absolute run dir (the journal's home) |
+| `started_at` | the daemon's start time, unix seconds |
+| `generated_at` | this document's write time, unix seconds — the STALENESS datum: the heartbeat is 5 s, so compare it against `date +%s`; a delta of more than a couple of beats means the daemon stopped beating and `ok:true` then says nothing about the run |
+| `holds` | the COMPLETE listing: one row per known hold, terminal rows included (see the surface warning below) |
+| `stuck` | count of holds that boot reconcile marked stuck (previous boots' leftovers) |
+| `reverted` | count of holds with a measured revert proof |
+| `revert_failed` | count of holds whose measured revert FAILED — the fault may still be live, and this is the one hold state that flips `ok` false |
+| `not_landed` | count of holds whose proof recorded that the fault was NEVER landed: not a pass and not a failure (no fault was applied, so the run carries no integrity signal) |
+| `refold_error` | the journal re-fold error string, present ONLY when non-empty (`omitempty`): the document then carries the LAST KNOWN fold with `ok:false`, never a silent stale view |
+
+`holds` is the COMPLETE listing, and that is NOT the surface `mischief status` shows by default:
+`status` lists ACTIVE holds only (`armed` / `stuck`) and keeps terminal rows off that listing —
+`mischief status --all` is the surface that matches this document. So a `reverted` or `not_landed`
+row here is history, not a live fault: do not read a populated `holds` as "faults are live", and do
+not read `status`'s `holds: 0` as "the journal knows no holds". The `reverted`, `revert_failed` and
+`not_landed` counters are derived from exactly the terminal rows the active-only default omits.
+
+`holds[]` element keys:
+
+| key | meaning |
+|---|---|
+| `hold_id` | the hold's stable id |
+| `fault_id` | the catalog fault the hold was armed for (e.g. `S-001`) |
+| `target` | the target selector the hold was armed on (e.g. `scratch:/path/to/target`) |
+| `status` | the hold's state: `armed`, `stuck`, `reverted`, `revert_failed`, or `not_landed` |
+| `ttl_remaining_sec` | float seconds left before the sweep reverts the hold — ARMED ROWS ONLY (`omitempty`) |
+| `stuck_at` | unix seconds at which boot reconcile marked the hold stuck — STUCK ROWS ONLY (`omitempty`) |
+
+A healthy document therefore carries 11 top-level keys (`refold_error` is omitted while empty), and
+each hold row carries the keys its own state uses — never all six.
+
+Captured live at the audited tip: `serve` over a scratch run dir, one `S-001` hold armed with a
+60 s TTL, read 7 s in. (The captures below abbreviate the scratch run dir as `/tmp/doc38-cap`; every
+id, timestamp and float is the literal value the capture printed.)
+
+```
+$ jq -r '. | keys[]' $D/health.json
+daemon_boot
+generated_at
+holds
+not_landed
+ok
+pid
+revert_failed
+reverted
+run_dir
+started_at
+stuck
+$ jq -r '.holds[0] | keys[]' $D/health.json
+fault_id
+hold_id
+status
+target
+ttl_remaining_sec
+$ jq -c . $D/health.json
+{"ok":true,"daemon_boot":"48b24283adb966d6","pid":1364621,"run_dir":"/tmp/doc38-cap/runs","started_at":1795157465,"generated_at":1795157495,"holds":[{"hold_id":"3cf330efeecef9ca","fault_id":"S-001","target":"scratch:/tmp/doc38-cap/target","status":"armed","ttl_remaining_sec":48.415974816}],"stuck":0,"reverted":0,"revert_failed":0,"not_landed":0}
+```
+
+The two conditional element keys appear only on the rows that use them. `ttl_remaining_sec` is in
+the armed row above; a previous-boot leftover (same daemon, the run dir's `boot.json` `host_boot`
+rewritten to simulate a reboot, which is the reconcile path a real reboot takes) renders:
+
+```
+$ jq -r '.holds[0] | keys[]' $D/health.json
+fault_id
+hold_id
+status
+stuck_at
+target
+$ jq -c '.holds[0], .stuck' $D/health.json
+{"hold_id":"3cf330efeecef9ca","fault_id":"S-001","target":"scratch:/tmp/doc38-cap/target","status":"stuck","stuck_at":1795157698}
+1
+```
+
+And the complete-vs-active split, measured on one run dir holding a single `reverted` (terminal)
+hold while the daemon serves it:
+
+```
+$ jq -c '.holds' $D/health.json     # health: the COMPLETE listing
+[{"hold_id":"0db0b502ec63ebca","fault_id":"S-001","target":"scratch:/tmp/doc38-cap/term/t","status":"reverted"}]
+$ mischief status --dir $D          # status: ACTIVE only
+holds: 0
+$ mischief status --all --dir $D    # --all: the surface that matches health.json
+holds: 1
+```
 
 ## Metrics endpoint (MISCHIEF-OPS-001)
 
