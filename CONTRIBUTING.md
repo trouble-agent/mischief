@@ -38,12 +38,20 @@ mischief injects faults on purpose. Every contribution must preserve:
 ## Build and test
 
 ```bash
-make bin                 # build bin/mischief (stamped git sha)
+make bin                 # build bin/mischief (stamped git sha; resolves go.mod's toolchain)
+make toolchain-check     # the same toolchain resolution alone — run this first on a fresh box
 go vet ./...
 go test -count=1 ./...
 make shim                # rebuild the LD_PRELOAD shim (drift gate in CI)
 python3 tools/gen-docs.py --check   # docs/*.html twins must match docs/*.md
 ```
+
+`make bin` is self-contained under a fresh `$HOME`: it reads the `toolchain` line in
+`go.mod`, uses the `go` on your `PATH` when that one already satisfies it, and
+otherwise obtains the declared toolchain from the Go module cache. The bare `go …`
+commands above run with whatever toolchain your `PATH` resolves, so on a fresh box
+run `make toolchain-check` once first (it names exactly what to install or download
+if the declared toolchain is unreachable).
 
 CI runs all of the above on every push and PR; the shim drift gate and the
 docs-twin gate fail the build, not a warning. Please run them before pushing.
