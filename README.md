@@ -401,7 +401,7 @@ MIT — see `LICENSE`.
 
 ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=25241a6c6af4d43fb1d554ed251d19ad1e38518d memory=none:not-durable-yet
 
-ch:trace row=DOC-24-R2 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-24-R2 test=none:live-arm-control-refuted doc=README.md prompt=/tmp/mf-20261028-1931-DOC-24-R2-brief.txt evidence=commit witness=none:worker-arm-rc2-console verdict=none:pending-foreman-judge commit=self memory=none:board-row
+ch:trace row=DOC-24-R2 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-24-R2 test=none:live-arm-control-refuted doc=README.md prompt=none:brief-not-retained evidence=commit witness=none:worker-arm-rc2-console verdict=none:pending-foreman-judge commit=adc40fe memory=none:board-row
 
 ch:trace row=README-10 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-10 test=none:published-tip-freshness doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-10-brief.txt evidence=none:docs-update witness=path@origin:README.md verdict=none:worker-commit commit=HEAD memory=none:tick-local
 STATUS: complete

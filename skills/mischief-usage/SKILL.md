@@ -392,7 +392,7 @@ degraded leg is split three ways — full ladder in
   `MISFCHIEF_SANCTION=1` produces the same `host_not_sanctioned` refusal rc=2 as
   setting nothing at all, so read the refusal text before blaming the host.
 
-ch:trace row=DOC-22 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-22 test=none:doctor-wc-greps doc=skills/mischief-usage/SKILL.md prompt=/tmp/mf-20261028-1931-DOC-22-brief.txt evidence=commit witness=none:doctor-output verdict=none:pending-foreman-judge commit=self memory=none:board-row
+ch:trace row=DOC-22 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-22 test=none:doctor-wc-greps doc=skills/mischief-usage/SKILL.md prompt=none:brief-not-retained evidence=commit witness=none:doctor-output verdict=none:pending-foreman-judge commit=762046e memory=none:board-row
 STATUS: complete
 TIER: T1 (edit + doctor/wc/grep checks invoked and observed)
 EVIDENCE: commit
