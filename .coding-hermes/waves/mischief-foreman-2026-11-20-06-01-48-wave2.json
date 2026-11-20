@@ -13,20 +13,30 @@
       "id": "DOC-39",
       "branch": "wt/DOC-39",
       "worktree": "/home/kara/worktrees/mischief-DOC-39",
-      "files_expected": ["README.md"],
+      "files_expected": [
+        "README.md"
+      ],
       "premise": "README:102 shows `mischief doctor --catalog-dir /path/to/mischief/catalog`; the loader reads *.yaml at the top level only, so that path fails (measured: 'catalog load FAILED: no .yaml files in catalog', rc=1) while catalog/faults loads 18 primitives.",
-      "status": "dispatched",
-      "merge": null
+      "status": "complete",
+      "merge": "README.md doctor snippet -> catalog/faults; gates green on merged tree",
+      "commit_hash": "4185f7b61c97b89225778dcb5bd15b02d0edfb14",
+      "worker_commit": "0d34083"
     },
     {
       "id": "DOC-22-R2",
       "branch": "wt/DOC-22-R2",
       "worktree": "/home/kara/worktrees/mischief-DOC-22-R2",
-      "files_expected": ["skills/mischief-usage/SKILL.md"],
+      "files_expected": [
+        "skills/mischief-usage/SKILL.md"
+      ],
       "premise": "SKILL.md states the shipped loader serves exactly 11 ids; catalog/faults holds 18 yaml rows and doctor reports 'catalog ok loaded (18 primitives)'.",
-      "status": "dispatched",
-      "merge": null
+      "status": "complete",
+      "merge": "SKILL.md shipped loader count 11 -> 18 with recount; gates green, full suite 22 pkgs ok",
+      "commit_hash": "c6e6d25af15c43eec71f038570b871a91f5042ec",
+      "worker_commit": "ab0186e"
     }
   ],
-  "independence": "DOC-39 touches README.md; DOC-22-R2 touches skills/mischief-usage/SKILL.md. No shared file, no depends_on edge between the rows (both depends_on [])."
+  "independence": "DOC-39 touches README.md; DOC-22-R2 touches skills/mischief-usage/SKILL.md. No shared file, no depends_on edge between the rows (both depends_on []).",
+  "finished_at": "2026-11-20T07:46:03Z",
+  "head_sha": "c6e6d25af15c43eec71f038570b871a91f5042ec"
 }
