@@ -590,8 +590,17 @@ func cmdServe(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return verbParseExit(err)
 	}
+	own, err := daemon.AcquireOwner(*dir)
+	if err != nil {
+		// Named refusal (MISCHIEF-DF-71): a second serve on an owned run dir
+		// exits nonzero with the reason on stderr, before the store is opened
+		// and before any daemon loop exists. Nothing is shared silently.
+		fmt.Fprintln(os.Stderr, "serve:", err)
+		return 1
+	}
 	d, err := daemon.New(*dir)
 	if err != nil {
+		_ = own.Release()
 		fmt.Fprintln(os.Stderr, "serve:", err)
 		return 1
 	}
@@ -609,7 +618,7 @@ func cmdServe(args []string) int {
 		}()
 		fmt.Printf("mischiefd: metrics=http://%s/metrics\n", addr)
 	}
-	if err := d.Run(ctx); err != nil && err != context.Canceled {
+	if err := d.RunOwned(ctx, own); err != nil && err != context.Canceled {
 		fmt.Fprintln(os.Stderr, "serve:", err)
 		return 1
 	}
