@@ -47,7 +47,7 @@ plane record --file F --step S --status S [--detail TEXT]
 plane selftest-verdict --exit-code N
 plane fold --file F
 selftest  --all | --primitive <id> [--dir D] [--catalog-dir D]   # L0 scratch land+revert proofs; exit 0 only green-or-skip
-version                      # stamped git sha (tag on release builds)
+version                      [--json]                              # stamped git sha (tag on release builds); --json emits {"version":..,"tool":"mischief"}
 ```
 
 Safety floor (every landing path): no default target; protected targets refuse at
@@ -90,7 +90,8 @@ bin/mischief serve --dir /tmp/mc-scratch/runs     # watchdog: TTL fold + boot re
 # a hold armed while serve is ALREADY running IS folded and reverted at TTL — an arm
 # issued ~0.8s after serve start was reverted on the next fold tick. Do not restart serve
 # around every arm.
-# THE FOLD IS A ~5s TICK (measured; MISCHIEF-DF-59 fixed): the revert lands at declared-TTL + up
+# THE FOLD IS A ~5s TICK (measured; MISCHIEF-DF-59 numbers landed, row still
+# open): the revert lands at declared-TTL + up
 # to one tick (+4.2s measured on BOTH a 5s and a 10s TTL) and can land ~0.7s EARLY (the
 # expiry clock truncates the arm timestamp to whole seconds). Never conclude "the watchdog
 # never reverted" from a window shorter than ttl + 5s — the product was right and the
