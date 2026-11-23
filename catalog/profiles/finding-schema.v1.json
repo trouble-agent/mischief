@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "mischief.finding/v1",
+  "title": "mischief.finding/v1 — profile finding document",
+  "description": "The finding document the profile executor writes to stdout (--json) and to <run_dir>/finding.json (internal/profile/finding.go, FindingSchemaV1 = mischief.finding/v1 in internal/profile/profile.go). It is the whole contract with the agent on the other end: which profile ran, on which resolved target, which fault, the independent landing witness, the probe's expected-vs-observed pair, the graded outcome, the cause class + steering hint when one applies, and the command that reproduces the run. Every field is either measured or deliberately empty — the document never carries a value the run did not observe. The three-value outcome vocabulary is closed: passed, failed, inconclusive. There is no 'ok', no 'reverted', no fourth value. Schema note: the run target is reported as the resolved selector (kind, selector, scratch path) — the document does not carry a target id or sha identity of its own.",
+  "type": "object",
+  "required": [
+    "schema",
+    "profile",
+    "profile_class",
+    "profile_version",
+    "run_id",
+    "run_dir",
+    "seed",
+    "target",
+    "steps",
+    "outcome",
+    "started_at",
+    "finished_at",
+    "reproduce"
+  ],
+  "properties": {
+    "schema": {
+      "const": "mischief.finding/v1",
+      "description": "The finding document schema token. A schema token exists so a future shape cannot be read as if it were this one."
+    },
+    "profile": {
+      "type": "string",
+      "description": "The profile id (\"storage/short-write\"). Required."
+    },
+    "profile_class": {
+      "type": "string",
+      "description": "The profile's class segment. Required."
+    },
+    "profile_version": {
+      "type": "string",
+      "description": "The profile's own version. Required."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "The content-derived run id. Required."
+    },
+    "run_dir": {
+      "type": "string",
+      "description": "Where the journal and the injection log live. Required."
+    },
+    "seed": {
+      "type": "integer",
+      "description": "The seed the run used (declared or overridden). Required."
+    },
+    "target": {
+      "$ref": "#/definitions/target",
+      "description": "The resolved target, exactly as the run resolved it. Required."
+    },
+    "requires": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/requirement" },
+      "description": "Optional. Every declared requirement's resolution; an UNMET requirement makes the run inconclusive, never a pass."
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/step" },
+      "description": "Required (may be empty). One entry per profile step, in profile order. An empty set is inconclusive at the run level — a run that graded nothing proves nothing."
+    },
+    "outcome": {
+      "enum": ["passed", "failed", "inconclusive"],
+      "description": "The run's graded outcome — the worst of its steps: any failed, else any inconclusive, else passed. Required."
+    },
+    "cause_class": {
+      "$ref": "#/definitions/cause_class",
+      "description": "The run-level failure class, lifted from the first failed step (failed runs only). Optional; absent on passed and inconclusive runs."
+    },
+    "hint": {
+      "type": "string",
+      "description": "The run-level steering hint for the cause class (failed runs only). Optional."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Names why the run is inconclusive (inconclusive runs only). Optional."
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Honest disclosures about this build's posture for the run (unmet-by-bypass rails, executor-local scenario). Optional; never empty when the executor deviates from a declared rail."
+    },
+    "started_at": {
+      "type": "string",
+      "description": "The run's RFC3339 start. Required."
+    },
+    "finished_at": {
+      "type": "string",
+      "description": "The run's RFC3339 close time. Required."
+    },
+    "reproduce": {
+      "type": "string",
+      "description": "Required. The exact command that re-runs this profile, seed and target — the field an agent pastes into its next loop iteration."
+    }
+  },
+  "definitions": {
+    "cause_class": {
+      "type": "string",
+      "enum": ["storage:silent-short-write"],
+      "description": "CLOSED cause_class vocabulary. This is the value a failed step routes to; the run-level finding lifts the first failed step's class. The vocabulary is closed per profile: a profile may only route failures to classes declared in its own cause_classes block, and a step naming an undeclared class is refused at load by referential integrity (internal/profile/profile.go Parse). The vocabulary shipped by this build's catalog (catalog/profiles) is exactly: storage:silent-short-write. Any other value is rejected by this schema — a finding must never introduce a class its profile did not declare, and the schema exists so a future revision of the finding document cannot quietly widen the vocabulary."
+    },
+    "target": {
+      "type": "object",
+      "required": ["kind", "selector"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The resolved selector kind (\"scratch\", \"host\", \"process\", ...). Required."
+        },
+        "selector": {
+          "type": "string",
+          "description": "The selector exactly as the operator wrote it. Required."
+        },
+        "path": {
+          "type": "string",
+          "description": "The scratch path a scratch:<path> selector names (absent for kinds that name no path). Optional."
+        }
+      }
+    },
+    "fault": {
+      "type": "object",
+      "required": ["id", "name", "backend", "tier"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The primitive id (\"S-004\"). Required; empty when the step's fault reference did not resolve."
+        },
+        "name": {
+          "type": "string",
+          "description": "The primitive's declared short name. Required."
+        },
+        "backend": {
+          "type": "string",
+          "description": "The primitive's declared injection backend (\"shim\"). Required."
+        },
+        "tier": {
+          "type": "string",
+          "description": "The primitive's declared tier string verbatim (\"L1\"). It is REPORTED, not enforced. Required."
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "The effective param set — the step's params with defaults filled by the actuator where the descriptor declares none. Optional; flat string scalars only."
+        }
+      }
+    },
+    "witness": {
+      "type": "object",
+      "required": ["kind", "source", "evidence"],
+      "properties": {
+        "kind": {
+          "enum": ["external", "injector"],
+          "description": "external = an independent observation (the parent process reading the target after the child exited); injector = injector-owned evidence (the shim's own counter). A witness whose only source is injector-owned evidence must say so — the anti-gaming shape. Required."
+        },
+        "source": {
+          "type": "string",
+          "description": "Where the observation came from. Required."
+        },
+        "evidence": {
+          "type": "string",
+          "description": "The measured line a reviewer can check (paths, counts, sizes). Required."
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "required": ["name", "expected", "observed", "passed"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The probe's vocabulary name. Required."
+        },
+        "expected": {
+          "type": "string",
+          "description": "The expected condition. Required."
+        },
+        "observed": {
+          "type": "string",
+          "description": "The measured condition. Required."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "True only when observed satisfies expected. Required."
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["requirement", "met", "detail"],
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "description": "The requirement vocabulary token. Required."
+        },
+        "declared": {
+          "type": "string",
+          "description": "The profile's own prose for it. Optional."
+        },
+        "met": {
+          "type": "boolean",
+          "description": "True when the host satisfies it. Required."
+        },
+        "detail": {
+          "type": "string",
+          "description": "The measurement (\"cc -> /usr/bin/cc\") or the reason it failed. Required."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "fault", "landed", "outcome", "duration_ms"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The step id. Required."
+        },
+        "fault": {
+          "$ref": "#/definitions/fault",
+          "description": "The resolved fault; its fields are empty when the reference did not resolve (reason then says so). Required (object present even when unsubstantiated)."
+        },
+        "injected_at": {
+          "type": "string",
+          "description": "The RFC3339 time the step's fault was armed. Optional; absent when the step never reached arming."
+        },
+        "landed": {
+          "type": "boolean",
+          "description": "True only when a landing witness was measured. Required."
+        },
+        "landed_witness": {
+          "$ref": "#/definitions/witness",
+          "description": "The measured landing proof. Optional; absent when not landed, and a landed:false step MUST NOT carry one."
+        },
+        "probe": {
+          "$ref": "#/definitions/probe",
+          "description": "The step's probe grading. Optional; absent when the step never graded."
+        },
+        "detached": {
+          "$ref": "#/definitions/witness",
+          "description": "The measured inverse proof — the fault is gone. Optional; absent when the inverse was not proven."
+        },
+        "outcome": {
+          "enum": ["passed", "failed", "inconclusive"],
+          "description": "The graded three-value outcome for this step. Required."
+        },
+        "cause_class": {
+          "$ref": "#/definitions/cause_class",
+          "description": "The profile's declared failure class. Optional; only on failed steps, and only a class the profile declares."
+        },
+        "hint": {
+          "type": "string",
+          "description": "The profiling steering hint for that class. Optional; only on failed steps."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Names why the step did not grade pass/fail (inconclusive only). Optional."
+        },
+        "duration_ms": {
+          "type": "integer",
+          "description": "The wall time the step took. Required."
+        }
+      }
+    }
+  }
+}
