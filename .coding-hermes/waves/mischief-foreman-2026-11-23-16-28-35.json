@@ -8,7 +8,7 @@
   "tasks": [
     {
       "task_id": "PROF-030",
-      "status": "dispatched",
+      "status": "merged",
       "worktree": "/home/kara/worktrees/mischief-PROF-030",
       "branch": "wt/PROF-030",
       "base": "origin/main",
@@ -16,11 +16,12 @@
       "worker_model": "glm-5.3-flash",
       "worker_provider": "ollama-cloud",
       "brief": "/tmp/mf-1628/prof-030-brief.md",
-      "commit": null,
-      "merged": null,
-      "judge": null
+      "commit": "57ad02d",
+      "merged": "3e9f4dd6966687f1bb64db085154de17a9f5484b",
+      "judge": "b2aed3ad (passed=true)",
+      "worker_summary": "delivered 57ad02d; merged/gated/judged PASS"
     }
   ],
   "started_at": "2026-11-23T21:40:00Z",
-  "finished_at": null
+  "finished_at": "2026-11-23T18:15:00Z"
 }
