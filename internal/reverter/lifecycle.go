@@ -887,6 +887,30 @@ func (l *Lifecycle) foldStatus(activeOnly bool) Status {
 	return out
 }
 
+// DueHoldIDs (MISCHIEF-DF-59) returns the ids of every ARMED hold whose
+// in-process containment point has passed, sorted for deterministic sweeps.
+// The decision is made against the hold's monotonic Deadline — anchored at
+// arm time (fresh arm in this process) or at first fold sight (foreign arm)
+// and frozen across re-folds — measured on the real clock Now(). A
+// wall-clock step between arm and check can therefore neither fire the TTL
+// early nor delay it: containment happens exactly at the declared TTL on
+// this process's monotonic clock, while the wall Expiry stays the durable
+// boundary renders and other processes consume.
+func (l *Lifecycle) DueHoldIDs() []string {
+	s := l.store
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	ids := make([]string, 0, len(s.holds))
+	for id, st := range s.holds {
+		if st.Status == StatusArmed && st.due(now) {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
 // StatusSnapshot folds the CURRENT in-memory state without touching the
 // journal — the degraded read for a caller whose re-fold just failed
 // (MISCHIEF-DF-30's health leg): it must not re-derive from a journal that
@@ -917,6 +941,13 @@ func OwnerMain(dir, holdID string, expiry time.Time) error {
 	}
 	defer st.Close()
 	lf := New(st)
+	// The wait is ONE wall reading (the expiry handed over at Detach) spent
+	// as a pure duration: time.Sleep(d) runs on the runtime's monotonic
+	// timer, so a wall-clock step while it sleeps can never fire the revert
+	// early (MISCHIEF-DF-59). The residual wall exposure is the handover
+	// window itself (a step between Arm's stamp and this process's start);
+	// the wall Expiry's documented +1s grid overshoot is the margin that
+	// covers it.
 	wait := time.Until(expiry)
 	if wait > 0 {
 		time.Sleep(wait)

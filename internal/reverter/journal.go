@@ -146,8 +146,20 @@ type holdState struct {
 	Arm     armPayload
 	Status  HoldStatus
 	Expiry  time.Time
-	StuckAt time.Time
-	LandPID int
+	// Deadline is the in-process containment point (MISCHIEF-DF-59): a
+	// monotonic-bearing instant captured when the hold's TTL boundary was
+	// first established in THIS process — at arm time for a fresh arm, at
+	// first fold sight for a foreign one — and carried byte-for-byte across
+	// every re-fold afterwards. In-process waits (the daemon sweep, the
+	// detached owner's sleep) decide against it, so a wall-clock step
+	// cannot fire the TTL early or delay it: Go compares two monotonic-
+	// bearing times on the monotonic reading and strips it only when one
+	// side lacks it. The wall Expiry stays the durable boundary for
+	// cross-process readers, renders and crash/restart recovery; it is
+	// NEVER the waiter's clock.
+	Deadline time.Time
+	StuckAt  time.Time
+	LandPID  int
 	// OwnPID is the pid of the last prover that recorded a terminal proof
 	// for this hold (AC-5's evidence hop: the reverter's own pid).
 	OwnPID int
@@ -313,7 +325,7 @@ func (s *Store) appendLocked(line []byte) error {
 	if err := s.f.Sync(); err != nil {
 		return fmt.Errorf("reverter: journal fsync: %w", err)
 	}
-	if err := s.foldLine(bytes.TrimSuffix(line, []byte("\n"))); err != nil {
+	if err := s.foldLine(bytes.TrimSuffix(line, []byte("\n")), s.holds, true); err != nil {
 		// The bytes are already durable; a fold bug must not be silent, but
 		// it also must not make the caller believe the write failed — it is
 		// reported, and the next Open folds the same line from disk.
@@ -336,7 +348,17 @@ func (s *Store) appendLocked(line []byte) error {
 func (s *Store) fold() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	next, err := readFold(s.Dir)
+	// Carry the previous fold's monotonic deadlines into the fresh state
+	// (MISCHIEF-DF-59): a re-fold is a RE-READ of the same bytes, so the
+	// containment point a hold was already anchored on in this process is
+	// reproduced, not re-anchored from wall math against the (possibly
+	// stepped) wall clock. Only holds the replay re-arms in place fall out
+	// of the carry and re-anchor (see armDeadline).
+	prev := make(map[string]*holdState, len(s.holds))
+	for id, st := range s.holds {
+		prev[id] = st
+	}
+	next, err := readFold(s.Dir, prev)
 	if err != nil {
 		return err
 	}
@@ -348,9 +370,19 @@ func (s *Store) fold() error {
 // never touches a live store, so a caller can fold a journal it does not own
 // (or one it must re-read without risking the fold it is currently
 // rendering). A missing journal is an empty fold, not an error: Open creates
-// the file, and an absent file means "no records yet".
-func readFold(dir string) (*Store, error) {
+// the file, and an absent file means "no records yet". prev carries the
+// caller's previous fold (nil for a cold Open) so per-hold monotonic
+// deadlines survive the rebuild; a nil prev means every arm line anchors
+// fresh.
+func readFold(dir string, prev map[string]*holdState) (*Store, error) {
 	next := &Store{
+		// Now is the real wall clock (mono-bearing in production): the
+		// first-sight deadline anchor inside foldLine measures a foreign
+		// arm's remaining wall time against it once and freezes the result
+		// onto the real monotonic clock. A caller's injected test clock
+		// governs the LIVE store's records (appendLocked→foldLine on s),
+		// never this cold re-read of durable bytes.
+		Now:      time.Now,
 		armed:    map[string]armPayload{},
 		holds:    map[string]*holdState{},
 		expiries: map[string]time.Time{},
@@ -370,7 +402,7 @@ func readFold(dir string) (*Store, error) {
 		if len(line) == 0 {
 			continue
 		}
-		if err := next.foldLine(line); err != nil {
+		if err := next.foldLine(line, prev, false); err != nil {
 			return nil, err
 		}
 	}
@@ -392,7 +424,12 @@ func (s *Store) Refold() error {
 // foldLine applies one journal line to the in-memory fold. Read-side
 // validation fails loudly on an unknown type/outcome (the vocabulary is
 // closed; a corrupted or foreign line must not be silently skipped).
-func (s *Store) foldLine(line []byte) error {
+//
+// prev is the fold state that preceded this line's application (used to
+// carry a hold's already-anchored monotonic deadline across a re-fold), and
+// fromAppend marks a line this process JUST appended: a fresh arm's
+// containment point is captured at arm time, on the monotonic clock.
+func (s *Store) foldLine(line []byte, prev map[string]*holdState, fromAppend bool) error {
 	var rec record
 	dec := json.NewDecoder(bytes.NewReader(line))
 	if err := dec.Decode(&rec); err != nil {
@@ -416,20 +453,18 @@ func (s *Store) foldLine(line []byte) error {
 		}
 		st.Arm = *rec.Payload
 		st.Status = StatusArmed
-		// MISCHIEF-DF-59: rec.TS is a whole-second floor of the arm instant,
-		// so Unix(TS, 0) + TTL would expire a hold armed mid-second up to
-		// one second EARLIER than the TTL the operator declared (arm at
-		// T+0.9s, TTL 30s → revert at T+30s = 29.1s of hold). The second
-		// grid is the finest the journal record can express, and the fold
-		// cannot recover the lost sub-second part — so expiry is placed ONE
-		// SECOND BEYOND the last possible arm instant: a hold never expires
-		// before its advertised TTL has fully elapsed (bounded overshoot
-		// ≤1s, the documented cost; the daemon's 5s tick adds quantized
-		// latency of its own, never earlier revert). Arm's own in-process
-		// state derives from the same line through appendLocked→foldLine,
-		// so live and re-folded holders agree on the boundary.
-		st.Expiry = time.Unix(rec.TS, 0).Add(time.Duration(rec.Payload.TTL)).Add(time.Second)
+		// MISCHIEF-DF-59 (wall half): rec.TS is a whole-second floor of
+		// the arm instant, so a wall boundary on that grid is placed ONE
+		// SECOND BEYOND the last possible arm instant — a hold never
+		// expires before its advertised TTL has fully elapsed (bounded
+		// overshoot ≤1s, the documented cost). This wall Expiry is the
+		// DURABLE boundary: what cross-process readers, renders, the
+		// detached owner and crash/restart recovery consume. It is not
+		// the in-process waiter's clock — that is the monotonic Deadline
+		// anchored below, which a wall-clock step cannot move.
+		st.Expiry = armExpiry(rec)
 		s.expiries[rec.HoldID] = st.Expiry
+		st.Deadline = s.armDeadline(rec.HoldID, prev, fromAppend)
 	case RecordLand:
 		if st, ok := s.holds[rec.HoldID]; ok {
 			st.LandPID = rec.OwnPID
@@ -460,12 +495,78 @@ func (s *Store) foldLine(line []byte) error {
 	case RecordHoldStuck:
 		if st, ok := s.holds[rec.HoldID]; ok {
 			st.Status = StatusStuck
-			st.StuckAt = time.Unix(rec.TS, 0)
+			st.StuckAt = persistedInstant(rec.TS)
 		}
 	default:
 		return fmt.Errorf("reverter: journal: unknown record type %q", rec.Type)
 	}
 	return nil
+}
+
+// persistedInstant rebuilds a record's whole-second wall stamp (the finest
+// resolution the journal line carries). It is the ONE wall-reconstruction
+// point in the fold, and it feeds only DURABLE-RECORD consumers: StuckAt
+// display, the wall Expiry cross-process readers and crash/restart recovery
+// consume. The in-process TTL wait never reads it — that is holdState's
+// monotonic Deadline (MISCHIEF-DF-59).
+func persistedInstant(sec int64) time.Time { return time.Unix(sec, 0) }
+
+// armExpiry is a hold's wall containment point, derived on the second grid
+// the journal can express: one second beyond the last possible arm instant
+// (bounded overshoot ≤1s, never short). Durable boundary only.
+func armExpiry(rec record) time.Time {
+	return persistedInstant(rec.TS).Add(time.Duration(rec.Payload.TTL)).Add(time.Second)
+}
+
+// armDeadline anchors a hold's in-process containment point (a monotonic-
+// bearing instant). Three shapes by context:
+//
+//   - Fresh arm appended by THIS process (fromAppend): the arm instant is
+//     now — the deadline is captured at arm time, now + declared TTL,
+//     exactly the containment point the operator declared.
+//   - Arm line re-read of a hold THIS process already folded (prev armed,
+//     same wall boundary): carry the anchored deadline byte-for-byte. A
+//     re-fold is a re-read of the same bytes; re-anchoring it would let a
+//     wall-clock step measured between two folds move the containment
+//     point every tick.
+//   - First sight of a foreign arm (cold Open, or a hold that fell out of
+//     the carry because a re-arm replaced it): only the wall record
+//     exists — the arm's own monotonic reading belonged to another
+//     process and died with it. The remaining wall time is measured ONCE
+//     and frozen onto the real monotonic clock; every later wall step is
+//     invisible to the waiter.
+func (s *Store) armDeadline(holdID string, prev map[string]*holdState, fromAppend bool) time.Time {
+	ttl := time.Duration(s.holds[holdID].Arm.TTL)
+	if fromAppend {
+		return s.Now().Add(ttl)
+	}
+	if p, ok := prev[holdID]; ok && p.Status == StatusArmed && !p.Deadline.IsZero() &&
+		p.Expiry.Equal(s.holds[holdID].Expiry) {
+		return p.Deadline
+	}
+	remaining := s.holds[holdID].Expiry.Sub(s.Now())
+	if remaining < 0 {
+		remaining = 0
+	}
+	return time.Now().Add(remaining)
+}
+
+// due reports whether the hold's containment point has passed on the REAL
+// (monotonic-backed) clock now. Both production shapes carry the monotonic
+// reading (the deadline was anchored from time.Now), so the comparison runs
+// on monotonic time and a wall-clock step can neither fire nor withhold it.
+// Degradations are explicit: an armed hold with no wall boundary is never
+// due (parity with the sweep's IsZero guard), and a deadline that was
+// anchored from a mono-less clock (tests inject fixed wall clocks) falls
+// back to the wall comparison the pre-DF-59 fold used.
+func (st *holdState) due(now time.Time) bool {
+	if st.Expiry.IsZero() {
+		return false
+	}
+	if st.Deadline.IsZero() {
+		return now.After(st.Expiry)
+	}
+	return now.After(st.Deadline)
 }
 
 // reconcile is boot reconcile: every hold whose latest state is non-terminal
