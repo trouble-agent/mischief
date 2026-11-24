@@ -646,3 +646,4 @@
 {"id":561,"actor":"foreman","timestamp":"2026-11-24T22:38:40Z","event_type":"task_completed","task_id":"PROF-031","detail":"{\"status\":\"complete\"}"}
 {"id":562,"actor":"foreman","timestamp":"2026-11-24T22:38:40Z","event_type":"task_completed","task_id":"PROF-040","detail":"{\"status\":\"complete\"}"}
 {"id":563,"actor":"foreman","timestamp":"2026-11-24T22:38:40Z","event_type":"task_completed","task_id":"DOC-37","detail":"{\"status\":\"complete\"}"}
+{"id":564,"actor":"foreman","timestamp":"2026-11-24T22:58:10Z","event_type":"task_created","task_id":"DOC-040","detail":"{\"id\":\"DOC-040\",\"status\":\"pending\"}"}
