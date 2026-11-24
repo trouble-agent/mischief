@@ -274,18 +274,20 @@ func (d *Daemon) revertExpired() error {
 		return fmt.Errorf("daemon: refold: %w", err)
 	}
 	d.refoldErr = nil // a clean fold drops any held defect: next render is ok:true
-	now := d.Now()
-	// The active view is the right one here: a terminal hold owes no TTL.
-	for _, h := range d.lf.Status().Holds {
-		if h.Status != reverter.StatusArmed || h.Expiry.IsZero() || now.Before(h.Expiry) {
-			continue
-		}
+	// MISCHIEF-DF-59: the sweep consults the holds' MONOTONIC containment
+	// point (DueHoldIDs), not the wall Expiry. The re-fold above re-reads
+	// the journal every tick; because the fold carries each hold's already
+	// anchored deadline forward, a wall-clock step between arm and this
+	// tick cannot fire an early revert (the measured 9.27s-before-a-10s-TTL
+	// class) and cannot stretch the wait either — the tick quantization
+	// (HeartbeatInterval) remains the only documented lateness.
+	for _, id := range d.lf.DueHoldIDs() {
 		attempt := time.Now()
-		pf, err := d.lf.Revert(context.Background(), h.HoldID, "ttl_expiry", reverter.RoleOwner)
+		pf, err := d.lf.Revert(context.Background(), id, "ttl_expiry", reverter.RoleOwner)
 		// The metric records the MEASURED attempt, not an intention: the
 		// journal's Outcome is the closed vocabulary a monitor alerts on.
 		// An attempt that produced no proof at all (the hold vanished
-		// between snapshot and revert) is labelled no_hold rather than
+		// between due-check and revert) is labelled no_hold rather than
 		// minting an empty label value.
 		outcome := string(pf.Outcome)
 		if outcome == "" {
@@ -293,12 +295,12 @@ func (d *Daemon) revertExpired() error {
 		}
 		d.Metrics.ObserveRevert(time.Since(attempt), outcome)
 		if err != nil {
-			// a hold that disappeared between snapshot and revert is
+			// a hold that disappeared between due-check and revert is
 			// reported, not fatal; a proof-write failure IS fatal (the
 			// journal is the evidence contract).
 			if err != reverter.ErrNoHold {
 				d.Metrics.IncError("revert")
-				return fmt.Errorf("daemon: ttl revert %s: %w", h.HoldID, err)
+				return fmt.Errorf("daemon: ttl revert %s: %w", id, err)
 			}
 		}
 	}

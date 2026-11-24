@@ -57,20 +57,37 @@
 //
 // TTL clock model (MISCHIEF-DF-59): what "TTL 30s" means, exactly.
 //
+// The in-process containment point is a MONOTONIC deadline. When a process
+// arms a hold, it captures now + declared TTL on its own monotonic clock
+// and decides expiry against it — Go compares two monotonic-bearing times
+// on the monotonic reading, so a wall-clock step (NTP slewing, manual set)
+// between arm and check can neither fire an early revert (the measured
+// bug shape was revert-at 9.27s for a declared 10s TTL) nor lengthen the
+// wait. The deadline is frozen at arm time and carried forward untouched
+// across every re-fold in the same process. A hold first seen folded from
+// a foreign process has no monotonic reading to inherit (it belonged to
+// the arming process and died with it): the remaining wall time is
+// measured once at first sight and frozen onto the reader's monotonic
+// clock from then on.
+//
 // Journal records carry whole-second timestamps (rec.TS is a floor of the
-// arm instant), so a hold's expiry is derived on the SECOND GRID, one second
-// beyond the last possible arm instant: arm at T+0.9s with TTL 30s → expiry
-// at T+31s. A hold therefore NEVER reverts before its advertised TTL has
-// fully elapsed (that would be a shorter containment than declared); the
-// cost is a bounded overshoot of at most 1s on the derived boundary. The
-// detached owner reverts at the nanosecond expiry passed at Detach time —
-// this same second-grid value. Daemon-side (mischiefd, internal/daemon),
-// expiration is additionally QUANTIZED TO THE 5s TICK (HeartbeatInterval):
-// a hold whose expiry passed mid-tick is reverted at the next tick, and
-// health.json's ttl_remaining decays per tick — so the daemon path reverts
-// within (up to) 5s AFTER the derived expiry, never earlier. Both delays
-// are on the LATE side by design: an early revert is a contract break, a
-// late one is documented latency.
+// arm instant), so the DURABLE boundary is derived on the SECOND GRID, one
+// second beyond the last possible arm instant: arm at T+0.9s with TTL 30s →
+// wall expiry at T+31s. This wall Expiry is what crash/restart recovery,
+// other processes, the detached owner's handover and renders consume; it is
+// never the in-process waiter's clock. Its overshoot is bounded at 1s and
+// always on the LATE side (an early revert would be a shorter containment
+// than declared). The detached owner sleeps the one wall reading it was
+// handed as a pure duration — time.Sleep(d) runs on the runtime's
+// monotonic timer, so a wall step while it sleeps cannot fire early.
+//
+// Daemon-side (mischiefd, internal/daemon), expiration is additionally
+// QUANTIZED TO THE 5s TICK (HeartbeatInterval): a hold whose deadline
+// passed mid-tick is reverted at the next tick, and health.json's
+// ttl_remaining decays per tick — so the daemon path reverts within (up
+// to) 5s AFTER the containment point, never earlier. Both delays are on
+// the LATE side by design: an early revert is a contract break, a late one
+// is documented latency.
 //
 // NOT-LIST (what SPEC-04 does not promise here):
 //
