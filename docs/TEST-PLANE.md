@@ -223,4 +223,3 @@ whole evidence rows and destroyed its agent — including the trap-fired
 destroys after driver exit.
 
 ---
-ch:trace row=MSF-021 spec=docs/TEST-PLANE.md evidence=scripts/bunker-plane.sh + internal/plane/ + cmd/mischief/plane.go witness=live-run-2026-10-05

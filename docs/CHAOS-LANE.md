@@ -173,5 +173,3 @@ evidence (ok / severed / dangling / missing / foreign board), the matrix
 filtering (capability absent and tier-above-ceiling both carry reasons),
 and the findings path (validated row filed on a scratch board, duplicate
 refused, board byte-count unchanged on refusal).
-
-ch:trace row=MSF-017 spec=.coding-hermes/board/tasks.jsonl (MSF-017) evidence=internal/chaos/ + cmd/mischief/chaos.go + templates/chaos-lane.yaml witness=live:scratch-board-demo
