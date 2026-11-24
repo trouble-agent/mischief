@@ -57,6 +57,14 @@ import (
 // with a named reason — the grader turns them into inconclusive. None of them
 // can produce a pass.
 
+// shortWriteCounterRel is the shim counter's path relative to the run dir.
+// Witness evidence embeds the RELATIVE path, not the absolute one: the
+// journal is the injection log that `profile compare` diffs between two run
+// dirs, and an absolute counter path would differ for every --dir root the
+// operator picks, breaking the byte-identity of two same-seed journals
+// (PROF-031).
+const shortWriteCounterRel = "shim/shortwrite.counter"
+
 // shortWritePayloadBytes is the scenario payload size. 32 bytes is small
 // enough that a single write(2) is the whole payload (so a short write leaves
 // a visibly short file) and large enough that half of it is non-zero.
@@ -159,7 +167,7 @@ func (s *ShortWrite) Apply(ctx context.Context, req LandRequest) LandResult {
 			Source: "target child writes(2) return counts + shim counter",
 			Evidence: fmt.Sprintf(
 				"the write path received %d short write(s) (%s): attempts=%d payload=%d; injector counter hits=%d at %s; target %s now holds %d bytes",
-				faulted.Shorts, obs.Note, faulted.Attempts, faulted.Payload, hits, proofPath, target, onDisk),
+				faulted.Shorts, obs.Note, faulted.Attempts, faulted.Payload, hits, shortWriteCounterRel, target, onDisk),
 		},
 	}
 }

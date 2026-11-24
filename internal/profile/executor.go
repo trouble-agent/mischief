@@ -2,6 +2,8 @@ package profile
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
@@ -148,19 +150,29 @@ type Options struct {
 
 // runJournal appends the run's record set to <run_dir>/profile.jsonl as it
 // happens, so a killed run still leaves its evidence.
+//
+// The journal is the INJECTION LOG a compare diffs between a before-run and
+// an after-run (PROF-031), so its bytes must depend on nothing but the
+// profile bytes, the seed and the run's graded reality. That is why the clock
+// is seed-derived and logical (base + seq, see journalClockBase): a record's
+// ts is a pure function of the seed and the record's position, never of the
+// wall clock. Wall-clock bounds for the run live in finding.json
+// (started_at / finished_at / injected_at), which is NOT part of the
+// byte-identity contract.
 type runJournal struct {
-	f     *os.File
-	path  string
-	runID string
-	seq   int
-	now   func() time.Time
+	f      *os.File
+	path   string
+	runID  string
+	seq    int
+	baseTS int64
 }
 
 // newRunJournal opens <dir>/profile.jsonl for the run. The dir is
 // CONTENT-ADDRESSED (it is the run id), so a re-run of the same profile bytes
 // at the same seed replaces the journal rather than appending a second record
 // set with a restarted seq — one dir holds exactly one run's records.
-func newRunJournal(dir, runID string, now func() time.Time) (*runJournal, error) {
+// baseTS is the logical clock base derived from the run id and seed.
+func newRunJournal(dir, runID string, baseTS int64) (*runJournal, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("run dir: %w", err)
 	}
@@ -169,16 +181,18 @@ func newRunJournal(dir, runID string, now func() time.Time) (*runJournal, error)
 	if err != nil {
 		return nil, fmt.Errorf("journal: %w", err)
 	}
-	return &runJournal{f: f, path: path, runID: runID, now: now}, nil
+	return &runJournal{f: f, path: path, runID: runID, baseTS: baseTS}, nil
 }
 
 // Path is the journal file path.
 func (j *runJournal) Path() string { return j.path }
 
 // add appends one record. The journal package validates and scrubs on write,
-// so an out-of-vocabulary value cannot enter the file.
+// so an out-of-vocabulary value cannot enter the file. The record's ts is the
+// logical clock: base + seq (base derived from the run id + seed), so two
+// same-seed runs write byte-identical journals.
 func (j *runJournal) add(t journal.RecordType, v journal.Verdict, fields map[string]string) error {
-	r := journal.Record{Type: t, RunID: j.runID, Seq: j.seq, TS: j.now().Unix(), Verdict: v, Fields: fields}
+	r := journal.Record{Type: t, RunID: j.runID, Seq: j.seq, TS: j.baseTS + int64(j.seq), Verdict: v, Fields: fields}
 	b, err := r.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("journal record %s: %w", t, err)
@@ -223,7 +237,7 @@ func Run(ctx context.Context, o Options) (*Finding, error) {
 	}
 
 	runID := journal.RunID(o.Raw, o.Seed)
-	j, err := newRunJournal(o.RunDir, runID, now)
+	j, err := newRunJournal(o.RunDir, runID, journalClockBase(runID, o.Seed))
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +262,12 @@ func Run(ctx context.Context, o Options) (*Finding, error) {
 	if err := j.add(journal.RecordRunPlanned, "",
 		map[string]string{"kind": "profile", "profile": f.Profile, "profile_version": f.ProfileVersion,
 			"target": o.Target.Selector, "target_kind": o.Target.Kind, "seed": fmt.Sprintf("%d", o.Seed),
-			"steps": strings.Join(steps, ",")}); err != nil {
+			"steps": strings.Join(steps, ","),
+			// Determinism disclosure (PROF-031): the journal's ts is a seed-derived
+			// logical clock, not the wall clock — that is what makes the
+			// byte-identity of two same-seed journals (and `profile compare`)
+			// possible. Wall-clock bounds live in finding.json.
+			"journal_clock": "seed-derived (ts=base+seq); wall clock: finding.json"}); err != nil {
 		return nil, err
 	}
 
@@ -499,7 +518,16 @@ func paramMismatch(step Step, desc *catalog.Descriptor) string {
 		names = append(names, name)
 	}
 	sortStringsAsc(names)
-	for name, val := range step.Params {
+	// Iterate the step's params in sorted order too: the map itself must not
+	// decide WHICH mismatch a run with several bad params reports first
+	// (PROF-031 determinism — everything the run logs must be seed-stable).
+	badNames := make([]string, 0, len(step.Params))
+	for name := range step.Params {
+		badNames = append(badNames, name)
+	}
+	sortStringsAsc(badNames)
+	for _, name := range badNames {
+		val := step.Params[name]
 		spec, ok := desc.Params[name]
 		if !ok {
 			return fmt.Sprintf("param %q is not declared by %s (declared: %s)", name, desc.ID, strings.Join(names, ", "))
@@ -565,6 +593,18 @@ func journalStep(j *runJournal, sf StepFinding) error {
 		fields["reason"] = sf.Reason
 	}
 	return j.add(journal.RecordFinding, "", fields)
+}
+
+// journalClockBase derives the journal's LOGICAL clock base from the run id
+// and the seed (PROF-031): record ts values are base+seq, so two runs of the
+// same profile bytes at the same seed write byte-identical journals — a
+// record's timestamp is a pure function of the seed and the record's
+// position, never of the wall clock. The half-shift keeps the value positive.
+func journalClockBase(runID string, seed int64) int64 {
+	h := sha256.New()
+	fmt.Fprintf(h, "mischief.profile.journal\n%s\n%d\n", runID, seed)
+	sum := h.Sum(nil)
+	return int64(binary.BigEndian.Uint64(sum[:8]) >> 1)
 }
 
 // tierString renders a descriptor's declared tier ("L1"), or "" when the
