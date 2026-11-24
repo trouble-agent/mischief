@@ -1,0 +1,100 @@
+# Testing profile: batch / pipeline-resume
+#
+# Class : batch
+# Intent: does the pipeline — the ETL/cron/scheduled job the target runs —
+#         resume correctly after a crash, a resource exhaustion, and a clock
+#         jump, with every committed chunk accounted for exactly once?
+#
+# Success: after every step the pipeline's committed output is a true
+# partition of the input: every committed chunk appears exactly once, no
+# chunk is lost, and no chunk is emitted twice — proven from the output, not
+# from the pipeline's own log line.
+#
+# The bug class: batch jobs fail in the middle all the time; the contract is
+# that a resume lands the job exactly where the acks say it was. The three
+# shapes this profile probes: a SIGKILL after a chunk acknowledgement
+# (P-020 — the classic lost-ack/replay window), a disk-full ENOSPC mid-write
+# (S-022 — the job that silently emits a short batch), and a clock jump
+# (T-001 — the scheduler that mis-schedules the next run after a wall-clock
+# correction).
+#
+# Runnable today: only S-004 ships an actuator in this build, so each step
+# grades `inconclusive` naming the missing actuator (catalog/profiles/
+# README.md, "What this build does not promise"). The step contract is what
+# an actuator-bearing build executes.
+schema: mischief.profile/v1
+name: pipeline-resume
+class: batch
+version: 1.0.0
+seed: 31
+
+summary: >
+  Success criterion: killed mid-pipeline, the resumed job's output equals
+  exactly-once over the whole input — every chunk the previous run claimed
+  (acked) must not be re-emitted, and the remainder must be re-run in full;
+  on ENOSPC the job must fail loudly rather than emit a short batch marked
+  complete; after a wall-clock jump the next scheduled run fires once at the
+  corrected time, not immediately-nor-never. Each of these is checked from
+  the pipeline's OUTPUT partition, never from the job's own success log.
+
+requires:
+  - cc: a C compiler on PATH (profile-family shims are built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: crash-after-chunk-ack
+    fault: P-020 # catalog/faults/P-020-power-loss-instant.yaml — SIGKILL at ordinal
+    params:
+      # Kill the job at the SECOND step of the FIRST three, after an ack
+      # would have been written: seed-controlled, so the same seed replays
+      # the same ordinal.
+      signal: SIGKILL
+      ordinal: "2"
+      max_ordinal: "3"
+      step: "chunk-commit"
+    probe: payload-complete
+    cause_class: batch:lost-ack-on-crash
+
+  - id: mid-write-enospc
+    fault: S-022 # catalog/faults/S-022-enospc.yaml — disk full
+    params:
+      # The pipeline's chunk-output file refuses the write.
+      path: "/tmp/mischief/mischief-profile-target"
+    probe: payload-complete
+    cause_class: batch:silent-partial-ingest
+
+  - id: clock-jump-schedule
+    fault: T-001 # catalog/faults/T-001-clock-jump.yaml — wall clock shifted
+    params:
+      # Shift the job's wall clock an hour forward and watch the scheduler.
+      pid: "target"
+      delta: "1h"
+    probe: payload-complete
+    cause_class: batch:mis-scheduled-after-jump
+
+cause_classes:
+  batch:lost-ack-on-crash:
+    hint: >
+      The resume after the crash did not reproduce the acked partition: a
+      committed chunk was re-emitted (duplicates downstream) or dropped (lost
+      rows). Every chunk commit must be idempotent — a deterministic key the
+      resume can check before emitting — and the ack must be written in the
+      SAME transaction as the output, never a log line written after. A
+      resume that re-emits an acked chunk is the bug this probe found.
+  batch:silent-partial-ingest:
+    hint: >
+      A mid-write storage failure produced a SHORT batch and the job marked
+      the batch complete anyway. Every sink write must be checked (count
+      written against count read, ENOSPC is a hard fail), the failed chunk
+      quarantined or retried, and the batch marked complete only when the
+      emitted count matches the input count. Trusting write() without its
+      error is the bug this probe found.
+  batch:mis-scheduled-after-jump:
+    hint: >
+      The scheduler mis-folded a wall-clock correction: the next run fired
+      immediately (duplicate work) or drifted away (the job silently never
+      runs again). Schedulers must clamp on a jump — compute the next
+      interval from the corrected clock with a floor, never "now minus the
+      old schedule" — and log the clamp. An interval computed from a shifted
+      delta is the bug this probe found.

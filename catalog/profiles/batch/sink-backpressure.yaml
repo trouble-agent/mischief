@@ -1,0 +1,80 @@
+# Testing profile: batch / sink-backpressure
+#
+# Class : batch
+# Intent: does the pipeline handle an upstream-limited or broken SINK the
+#         way a batch job must — bounded retries with backpressure honoured,
+#         and a broken output channel detected rather than drained into?
+#
+# Success: after every step every row the job read from its source is
+# accounted for in the sink (present, quarantined as failed, or reported
+# undelivered) — no row is retried unboundedly, and no row is written into a
+# dead pipe and counted as delivered.
+#
+# The bug class: batch sinks are shared, rate-limited, and can vanish under
+# the job. A sink API that starts answering 429 (N-012) turns an unbounded
+# retrier into a hot-looping job that starves its own window; a pipe sink
+# whose reader is gone (S-021) accepts writes until SIGPIPE turns them into
+# a silent truncation the job counts as delivered.
+#
+# Runnable today: only S-004 ships an actuator in this build, so each step
+# grades `inconclusive` naming the missing actuator (catalog/profiles/
+# README.md, "What this build does not promise"). The step contract is what
+# an actuator-bearing build executes.
+schema: mischief.profile/v1
+name: sink-backpressure
+class: batch
+version: 1.0.0
+seed: 61
+
+summary: >
+  Success criterion: against a rate-limited sink, every retry is budgeted
+  (bounded attempts, Retry-After honoured, no faster than the sink asked)
+  and the job reports its deferral instead of hot-looping; against a broken
+  pipe sink, every write is checked and the job fails loudly naming the
+  broken channel — never accepting EPIPE as delivery and counting the rows
+  complete. The row accounting is proven from the sink's contents, never
+  from the job's own progress line.
+
+requires:
+  - cc: a C compiler on PATH (profile-family shims are built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: sink-rate-limit-429
+    fault: N-012 # catalog/faults/N-012-http-429.yaml — proxy rate-limits the sink API
+    params:
+      # The sink API the job writes to, behind a throwing proxy.
+      listen: "127.0.0.1:18453"
+      upstream: "http://127.0.0.1:18454"
+      status: "429"
+      rate: "0.8"
+      retry_after: "60s"
+    probe: payload-complete
+    cause_class: batch:unbounded-sink-retry
+
+  - id: sink-pipe-broken
+    fault: S-021 # catalog/faults/S-021-epipe.yaml — reader gone, writes hit EPIPE
+    params:
+      # The job's pipe-sink path; its reader exit makes the next write EPIPE.
+      path: "/tmp/mischief/mischief-profile-target"
+    probe: payload-complete
+    cause_class: batch:silent-epipe-drop
+
+cause_classes:
+  batch:unbounded-sink-retry:
+    hint: >
+      The job retried its rate-limited sink without a budget: the same write
+      hammered the sink faster than Retry-After allows, hot-looped CPU, and
+      neither deferred noisily nor made progress. Every sink retry needs a
+      bounded attempt count with backoff and Retry-After honoured; the
+      deferred rows must stay visible in the job's accounting. Retrying
+      faster than the sink permitted is the bug this probe found.
+  batch:silent-epipe-drop:
+    hint: >
+      The sink's reader disappeared and the job kept writing, then treated
+      EPIPE (or the truncated totals that follow) as delivery. Every write
+      to a pipe/remote sink must be checked, row counts written must be
+      reconciled against row counts read, and a broken channel must fail the
+      job loudly. Counting rows delivered that the sink never took is the
+      bug this probe found.

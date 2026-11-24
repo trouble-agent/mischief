@@ -99,8 +99,26 @@
   "definitions": {
     "cause_class": {
       "type": "string",
-      "enum": ["storage:silent-short-write"],
-      "description": "CLOSED cause_class vocabulary. This is the value a failed step routes to; the run-level finding lifts the first failed step's class. The vocabulary is closed per profile: a profile may only route failures to classes declared in its own cause_classes block, and a step naming an undeclared class is refused at load by referential integrity (internal/profile/profile.go Parse). The vocabulary shipped by this build's catalog (catalog/profiles) is exactly: storage:silent-short-write. Any other value is rejected by this schema — a finding must never introduce a class its profile did not declare, and the schema exists so a future revision of the finding document cannot quietly widen the vocabulary."
+      "enum": [
+        "auth:expired-secret-trusted",
+        "auth:indefinite-wait",
+        "auth:stale-token-accepted",
+        "batch:lost-ack-on-crash",
+        "batch:mis-scheduled-after-jump",
+        "batch:silent-epipe-drop",
+        "batch:silent-partial-ingest",
+        "batch:unbounded-sink-retry",
+        "mobile:empty-cold-state-mishandled",
+        "mobile:hang-on-network-loss",
+        "mobile:partial-message-accepted",
+        "mobile:silent-lost-queue",
+        "mobile:unbounded-retry",
+        "serverless:deadline-drift",
+        "serverless:duplicate-side-effect",
+        "serverless:silent-oom",
+        "storage:silent-short-write"
+      ],
+      "description": "CLOSED cause_class vocabulary. This is the value a failed step routes to; the run-level finding lifts the first failed step's class. The vocabulary is closed per profile: a profile may only route failures to classes declared in its own cause_classes block, and a step naming an undeclared class is refused at load by referential integrity (internal/profile/profile.go Parse). The vocabulary shipped by this build's catalog (catalog/profiles) is exactly the per-class sets the shipped profiles declare — storage:silent-short-write (storage); auth:expired-secret-trusted / auth:indefinite-wait / auth:stale-token-accepted (auth); batch:lost-ack-on-crash / batch:mis-scheduled-after-jump / batch:silent-epipe-drop / batch:silent-partial-ingest / batch:unbounded-sink-retry (batch); mobile:empty-cold-state-mishandled / mobile:hang-on-network-loss / mobile:partial-message-accepted / mobile:silent-lost-queue / mobile:unbounded-retry (mobile); serverless:deadline-drift / serverless:duplicate-side-effect / serverless:silent-oom (serverless). Any other value is rejected by this schema — a finding must never introduce a class its profile did not declare, and the schema exists so a future revision of the finding document cannot quietly widen the vocabulary. The internal/profile schema test derives this same vocabulary from the shipped corpus and proves the two agree."
     },
     "target": {
       "type": "object",
