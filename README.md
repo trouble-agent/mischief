@@ -228,8 +228,6 @@ It runs `row-drift` and `python3 tools/gen-docs.py --check`; the latter checks
 existing generated HTML twins without writing them. A nonzero result identifies
 stale generated docs or a current-status row reference that needs review.
 
-<!-- ch:trace row=README-12 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-12 test=Makefile::docs-check doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-12-brief.txt evidence=none:docs-update witness=none:no-docs-check-target verdict=none:worker-commit commit=HEAD memory=none:tick-local -->
-
 ### The privileged surface: `mischief install`, `mischief audit`, `mischief uninstall`
 
 The binary install above puts the CLI on your PATH; the privileged surface is a
@@ -425,13 +423,5 @@ MIT — see `LICENSE`.
 
 ---
 
-ch:trace row=MISCHIEF-DF-62 spec=docs/prd/mischief-v0.1.md#status wave=.coding-hermes/waves/mischief-foreman-2026-10-21-17-15-43.json#step-1 test=none:docs-only doc=README.md prompt=/tmp/mischief-foreman-2026-10-21-17-15-43-MISCHIEF-DF-62-brief.txt evidence=README.md witness=none:no external witness required verdict=none:foreman-runs-judge commit=25241a6c6af4d43fb1d554ed251d19ad1e38518d memory=none:not-durable-yet
-
 ch:trace row=DOC-24-R2 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-24-R2 test=none:live-arm-control-refuted doc=README.md prompt=none:brief-not-retained evidence=commit witness=none:worker-arm-rc2-console verdict=none:pending-foreman-judge commit=adc40fe memory=none:board-row
 
-ch:trace row=README-10 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-10 test=none:published-tip-freshness doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-10-brief.txt evidence=none:docs-update witness=path@origin:README.md verdict=none:worker-commit commit=HEAD memory=none:tick-local
-STATUS: complete
-TIER: T2 (live sanctioned arm control invoked; rc=2 premise refutation observed; docs corrected per the row's escape clause)
-EVIDENCE: commit
-
-ch:trace row=README-11 spec=README.md#Install wave=mischief-foreman-2026-10-31-02-37-05.json#README-11 test=none:stranger-release-install doc=README.md prompt=/tmp/mischief-foreman-20261031-023705-README-11-brief.txt evidence=none:docs-update witness=release:v0.1.0@origin verdict=none:worker-commit commit=HEAD memory=none:tick-local

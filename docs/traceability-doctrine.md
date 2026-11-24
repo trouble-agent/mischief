@@ -28,7 +28,7 @@ Optional fields seen in practice: `doc=` (the reader-facing page),
 `prompt=` (the procedure followed), `memory=` (a DuckBrain key, never instead
 of a repo-local field), `witness2=` (a second surface). Markers live in board
 rows (`.coding-hermes/board/tasks.jsonl`, `events.jsonl`), close events, audit
-findings, and as git commit trailers.
+findings, and as git commit trailers. Close-out footers (`STATUS:`/`TIER:`/`EVIDENCE:`) and `ch:trace` markers belong in board rows, close events, and commit trailers — never in a reader-facing page.
 
 ## Rules
 

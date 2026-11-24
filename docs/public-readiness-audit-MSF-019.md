@@ -147,5 +147,3 @@ fleet-process name references in them were genericized.
 3. **SECURITY.md email route** points at the sibling's advisory flow;
    replace with a mischief-specific contact when one exists.
 
----
-ch:trace row=MSF-019 evidence=docs/public-readiness-audit-MSF-019.md witness=live:curl http200

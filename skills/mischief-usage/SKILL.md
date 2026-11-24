@@ -145,8 +145,6 @@ bin/mischief revert --hold <id> --retry    # ONE more MEASURED attempt: rc=0 onl
   fail-closed, not a crash. Land faults only on an ephemeral sanctioned host
   (a bunker instance), never the main fleet host.
 
-ch:trace row=DOC-21 spec=docs/prd/mischief-v0.1.md#61-verbs wave=mischief-foreman-2026-10-24-14-52-45#DOC-21 test=cmd/mischief/help_test.go::TestTopLevelHelpListsSelftest evidence=skills/mischief-usage/SKILL.md witness=tag:b639bc8@origin verdict=none:pending commit=b639bc8e903a379758fcd1ec95314f316c9dc419 memory=none:not-written
-
 ## Current dogfood re-proof — 2026-11-14, tick mischief-dogfood-2026-11-14-22-43-28, HEAD 04e7bfc
 
 The current-HEAD real-use proof is `docs/dogfood/2026-11-14-2243-dogfood.md` (its §7 is the
@@ -176,7 +174,6 @@ is `-runs-dir`. `DOC-28` — the metrics family table at `docs/OPERATIONS.md:81`
 Prior re-proof (2026-10-29, HEAD 852639e): `docs/dogfood/2026-10-29-1350-integration.md`, a 5s hold
 reverted at ~10s and restored the target byte-for-byte.
 
-ch:trace row=none:usage-reproof spec=none:dogfood-run wave=none:retired-driver test=cmd:status-plan-arm-serve doc=docs/dogfood/2026-11-14-2243-dogfood.md evidence=/tmp/bunker-qa-evidence-20261114T225627Z-192417.jsonl witness=live:HEAD-04e7bfc+serve-health-reverted verdict=existing-QA-recurrence commit=pending
 - **Sanction vars leak through long-lived agent shells.** A session that exported
   `MISCHIEF_SANCTION=1` for an earlier probe keeps it exported forever — a later
   "should refuse" leg silently succeeds. Probe refusals from a sanitized env
@@ -290,7 +287,6 @@ sudo ip netns del mc-probe-ns                      # revert proven
 - The kill switch's **per-hold stdout line** always starts with the word `reverted`, whatever the outcome
   (`reverted <id> outcome=revert_failed …`, main.go:365) — the exit code and the summary line are honest
   since DF-51, the leading word is not (MISCHIEF-DF-51-R2, closed). Parse `outcome=`, not the verb.
-  <!-- ch:trace row=MISCHIEF-DF-63-FIXUP spec=tools/check_row_drift.py#current-status test=tools/check_row_drift.py doc=skills/mischief-usage/SKILL.md prompt=/tmp/mischief-MISCHIEF-DF-63-FIXUP-brief.txt evidence=commit witness=none:docs-regression verdict=none:pending-foreman-judge commit=none:pending-foreman-trace memory=none:not-written -->
  - `status --json` in the healthy state renders `"holds": null` (not `[]`), so `jq '.holds[]'` fails while
   `.holds|length` is 0; and a terminal hold keeps its arm-time `expiry` on the wire, so `expiry - now` is
   POSITIVE for a hold reverted before its TTL (MISCHIEF-DF-54-R2, resolved). Gate on `.status`, never on the expiry.
@@ -409,6 +405,3 @@ degraded leg is split three ways — full ladder in
   setting nothing at all, so read the refusal text before blaming the host.
 
 ch:trace row=DOC-22 spec=none:docs-row wave=mischief-foreman-2026-10-28-19-31-37.json#DOC-22 test=none:doctor-wc-greps doc=skills/mischief-usage/SKILL.md prompt=none:brief-not-retained evidence=commit witness=none:doctor-output verdict=none:pending-foreman-judge commit=762046e memory=none:board-row
-STATUS: complete
-TIER: T1 (edit + doctor/wc/grep checks invoked and observed)
-EVIDENCE: commit
