@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -258,5 +259,156 @@ func TestProfileHelp(t *testing.T) {
 		if out != "" && !strings.Contains(out, "mischief profile") && !strings.Contains(out, "usage: mischief profile run") {
 			t.Fatalf("%v output = %q", args, out)
 		}
+	}
+}
+
+// findingHeader is the shape a CLI test needs from a finding.json/stdout doc.
+type findingHeader struct {
+	Seed   int64  `json:"seed"`
+	RunID  string `json:"run_id"`
+	RunDir string `json:"run_dir"`
+}
+
+// TestProfileCompareTwoRunsSameSeedIsDeterministic is the PROF-031
+// acceptance, end to end against the REAL actuator:
+//
+//  1. the same profile + same seed, run into two different --dir roots,
+//     writes byte-identical journals (the diff between the two injection logs
+//     is empty — the seed alone decides injection order/timing);
+//  2. `profile compare <run_dir_a> <run_dir_b>` on the two dirs reports the
+//     transitions (here: unchanged, both runs pass on an unchanged target).
+func TestProfileCompareTwoRunsSameSeedIsDeterministic(t *testing.T) {
+	sanctionEnv(t)
+	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-profile-target-cmp-%d", os.Getpid()))
+	root := t.TempDir()
+	runOnce := func(dir string) findingHeader {
+		t.Helper()
+		code, stdout := captureStdout(t, func() int {
+			return run([]string{"profile", "run", "storage/short-write",
+				"--target", "scratch:" + target, "--json", "--seed", "21", "--dir", dir})
+		})
+		if code != 0 {
+			t.Fatalf("exit = %d (want 0 passed); stdout=%s", code, stdout)
+		}
+		var f findingHeader
+		if err := json.Unmarshal([]byte(stdout), &f); err != nil {
+			t.Fatalf("decode finding: %v\n%s", err, stdout)
+		}
+		if f.RunID == "" || f.RunDir == "" {
+			t.Fatalf("finding header = %+v", f)
+		}
+		return f
+	}
+	dirA := filepath.Join(root, "before")
+	dirB := filepath.Join(root, "after")
+	fA := runOnce(dirA)
+	fB := runOnce(dirB)
+	if fA.RunID != fB.RunID {
+		t.Fatalf("same bytes + seed must derive the same run id: %q vs %q", fA.RunID, fB.RunID)
+	}
+
+	// The injection log byte-diff between the two run dirs must be EMPTY:
+	// the journal IS the diffed artifact (finding.json is not compared — it
+	// carries the wall-clock bounds and the absolute run_dir, which SHOULD
+	// differ between two --dir roots).
+	for _, rel := range []string{"profile.jsonl", "shim/writer.c", "shim/libshortwrite.c", "shim/shortwrite.counter"} {
+		ba, err := os.ReadFile(filepath.Join(fA.RunDir, rel))
+		if err != nil {
+			t.Fatalf("run a %s: %v", rel, err)
+		}
+		bb, err := os.ReadFile(filepath.Join(fB.RunDir, rel))
+		if err != nil {
+			t.Fatalf("run b %s: %v", rel, err)
+		}
+		if string(ba) != string(bb) {
+			t.Fatalf("%s differs between the two same-seed runs (a=%d bytes, b=%d bytes)\nA: %s\nB: %s",
+				rel, len(ba), len(bb), ba, bb)
+		}
+	}
+
+	// Compare reports the transitions (both passed here: unchanged).
+	code, stdout := captureStdout(t, func() int {
+		return run([]string{"profile", "compare", fA.RunDir, fB.RunDir})
+	})
+	if code != 0 {
+		t.Fatalf("compare exit = %d; stdout=%s", code, stdout)
+	}
+	if !strings.Contains(stdout, "unchanged (passed)") || !strings.Contains(stdout, "payload-complete") {
+		t.Fatalf("compare output does not name the unchanged transition:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "0 changed") {
+		t.Fatalf("compare counts must say 0 changed:\n%s", stdout)
+	}
+
+	// --json mode: ONE parseable document on stdout, the run ids it compared.
+	code, stdout = captureStdout(t, func() int {
+		return run([]string{"profile", "compare", fA.RunDir, fB.RunDir, "--json"})
+	})
+	if code != 0 {
+		t.Fatalf("compare --json exit = %d; stdout=%s", code, stdout)
+	}
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("compare --json stdout is not one JSON document:\n%s", stdout)
+	}
+	var rep struct {
+		Schema  string `json:"schema"`
+		Profile string `json:"profile"`
+		RunIDA  string `json:"run_id_a"`
+		RunIDB  string `json:"run_id_b"`
+		Steps   []struct {
+			Step       string `json:"step"`
+			Probe      string `json:"probe"`
+			Transition string `json:"transition"`
+			Changed    bool   `json:"changed"`
+		} `json:"steps"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if rep.Schema != "mischief.compare/v1" || rep.Profile != "storage/short-write" ||
+		rep.RunIDA != fA.RunID || rep.RunIDB != fB.RunID {
+		t.Fatalf("compare report = %+v", rep)
+	}
+	if len(rep.Steps) != 1 || rep.Steps[0].Probe != "payload-complete" || rep.Steps[0].Transition != "unchanged" || rep.Steps[0].Changed {
+		t.Fatalf("steps = %+v", rep.Steps)
+	}
+
+	// The compare verdict record: the journal disclosed the deterministic
+	// clock, so the two runs' run_planned records name it.
+	if !strings.Contains(string(mustRead(t, fA.RunDir, "profile.jsonl")), "journal_clock") {
+		t.Fatal("run_planned must disclose the seed-derived journal clock")
+	}
+}
+
+func mustRead(t *testing.T, dir, rel string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// TestProfileCompareRefusals pins the compare verb's refusal arms: bad
+// invocation and unreadable run dirs land nothing and exit 2.
+func TestProfileCompareRefusals(t *testing.T) {
+	unsanctionEnv(t) // the compare does NOT gate on sanction: it reads run dirs only
+	code, stderr := captureStderr(t, func() int {
+		return run([]string{"profile", "compare"})
+	})
+	if code != 2 {
+		t.Fatalf("exit = %d (want 2, usage refusal); stderr=%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "want exactly two run dirs") {
+		t.Fatalf("stderr = %q", stderr)
+	}
+	code, stderr = captureStderr(t, func() int {
+		return run([]string{"profile", "compare", filepath.Join(t.TempDir(), "absent-a"), filepath.Join(t.TempDir(), "absent-b")})
+	})
+	if code != 2 {
+		t.Fatalf("exit = %d (want 2, unreadable run dirs); stderr=%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "journal") {
+		t.Fatalf("stderr must name the journal read failure: %q", stderr)
 	}
 }

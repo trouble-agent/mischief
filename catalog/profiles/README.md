@@ -185,6 +185,53 @@ shim/           the generated injection source, the built shim, the scenario
                 writer and the shim's own hit counter — the injection log
 ```
 
+## Deterministic re-runs (PROF-031)
+
+A run is a pure function of its inputs: the same profile bytes + the same
+`--seed` write a **byte-identical journal** (and identical generated shim
+source, writer and counter), no matter when or into which `--dir` root the
+run happens. Everything the journal carries is therefore either profile
+order, a measured value, or derived from the seed:
+
+- a record's `ts` is a LOGICAL, seed-derived clock (`ts = base + seq`, base
+  hashed from the run id and the seed — disclosed in `run_planned`'s
+  `journal_clock` field), never the wall clock. The run's wall-clock bounds
+  deliberately live in `finding.json` (`started_at` / `finished_at`,
+  `injected_at` per step), which is not part of the byte-identity contract;
+- nothing in the executor iterates a map where order is observable: step
+  params are walked sorted, steps run in profile order.
+
+A different `--seed` changes the run id, the generated payload bytes and the
+clock base — same seed, different result is then a REAL difference (the
+target's own behavior changed), which is exactly what makes a FAIL->PASS
+flip meaningful. Note that a run dir is content-addressed by profile bytes +
+seed, so a re-run into the same `--dir` REPLACES the previous run's journal:
+keep the before-run and the after-run apart with two `--dir` roots.
+
+## Compare (`mischief profile compare`)
+
+```sh
+mischief profile run  storage/short-write --target scratch:/tmp/t --json --seed 7 --dir .runs/before
+# ... fix the code ...
+mischief profile run  storage/short-write --target scratch:/tmp/t --json --seed 7 --dir .runs/after
+mischief profile compare .runs/before/<run_id> .runs/after/<run_id>
+```
+
+`compare` reads the two journals, pairs steps by id between the two runs of
+the same profile (a different profile than run A refuses with a named
+reason), and prints one line per step:
+
+- `failed->passed` — the probe that broke in the before-run now holds: the
+  fix landed;
+- `passed->failed` — the before-run held and the after-run broke: a
+  regression;
+- `unchanged (<outcome>)` — the step graded the same in both runs;
+- any other pair of the three-value outcomes — e.g. `passed->inconclusive` —
+  and `not-graded` for a step a killed run never journaled a grading for.
+
+`--json` emits one document (`mischief.compare/v1`) with the paired steps,
+their `from`/`to` outcomes, transitions and counts.
+
 ## What this build does not promise
 
 Declared here so a reader is not misled by a green finding:
