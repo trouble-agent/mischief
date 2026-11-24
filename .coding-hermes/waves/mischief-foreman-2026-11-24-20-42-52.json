@@ -1,0 +1,64 @@
+{
+  "tick_id": "mischief-foreman-2026-11-24-20-42-52",
+  "created_at": "2026-11-24T20:52:00-05:00",
+  "mode": "wave",
+  "wave_budget": 7,
+  "workers": 4,
+  "rejection_log": "Candidates probed at origin/main dff1aec: MISCHIEF-DF-59 (grep 'time.Unix(rec.TS, 0)' = 2, live), PROF-031 (profile compare missing, live), PROF-040 (1 profile yaml vs >=6, live), DOC-37 (census 31 hits, live). REJECTED as stale/gated: PROF-011/PROF-012/PROF-013 host-gated (SPEC-13 sanction rail, code already merged — verification-only, not new implementation); PROF-020 depends PROF-011+PROF-012 pending; PROF-021 depends PROF-013 pending; QA-MISCHIEF-002-R2 and MISCHIEF-DF-76-R1 need bunker JIT planes (one-plane isolation legs); QA-MISCHIEF-008 needs the full bunker battery ui-probe surface; QA-MISCHIEF-FOREMAN-2 premise refuted (build green; needs bunker build cell); QA-MISCHIEF-FOREMAN-3 sibling of QA-MISCHIEF-008; INT-CI-10 act runner limitation; QA-MISCHIEF-CHAOS-4 target path correction; RELEASE-013 NO-CUT gate decision; RELEASE-016 LANDED-BUT-UNCLOSED verification-only closeout (foreman-direct, out of worker wave); MISCHIEF-DF-69/70 in_progress sibling dogfood legs; NEVER-DONE perpetual fixture.",
+  "tasks": [
+    {
+      "task_id": "MISCHIEF-DF-59",
+      "status": "dispatched",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-DF-59",
+      "branch": "wt/MISCHIEF-DF-59",
+      "base": "origin/main",
+      "base_sha": "dff1aec",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "ollama-cloud",
+      "brief": "/tmp/mf-1124/mischief-DF-59-brief.md",
+      "commit": null,
+      "merged": null
+    },
+    {
+      "task_id": "PROF-031",
+      "status": "dispatched",
+      "worktree": "/home/kara/worktrees/mischief-PROF-031",
+      "branch": "wt/PROF-031",
+      "base": "origin/main",
+      "base_sha": "dff1aec",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "ollama-cloud",
+      "brief": "/tmp/mf-1124/PROF-031-brief.md",
+      "commit": null,
+      "merged": null
+    },
+    {
+      "task_id": "PROF-040",
+      "status": "dispatched",
+      "worktree": "/home/kara/worktrees/mischief-PROF-040",
+      "branch": "wt/PROF-040",
+      "base": "origin/main",
+      "base_sha": "dff1aec",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "ollama-cloud",
+      "brief": "/tmp/mf-1124/PROF-040-brief.md",
+      "commit": null,
+      "merged": null
+    },
+    {
+      "task_id": "DOC-37",
+      "status": "dispatched",
+      "worktree": "/home/kara/worktrees/mischief-DOC-37",
+      "branch": "wt/DOC-37",
+      "base": "origin/main",
+      "base_sha": "dff1aec",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "ollama-cloud",
+      "brief": "/tmp/mf-1124/DOC-37-brief.md",
+      "commit": null,
+      "merged": null
+    }
+  ],
+  "started_at": "2026-11-24T20:52:00-05:00",
+  "finished_at": null
+}
