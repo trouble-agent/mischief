@@ -1,0 +1,107 @@
+# Testing profile: mobile / api-resilience
+#
+# Class : mobile
+# Intent: does the app's backend-call path degrade the way a phone has to —
+#         bounded retries with backoff, fail-fast or queue on network loss,
+#         and a coherent UI state when a dependency returns an empty cold
+#         cache — instead of spinning, hanging, or lying to the user?
+#
+# Success: after every step the app is STILL responsive and its retry/queue
+# state is bounded and observable — a retry storm must not pin a phone's radio
+# and battery, and a lost network must never freeze the thread the UI runs on.
+#
+# The bug class: mobile clients talk to APIs over hostile radio links and
+# rate-limited shared backends. The three failure classes this profile probes
+# are the ones that produce field bugs: unlimited retries into a 429 (N-012),
+# an unbounded wait when the network dies (N-001), and a code path that
+# assumes a warm dependency cache and renders the wrong "truth" from a
+# fresh-empty cold start (I-002).
+#
+# Runnable today: only S-004 ships an actuator in this build, so each step
+# here grades `inconclusive` naming the missing actuator (catalog/profiles/
+# README.md, "What this build does not promise"). The profile is written for
+# the agents that attach actuator-bearing builds; the step contract, params
+# and cause routes are the part that does not change.
+schema: mischief.profile/v1
+name: api-resilience
+class: mobile
+version: 1.0.0
+seed: 11
+
+summary: >
+  Success criterion: under a rate-limited API, a total network loss, and a
+  dependency that returns an empty cold cache, the app stays responsive and
+  its retry/queue/UI state is bounded, observable, and reachable by the user.
+  A retry budget must exist (bounded attempts, honoured Retry-After); a lost
+  network must surface in the UI within a user-perceptible window rather than
+  hanging; and a cold-empty dependency must render a defined empty state, not
+  a crash or stale content presented as current. This build grades each step
+  inconclusive until an actuator for the named primitive ships — that is the
+  honest outcome, never a pass.
+
+requires:
+  - cc: a C compiler on PATH (profile-family shims are built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: api-rate-limit-429
+    fault: N-012 # catalog/faults/N-012-http-429.yaml — proxy injects 429s
+    params:
+      # Local proxy the app points at; upstream is a scratch stub the step
+      # harness serves. Both are declared by the primitive.
+      listen: "127.0.0.1:18443"
+      upstream: "http://127.0.0.1:18444"
+      status: "429"
+      # Half of the in-window calls get the injected rate-limit response.
+      rate: "0.5"
+      # The server's honest contract: come back in 30s.
+      retry_after: "30s"
+    probe: payload-complete
+    cause_class: mobile:unbounded-retry
+
+  - id: network-total-loss
+    fault: N-001 # catalog/faults/N-001-partition.yaml — drop every packet
+    params:
+      # The app's connection under netns-level loss.
+      netns: "app-client"
+      iface: "wlan0"
+      mode: "loss"
+      loss: "100%"
+    probe: payload-complete
+    cause_class: mobile:hang-on-network-loss
+
+  - id: dependency-cold-empty
+    fault: I-002 # catalog/faults/I-002-dependency-cold-return.yaml
+    params:
+      # The app's cache/config dependency restarts into an empty store.
+      service: "mobile-cache"
+      mode: "fresh-empty"
+      restore_state: "true"
+    probe: payload-complete
+    cause_class: mobile:empty-cold-state-mishandled
+
+cause_classes:
+  mobile:unbounded-retry:
+    hint: >
+      The client did not bound its retries. Every retry must be budgeted (
+      bounded attempt count, exponential backoff, and Retry-After honoured —
+      never retry faster than the server asked). A client that hammers a 429
+      gets the same 429 forever, drains battery/radio budget, and can get the
+      account rate-limited harder. Checking only "did the call eventually
+      succeed" is the bug this probe found.
+  mobile:hang-on-network-loss:
+    hint: >
+      The app waited forever on a dead network. Every network call needs a
+      timeout that is SHORTER than the user's patience, and the UI thread must
+      never block on the network call itself: surface the loss, keep the app
+      operable (offline mode, queued mutations), and retry on connectivity
+      regain. A synchronous call with no deadline is the bug this probe found.
+  mobile:empty-cold-state-mishandled:
+    hint: >
+      A cold dependency returned a defined empty store and the app treated the
+      absence as truth — either crashing on the missing shape or presenting a
+      fresh-empty response (e.g. "no messages", "$0 balance") as if it were
+      current. Distinguish "empty because nothing yet" from "state lost", keep
+      a last-known-good copy when the app declares it, and re-sync once the
+      dependency is warm again.

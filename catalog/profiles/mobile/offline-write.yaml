@@ -1,0 +1,94 @@
+# Testing profile: mobile / offline-write
+#
+# Class : mobile
+# Intent: does the app's local persistence path — the offline queue every
+#         mobile app relies on — land every queued byte and every queued
+#         message even when the storage layer misbehaves, and does it tell the
+#         user when it could not?
+#
+# Success: every queued item is either fully on disk and in the sync state,
+# or reported as undelivered — nothing is half-landed, silently dropped, or
+# acknowledged to the sender while unrecoverable.
+#
+# The bug class: mobile persistence lives on exactly the storage shapes this
+# build's shim actuator already faults. A queue write that treats EIO
+# (S-001) or a partial stdin capture (S-024) as success loses the user's
+# message with no failure surfaced; a sender that marks "sent" before the
+# local ack leaves nothing to replay. These are the S-family errno/short-call
+# primitives (S-020..S-024 lineage landed as PROF-013's errno wave; see
+# catalog/faults/ and docs/FAULT-CATALOG.md).
+#
+# Runnable today: the S-001 step names a primitive that exists in
+# catalog/faults/ but has no shipped actuator in this build beyond the S-004
+# short-write family, so it grades `inconclusive` naming the missing actuator
+# (catalog/profiles/README.md, "What this build does not promise"). The
+# write-path step below is the one an actuator-bearing build can turn out.
+schema: mischief.profile/v1
+name: offline-write
+class: mobile
+version: 1.0.0
+seed: 23
+
+summary: >
+  Success criterion: a queued mutation — a chat message, a like, a form field
+  — survives every storage fault the profile injects. After each step the
+  queue file either holds every byte of every queued item (verified, not
+  assumed) or the app reports the loss to the user and preserves the item for
+  replay; an item is never acknowledged as sent while its bytes are not on
+  durable storage. The reference grader is payload-complete: every requested
+  byte on the queue file.
+
+requires:
+  - cc: a C compiler on PATH (the fault is an LD_PRELOAD shim, built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: queue-write-eio
+    fault: S-001 # catalog/faults/S-001-write-eio.yaml — write EIO
+    params:
+      # The scenario target must carry this substring or the rule never
+      # matches and the step cannot land (inconclusive, named).
+      path_substr: mischief-profile-target
+      errno: EIO
+      # Fail exactly ONE write so a correct path can report and retry.
+      budget: "1"
+    probe: payload-complete
+    cause_class: mobile:silent-lost-queue
+
+  - id: queue-partial-read
+    fault: S-024 # catalog/faults/S-024-partial-stdin.yaml — short stdin
+    params:
+      # A queued payload replayed to the target's stdin arrives short: the
+      # reader must detect the boundary, not accept a torn record.
+      bytes: "7"
+      fraction: "0.5"
+    probe: payload-complete
+    cause_class: mobile:partial-message-accepted
+
+  - id: queue-torn-write
+    fault: S-011 # catalog/faults/S-011-torn-write.yaml
+    params:
+      # The queue record lands torn at a sector boundary — a reader without
+      # integrity validation accepts a truncated queue.
+      path_substr: mischief-profile-target
+      fraction: "0.5"
+    probe: payload-complete
+    cause_class: mobile:partial-message-accepted
+
+cause_classes:
+  mobile:silent-lost-queue:
+    hint: >
+      The write path treated a storage error as success and acknowledged the
+      item anyway. Every write result must be checked (Go: err != nil is a
+      hard fail; C: write(2) -1 or 0 is a hard fail), the failed item kept in
+      a replayable state, and the loss surfaced to the user — never a silent
+      drop with a green badge. Acknowledging before the bytes are durable is
+      the bug this probe found.
+  mobile:partial-message-accepted:
+    hint: >
+      A torn or partial record was accepted as a complete message. Every
+      message boundary needs integrity validation — a length prefix, a frame
+      terminator, or a checksum — and a reader that fails loud on a boundary
+      that does not close. Accepting a half-record silently is the bug this
+      probe found.

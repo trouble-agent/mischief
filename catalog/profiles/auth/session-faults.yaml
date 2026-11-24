@@ -1,0 +1,101 @@
+# Testing profile: auth / session-faults
+#
+# Class : auth
+# Intent: does the target's auth/identity layer fail CLOSED when its
+#         supporting surfaces misbehave — a session store that resets to
+#         empty, an identity provider that freezes mid-issuance, and a
+#         credential/secret file that is swapped underneath a running issuer?
+#
+# Success: after every step, no request that SHOULD be rejected is accepted,
+# and no silently-broken state persists: a session that cannot be verified is
+# rejected (never accepted), a frozen issuer times out with a defined error
+# (never an infinite wait), and a swapped credential file is detected and
+# either reloaded loudly or fails closed — never trusted blindly.
+#
+# The bug class: auth bugs are accept-side bugs. A service that returns 200
+# for a token it could not verify, a login that waits forever on a frozen
+# upstream, and a secret reloaded lazily-never — each of these turns a
+# transient infrastructure fault into an auth defect. The profile probes the
+# three surfaces with the primitives whose shapes match: I-002 (dependency
+# cold return), P-001 (SIGSTOP freeze), F-009 (file replaced under writer).
+#
+# Runnable today: only S-004 ships an actuator in this build, so each step
+# grades `inconclusive` naming the missing actuator (catalog/profiles/
+# README.md, "What this build does not promise"). The step contract is what
+# an actuator-bearing build executes.
+schema: mischief.profile/v1
+name: session-faults
+class: auth
+version: 1.0.0
+seed: 41
+
+summary: >
+  Success criterion: every auth decision made while a supporting surface is
+  faulted is fail-closed. Sessions whose store answers empty must be rejected
+  (or re-issued through a proper login) — never "granted to the cached
+  check"; a request against a frozen IdP must return a defined error within a
+  bounded window — never hang the caller; and a credential file swapped under
+  a running issuer must change behaviour (detected reload, or hard fail) on
+  the next use, within the bounded window the issuer declares, with nothing
+  silently continuing to sign with the old key.
+
+requires:
+  - cc: a C compiler on PATH (profile-family shims are built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: session-store-cold-empty
+    fault: I-002 # catalog/faults/I-002-dependency-cold-return.yaml
+    params:
+      # The session store resets to empty mid-traffic; holders of live
+      # tokens must not keep working on stale validation.
+      service: "session-store"
+      mode: "fresh-empty"
+      restore_state: "true"
+    probe: payload-complete
+    cause_class: auth:stale-token-accepted
+
+  - id: idp-frozen-mid-issuance
+    fault: P-001 # catalog/faults/P-001-sigstop.yaml — SIGSTOP freeze
+    params:
+      # Freeze the identity provider process mid-flow; the caller must time
+      # out, not wait forever.
+      pid: "idp"
+      signal: SIGSTOP
+    probe: payload-complete
+    cause_class: auth:indefinite-wait
+
+  - id: credential-file-swapped
+    fault: F-009 # catalog/faults/F-009-file-replaced-under-writer.yaml
+    params:
+      # Swap the signing key/secret file under the running issuer (inode
+      # changes, path stays) and check what the NEXT issuance trusts.
+      path: "/tmp/mischief/mischief-profile-target"
+      mode: "replace"
+      backup: "true"
+    probe: payload-complete
+    cause_class: auth:expired-secret-trusted
+
+cause_classes:
+  auth:stale-token-accepted:
+    hint: >
+      A session whose backing validation state vanished was still accepted.
+      When the verification path cannot confirm a session, the decision is
+      reject (and route the user to login) — a cached positive check is never
+      a substitute for a fail-closed verification. Accepting on a store MISS
+      is the bug this probe found.
+  auth:indefinite-wait:
+    hint: >
+      The auth layer waited forever on a frozen upstream. Every upstream
+      identity call needs a bounded timeout with a defined error mapping (503
+      or an auth-specific code), and the caller of the auth layer must see
+      that error — not silence. A dial with no deadline on the login path is
+      the bug this probe found.
+  auth:expired-secret-trusted:
+    hint: >
+      A credential file was swapped under the running issuer and the next
+      issue/sign trusted the old or the foreign key silently. Key/secret
+      material must be validated per use (or reloaded with an mtime/inode
+      check) and a detected swap must fail LOUD on the next operation —
+      never keep signing with material the file no longer carries.

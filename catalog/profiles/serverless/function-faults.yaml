@@ -1,0 +1,106 @@
+# Testing profile: serverless / function-faults
+#
+# Class : serverless
+# Intent: does the function behave under the fault shapes the serverless
+#         runtime itself produces — a hard memory cap with OOM kill, an
+#         instance SIGKILLed after its work is acknowledged, and a wall clock
+#         that jumps while a deadline is running?
+#
+# Success: after every step the function's observable contract holds: the
+# memory-capped run either completes or fails LOUDLY (never a truncated side
+# effect presented as done), an instance killed after acknowledgement produces
+# no duplicate downstream effect on the replay, and a clock-jumped deadline
+# either fires correctly once or reports the anomaly — never silently
+# overruns or silently never-fires.
+#
+# The bug class: serverless runtimes kill instances without warning — cgroup
+# OOM (R-001), provider crashes between ack and persistence (P-020), frozen
+# images with drifting clocks (T-001). The failure mode is not the kill; it
+# is the handler code that leaves a HALF-applied side effect behind and lets
+# the replay double it, or trusts the wall clock for a deadline the platform
+# bills against.
+#
+# Runnable today: only S-004 ships an actuator in this build, so each step
+# grades `inconclusive` naming the missing actuator (catalog/profiles/
+# README.md, "What this build does not promise"). The step contract is what
+# an actuator-bearing build executes.
+schema: mischief.profile/v1
+name: function-faults
+class: serverless
+version: 1.0.0
+seed: 53
+
+summary: >
+  Success criterion: the function is replay-safe and deadline-honest. Under
+  a memory cap the function either finishes the unit of work with every side
+  effect applied or fails loudly naming the limit — never a partial side
+  effect acknowledged as complete; when the instance is killed after the
+  platform acknowledges the event, the replay applies no duplicate side
+  effect (idempotency key checked BEFORE the effect); and a deadline computed
+  from the wall clock survives a jump — it fires at most once and the drift
+  is reported, never a silent overrun past the platform's own limit.
+
+requires:
+  - cc: a C compiler on PATH (profile-family shims are built per run)
+  - scratch-target: the target must be an absolute path under the scratch base
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: cgroup-memory-cap
+    fault: R-001 # catalog/faults/R-001-memory-max.yaml — cgroup OOM
+    params:
+      # Cap the function instance below its working set and watch what it
+      # leaves half-applied behind.
+      scope: "target"
+      memory_max: "256M"
+      oom_group: "true"
+    probe: payload-complete
+    cause_class: serverless:silent-oom
+
+  - id: crash-after-ack
+    fault: P-020 # catalog/faults/P-020-power-loss-instant.yaml — SIGKILL after ack
+    params:
+      # Kill the instance at the FIRST step of the first three — the window
+      # where the platform has acked the event and the handler has not
+      # persisted its idempotency marker.
+      signal: SIGKILL
+      ordinal: "1"
+      max_ordinal: "3"
+      step: "post-ack"
+    probe: payload-complete
+    cause_class: serverless:duplicate-side-effect
+
+  - id: deadline-clock-jump
+    fault: T-001 # catalog/faults/T-001-clock-jump.yaml — wall clock shifted
+    params:
+      # Jump the function's wall clock while a deadline is armed.
+      pid: "target"
+      delta: "1h"
+    probe: payload-complete
+    cause_class: serverless:deadline-drift
+
+cause_classes:
+  serverless:silent-oom:
+    hint: >
+      The run hit its memory cap and a HALF-applied unit of work was
+      acknowledged. A function must make its effect atomic-or-replayable:
+      apply the side effect only after all inputs are validated and staged,
+      or make it idempotent so the replay (which WILL follow an OOM) cannot
+      duplicate it. Emitting the side effect and then allocating the big
+      buffer is the bug this probe found.
+  serverless:duplicate-side-effect:
+    hint: >
+      An acked event was replayed and its side effect applied twice. Before
+      ANY external effect (charge, send, write-through) the handler must
+      check its idempotency key against durable state and skip-or-replay
+      accordingly — the key check must be in the SAME durable store as the
+      effect, never an in-process flag a kill wipes. A replay that pays twice
+      is the bug this probe found.
+  serverless:deadline-drift:
+    hint: >
+      A deadline computed from the wall clock mis-derived after a jump: the
+      handler overran silently or fired multiple times. Timeouts must be
+      measured with a monotonic source (Go: time.Since; C: clock_gettime
+      MONOTONIC), never wall-clock subtraction, and the drift case must be
+      reported loudly. A deadline built from Now() comparisons is the bug
+      this probe found.
