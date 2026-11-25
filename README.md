@@ -204,11 +204,27 @@ operations, not quickstart steps.
 
 ### Option B — build from source
 
+Requirements: `git` and a Go toolchain. `go.mod` declares `toolchain go1.26.9`, and
+`make bin` builds with exactly that declaration — it is self-contained under a fresh
+`$HOME`: when the `go` on your `PATH` is older, the target obtains the declared
+toolchain through the Go module cache (nothing is installed outside `$GOMODCACHE`,
+and no sudo is involved). If it cannot (for example offline with an empty cache), it
+stops BEFORE compiling and names the requirement — the exact version, what it found,
+and the three ways to provide it — rather than building with a different toolchain.
+`make toolchain-check` runs just that resolution step, and `make artifact-check`
+re-verifies the stamp of an existing `bin/mischief`.
+
 ```sh
 git clone https://github.com/trouble-agent/mischief
 cd mischief
 make bin           # → bin/mischief, CGO_ENABLED=0, version stamped with the git sha
+bin/mischief version          # mischief <short-sha of HEAD>
+bin/mischief version --json   # {"version":"<short-sha>","tool":"mischief"}
 ```
+
+Other `go` commands (`go vet ./...`, `go test ./...`) use whatever toolchain your
+`PATH` resolves, so give them one that satisfies `go.mod` (Go 1.26.9 or newer) — the
+`make` targets above are the path that guarantees it.
 
 Prove the primitives on your host before using it: `bin/mischief selftest --all`.
 On a sanctioned host (SPEC-13 marker present) the contract is exit 0 =

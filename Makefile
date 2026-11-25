@@ -9,8 +9,6 @@ GO ?= go
 SHA ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
 BIN := bin/mischief
 
-LDFLAGS := -X main.gitSha=$(SHA)
-
 # Release flow (MSF-018): `make tags` + push cuts nothing by itself — it
 # arms the tag-triggered release workflow (.github/workflows/release.yml),
 # which reruns every gate and only then goreleasers. `make dist` is the
@@ -18,10 +16,31 @@ LDFLAGS := -X main.gitSha=$(SHA)
 # release-dry` is the config-only check (no build).
 DIST := dist/release
 
-.PHONY: bin test vet build clean shim dist tags release-dry row-drift docs-check
+.PHONY: bin test vet build clean shim dist tags release-dry row-drift docs-check \
+        toolchain-check artifact-check
 
+# bin (MISCHIEF-DF-69): the documented fresh-machine build. scripts/build-bin.sh
+# resolves the toolchain go.mod DECLARES (via scripts/ensure-toolchain.sh, which
+# obtains it from the module cache or refuses with a NAMED requirement — never a
+# silent wrong-toolchain build), builds with GOTOOLCHAIN=local, and verifies the
+# artifact it produced is executable and stamped with the tree's HEAD sha.
 bin:
-	CGO_ENABLED=0 $(GO) build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/mischief
+	@SHA=$(SHA) BIN=$(BIN) ./scripts/build-bin.sh
+
+# toolchain-check: read-only guard for the build's toolchain requirement. It
+# resolves go.mod's declaration the same way `make bin` does (downloading the
+# declared toolchain into the module cache when the local go is older) and fails
+# with the same named refusal — so a broken/absent toolchain is caught by a
+# cheap gate instead of mid-release.
+toolchain-check:
+	@./scripts/ensure-toolchain.sh --quiet
+
+# artifact-check: the product-aware install artifact assertion
+# (scripts/install-check.sh) — a stamped bin/mischief whose `version --json`
+# says {"version":<HEAD sha>,"tool":"mischief"}. This is the check the bunker
+# install leg runs (scripts/bunker-qa-mischief.sh wires it in).
+artifact-check: bin
+	@./scripts/install-check.sh
 
 build:
 	CGO_ENABLED=0 $(GO) build ./...
