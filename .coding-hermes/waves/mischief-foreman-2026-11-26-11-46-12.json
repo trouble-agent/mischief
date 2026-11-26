@@ -19,8 +19,9 @@
       "base_sha": "ccafcc5",
       "model": "glm-5.3-flash",
       "provider": "opencode-go-2",
-      "status": "dispatching",
-      "note": "docs-only batch; 5 mutually independent P4 audit findings sharing README.md/operator.md/OPERATIONS.md/PRD/SKILL surfaces -> single worker leg to avoid same-file wave conflicts"
+      "status": "merged",
+      "note": "docs-only batch; 5 mutually independent P4 audit findings sharing README.md/operator.md/OPERATIONS.md/PRD/SKILL surfaces -> single worker leg to avoid same-file wave conflicts; all 5 rows judged and closed (chain: 4dc97539/a579eca9/72816429/fa27a8eb/851af0b4)",
+      "merge_commit": "c3f8928"
     },
     {
       "leg_id": "PROF-012-CLOSEOUT",
@@ -28,8 +29,8 @@
       "task_ids": [
         "PROF-012"
       ],
-      "status": "judging",
-      "note": "implementation commit e18c5da already ancestor of origin/main; verification-only closeout; gitreins run f2ccb9b5 PASS (graded live tip via kimi lane after z.ai 429 on first attempt a1168942)"
+      "status": "closed",
+      "note": "implementation commit e18c5da already ancestor of origin/main; verification-only closeout; gitreins run f2ccb9b5 PASS (graded live tip via kimi lane after z.ai 429 on first attempt a1168942); row closed, verdict f2ccb9b5"
     },
     {
       "leg_id": "PROF-013-CLOSEOUT",
@@ -37,8 +38,8 @@
       "task_ids": [
         "PROF-013"
       ],
-      "status": "judging",
-      "note": "implementation commit b338cda already ancestor of origin/main; verification-only closeout; gitreins judge --async job-9bd978885bbf4b69a5bebd4d39b70523 in flight"
+      "status": "closed",
+      "note": "implementation commit b338cda already ancestor of origin/main; verification-only closeout; gitreins judge --async job-9bd978885bbf4b69a5bebd4d39b70523 in flight; row closed via fixup chain, verdicts 643e8343/830b7952/cd45bcc9"
     },
     {
       "leg_id": "PROF-013-FIXUP",
@@ -51,8 +52,10 @@
       "base": "origin/main",
       "model": "glm-5.3-flash",
       "provider": "opencode-go-2",
-      "status": "dispatching",
-      "note": "focused contract fix in internal/selftest only; RED proof = judge run 643e8343 clauses"
+      "status": "merged",
+      "note": "focused contract fix in internal/selftest only; RED proof = judge run 643e8343 clauses; row closed, verdict 830b7952",
+      "merge_commit": "fd590f2"
     }
-  ]
+  ],
+  "finished_at": "2026-11-26T14:20:00Z"
 }
