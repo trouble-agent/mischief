@@ -677,3 +677,5 @@
 {"id":592,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"DOC-043","tick":null,"timestamp":"2026-11-26T13:51:55Z"}
 {"id":593,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"DOC-044","tick":null,"timestamp":"2026-11-26T14:25:35Z"}
 {"id":594,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"DOC-045","tick":null,"timestamp":"2026-11-26T14:32:42Z"}
+{"id":595,"actor":"foreman","created_at":null,"detail":"{\"status\":\"in_progress\"}","event_type":"task_updated","marker":null,"task_id":"PROF-020","tick":null,"timestamp":"2026-11-26T15:04:54Z"}
+{"id":596,"actor":"foreman","created_at":null,"detail":"{\"status\":\"in_progress\"}","event_type":"task_updated","marker":null,"task_id":"README-13","tick":null,"timestamp":"2026-11-26T15:04:54Z"}
