@@ -14,7 +14,7 @@ inverse + blast radius). **v0.1.0 is released**: tarballs (linux_amd64 / linux_a
 tag), or the tarball's static binary plus prebuilt `libfault-anchored.so`.
 Quick checks after install: `mischief version`, `mischief status`, `mischief doctor`.
 
-## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help` and every listed leaf's `--help`, HEAD 3352398e7963, 2026-10-24; `land` row verified against the c97b138 build's `land --help`, 2026-11-18, DOC-31)
+## The CLI (v0.1.0 verbs — verified against `./bin/mischief --help` and every listed leaf's `--help`, HEAD 3352398e7963, 2026-10-24; `land` row verified against the c97b138 build's `land --help`, 2026-11-18, DOC-31; `version` row re-verified 2026-11-26 against the checker's `version --help` + unknown-flag probe, DOC-45)
 
 ```text
 plan      -f <exp.yaml> [--catalog-dir D] [--json] [--plan-only-sanction-skip] [--scratch-dir D] [--journal-dir D]  # zero side effects (AC-1);
@@ -47,7 +47,9 @@ plane record --file F --step S --status S [--detail TEXT]
 plane selftest-verdict --exit-code N
 plane fold --file F
 selftest  --all | --primitive <id> [--dir D] [--catalog-dir D]   # L0 scratch land+revert proofs; exit 0 only green-or-skip
-version                      [--json]                              # stamped git sha (tag on release builds); --json emits {"version":..,"tool":"mischief"}
+version                      [--json] | --version                  # stamped git sha (tag on release builds); --json emits {"version":..,"tool":"mischief"};
+                              # --version (and bare `version`) print the same "mischief <sha>" line; an unknown
+                              # flag refuses rc=2: "version: unknown flag <arg>; supported: --json, --version"
 ```
 
 Safety floor (every landing path): no default target; protected targets refuse at
