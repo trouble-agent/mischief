@@ -31,13 +31,18 @@ import (
 // resolves selectors through internal/rails, so a protected or malformed
 // selector never reaches the executor).
 type Target struct {
-	// Kind is the resolved selector kind: "scratch" is the only kind this
+	// Kind is the resolved selector kind: "scratch" (L0 scratch file) and
+	// "dbdurability" (controlled commit-log database) are the kinds this
 	// build can attach to; anything else grades inconclusive.
 	Kind string
 	// Selector is the selector as the operator wrote it.
 	Selector string
-	// Path is the scratch path a `scratch:<path>` selector names.
+	// Path is the file path the selector names (scratch:<path>, or the
+	// database file a dbdurability selector names).
 	Path string
+	// Discipline is the commit discipline a dbdurability selector names
+	// ("fsync" or "none"); empty for other kinds.
+	Discipline string
 }
 
 // LandRequest is everything an actuator is given for one step.
@@ -71,6 +76,25 @@ type Observation struct {
 	// ShortWrites is the number of write(2) calls that returned fewer bytes
 	// than they were given (the fault's own observable).
 	ShortWrites int
+	// Acks is the number of commits the database child acknowledged (its own
+	// report — the commit-durable probe's input).
+	Acks int
+	// Syncs is the number of fsync/fdatasync calls on the database file the
+	// child issued before its acks (its own report).
+	Syncs int
+	// SyncFails is the number of those sync calls that returned an error.
+	SyncFails int
+	// StableRecords is the number of commit records the PARENT read from the
+	// database file after the commit child exited — the external loss
+	// witness the injector does not author.
+	StableRecords int
+	// ClaimedDurable is the number of records the child's recovery report
+	// claims durable.
+	ClaimedDurable int
+	// Lost is the number of records the child's recovery report names lost.
+	Lost int
+	// LieHits is the shim's fsync-lie hit count (injector corroboration).
+	LieHits int
 	// Note carries actuator detail the probe's line should include.
 	Note string
 }
@@ -108,12 +132,14 @@ type FaultActuator interface {
 // ProbeFunc grades one observation against a probe's expectation.
 type ProbeFunc func(obs Observation) ProbeResult
 
-// DefaultActuators is the shipped actuator set. S-004 (short write) is the one
-// primitive this build can actually inject; every other catalog primitive
-// grades inconclusive naming the gap (see the package NOT-LIST).
+// DefaultActuators is the shipped actuator set. S-004 (short write) and
+// S-010 (fsync lie) are the primitives this build can actually inject; every
+// other catalog primitive grades inconclusive naming the gap (see the
+// package NOT-LIST).
 func DefaultActuators() map[string]FaultActuator {
 	return map[string]FaultActuator{
 		"S-004": &ShortWrite{},
+		"S-010": &FsyncLie{},
 	}
 }
 
@@ -121,6 +147,7 @@ func DefaultActuators() map[string]FaultActuator {
 func DefaultProbes() map[string]ProbeFunc {
 	return map[string]ProbeFunc{
 		ProbePayloadComplete: probePayloadComplete,
+		ProbeCommitDurable:   probeCommitDurable,
 	}
 }
 
@@ -433,10 +460,16 @@ func applyRunCause(f *Finding, p *Profile) {
 // finding rather than left for a reader to discover.
 func runNotes(o Options, unmet []string) []string {
 	var notes []string
-	if o.Target.Kind == "scratch" {
+	switch o.Target.Kind {
+	case "scratch":
 		notes = append(notes, "target is an L0 scratch path: the executor spawns its own reference writer, so the probe grades mischief's reference write loop, not an external program")
-	} else {
-		notes = append(notes, fmt.Sprintf("target kind %q is not attachable by this build's executor (only scratch:<path> is) — the run is inconclusive", o.Target.Kind))
+	case "dbdurability":
+		notes = append(notes, fmt.Sprintf(
+			"target is a controlled commit-log database the executor builds and spawns as a child (commit discipline %q): the probe grades that child's commit protocol and its recovery report, not an external database server",
+			o.Target.Discipline))
+		notes = append(notes, "the S-010 fsync-lie actuator models the volatile write-back layer inside the injected child's memory: the commit child's exit is the simulated power loss, and the parent's post-exit read of the database file is the external loss witness")
+	default:
+		notes = append(notes, fmt.Sprintf("target kind %q is not attachable by this build's executor (only scratch:<path> and dbdurability:<fsync|none>:<path> are) — the run is inconclusive", o.Target.Kind))
 	}
 	for _, s := range o.Profile.Steps {
 		if d := o.Catalog.Get(s.Fault); d != nil && d.Tier != nil && d.Tier.Min > 0 {
@@ -475,6 +508,21 @@ func checkRequirements(reqs []Requirement, tgt Target) []RequirementResult {
 				res.Detail = fmt.Sprintf("target path %q is outside the scratch base (%s, /tmp)", tgt.Path, os.TempDir())
 			default:
 				res.Met, res.Detail = true, "target "+tgt.Path+" is under the scratch base"
+			}
+		case ReqDurabilityTarget:
+			switch {
+			case tgt.Kind != "dbdurability":
+				res.Detail = fmt.Sprintf("target kind %q is not a controlled database target (want dbdurability:<fsync|none>:<path>)", tgt.Kind)
+			case tgt.Discipline != "fsync" && tgt.Discipline != "none":
+				res.Detail = fmt.Sprintf("selector discipline %q is not one of fsync|none", tgt.Discipline)
+			case tgt.Path == "":
+				res.Detail = "durability selector names no database path"
+			case !filepath.IsAbs(tgt.Path):
+				res.Detail = fmt.Sprintf("database path %q is not absolute", tgt.Path)
+			case !underScratchBase(tgt.Path):
+				res.Detail = fmt.Sprintf("database path %q is outside the scratch base (%s, /tmp)", tgt.Path, os.TempDir())
+			default:
+				res.Met, res.Detail = true, fmt.Sprintf("database %s is under the scratch base, commit discipline %q", tgt.Path, tgt.Discipline)
 			}
 		case ReqWritableTarget:
 			if tgt.Path == "" {
