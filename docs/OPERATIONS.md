@@ -364,7 +364,7 @@ ladder in `skills/mischief-usage/SKILL.md`.
 | `arm` | the WRITE-AHEAD record: the hold (fault, inverse, check, TTL) is on disk and fsynced before `land` may be called — a hold whose arm line is not durable must never be landed |
 | `land` | the caller landed the fault (post write-ahead), naming the landing pid in `own_pid` |
 | `land_refused` | a Land refusal: the write-ahead line for the hold was not durable, so the inverse would not predate the fault — nothing was landed |
-| `hold_expired` | the TTL expiry executed by the reverter's detach path (`Lifecycle.Detach`) immediately after it kills the expired owner — `own_pid` carries the detached owner's pid, and the record's `fields` name the detach mode and expiry unix time; boot reconcile does NOT write this type — it appends `hold_stuck` instead |
+| `hold_expired` | written by `Lifecycle.Detach` IMMEDIATELY AFTER it successfully spawns the detached TTL owner for the hold — it records the OWNER HANDOVER, not the expiry moment: `own_pid` is the detached owner's pid and `fields` carry the owner's detach mode and the SCHEDULED expiry unix time; the actual TTL expiry happens later and is graded by the owner's `revert_proof`. Boot reconcile does NOT write this type — it appends `hold_stuck` instead |
 | `revert_proof` | the MEASURED revert outcome (AC-4): fault id, measured check, `outcome` (`reverted` \| `revert_failed` \| `not_landed`), who, pid |
 | `hold_stuck` | a non-terminal hold inherited from a previous boot, marked by boot reconcile at `Open` (AC-6's "leftover faults from a previous boot are listed stuck") |
 
