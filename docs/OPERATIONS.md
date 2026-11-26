@@ -353,7 +353,7 @@ ladder in `skills/mischief-usage/SKILL.md`.
 | `ts` | int64 | always | unix timestamp, seconds |
 | `boot_id` | string | always | the REVERTER boot id from the run dir's `boot.json` (`reverter_boot` field) — NOT the host's `/proc/sys/kernel/random/boot_id`; boot reconcile compares this against arm records to find previous-boot leftovers |
 | `own_pid` | int | optional | the pid of the process that EXECUTED the thing the record describes (the reverter pid for owner-executed reverts, the landing pid for `land`) |
-| `outcome` | string | only on `revert_proof` | the measured revert outcome: `reverted` \| `revert_failed` (closed vocabulary, enforced at the write path) |
+| `outcome` | string | only on `revert_proof` | the measured revert outcome: `reverted` \| `revert_failed` \| `not_landed` (closed vocabulary, enforced at the write path; `not_landed` grades a hold whose fault was never landed — written by the reverter for an unlanded hold so a green-looking absence is never mistaken for a proof) |
 | `payload` | object | only on `arm` | the full write-ahead hold declaration (fault, target, inverse, check, TTL), carried verbatim so a detached owner process can execute it from journal bytes alone |
 | `fields` | object (string → string) | optional, omitted when empty | record-specific detail; values are scrubbed on write |
 
@@ -364,8 +364,8 @@ ladder in `skills/mischief-usage/SKILL.md`.
 | `arm` | the WRITE-AHEAD record: the hold (fault, inverse, check, TTL) is on disk and fsynced before `land` may be called — a hold whose arm line is not durable must never be landed |
 | `land` | the caller landed the fault (post write-ahead), naming the landing pid in `own_pid` |
 | `land_refused` | a Land refusal: the write-ahead line for the hold was not durable, so the inverse would not predate the fault — nothing was landed |
-| `hold_expired` | the TTL boundary observed by a TTL owner (`own_pid` set; boot reconcile records it with `own_pid` absent) |
-| `revert_proof` | the MEASURED revert outcome (AC-4): fault id, measured check, `outcome` (`reverted` \| `revert_failed`), who, pid |
+| `hold_expired` | the TTL expiry executed by the reverter's detach path (`Lifecycle.Detach`) immediately after it kills the expired owner — `own_pid` carries the detached owner's pid, and the record's `fields` name the detach mode and expiry unix time; boot reconcile does NOT write this type — it appends `hold_stuck` instead |
+| `revert_proof` | the MEASURED revert outcome (AC-4): fault id, measured check, `outcome` (`reverted` \| `revert_failed` \| `not_landed`), who, pid |
 | `hold_stuck` | a non-terminal hold inherited from a previous boot, marked by boot reconcile at `Open` (AC-6's "leftover faults from a previous boot are listed stuck") |
 
 **Backup/restore collection path.** The generic run-dir snapshot described
