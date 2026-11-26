@@ -256,8 +256,12 @@ flat `mischiefd_cycles_total`.
 
 ## Backup and retention
 
-The daemon's durable state is the run-dir journal (`.jsonl` records) plus the terminal proofs it
-writes. It is append-only and small; there is no database to dump. Two operator paths:
+The daemon's durable state is the run dir's JSONL journals — the verbs' run
+journals (`plan.jsonl`, `selftest.jsonl`, `battery.jsonl`, the internal/journal
+envelope documented under "Run-dir journal record schema" below) plus the
+reverter's own journal `reverter.jsonl` (`internal/reverter`'s envelope, its own
+section below) — and the terminal proofs it writes. All of them are append-only
+and small; there is no database to dump. Two operator paths:
 
 - `mischief retention --runs-dir <run dir>` — report old run dirs; `--apply` rotates them. Report-only
   by default, so a cron can run it without deleting evidence.
@@ -317,6 +321,60 @@ catalog/experiments/ex-001-noop-detector.yaml --journal-dir <scratch>/j` appends
 
 `"faults_count":"1"` and `"refusals":"0"` are the envelope rule in action: counters ride
 `fields` as JSON strings, never numbers.
+
+## The reverter journal: reverter.jsonl (internal/reverter)
+
+The verbs' run journals above are one family; the reverter keeps its OWN journal
+in the same run dir: `<run dir>/reverter.jsonl` — `~/.mischief/runs/default/reverter.jsonl`
+by default, or the `--dir` the verb was given (`internal/reverter/journal.go`,
+`journalFileName`; file mode 0600, created on first `Open`). It is a separate
+append-only JSONL with a separate envelope and a six-record vocabulary
+(`internal/reverter/record.go:16-38`) — do not fold it with the
+internal/journal readers above.
+
+**Writer/reader relationship.** The writer is the reverter `Store`'s append
+path in `internal/reverter/journal.go`: every write is serialised through the
+store's mutex because the CLI, the TTL owner and a concurrent kill switch all
+write the same file, and lines are never rewritten in place. The reader is the
+same package's fold: `Open` replays the whole journal once (this is also where
+boot reconcile marks previous-boot holds `stuck`) and refreshes state
+incrementally on each append, so `status`, `revert`, `serve` and the daemon's
+per-tick health fold all read the same log. Journal corruption surfaces as the
+daemon's `refold_error` (held by the daemon, rendered `ok:false` in
+`health.json`) — see the troubleshooting table below and the torn-journal
+ladder in `skills/mischief-usage/SKILL.md`.
+
+**Envelope keys** (one JSON object per line, `internal/reverter/record.go:441-461`):
+
+| key | type | presence | meaning |
+|---|---|---|---|
+| `type` | string, closed set of six | always | the record type (vocabulary below); the write path refuses an unknown type |
+| `hold_id` | string | always | the content-derived hold id every record belongs to (the same declaration armed twice yields the same id) |
+| `ts` | int64 | always | unix timestamp, seconds |
+| `boot_id` | string | always | the REVERTER boot id from the run dir's `boot.json` (`reverter_boot` field) — NOT the host's `/proc/sys/kernel/random/boot_id`; boot reconcile compares this against arm records to find previous-boot leftovers |
+| `own_pid` | int | optional | the pid of the process that EXECUTED the thing the record describes (the reverter pid for owner-executed reverts, the landing pid for `land`) |
+| `outcome` | string | only on `revert_proof` | the measured revert outcome: `reverted` \| `revert_failed` (closed vocabulary, enforced at the write path) |
+| `payload` | object | only on `arm` | the full write-ahead hold declaration (fault, target, inverse, check, TTL), carried verbatim so a detached owner process can execute it from journal bytes alone |
+| `fields` | object (string → string) | optional, omitted when empty | record-specific detail; values are scrubbed on write |
+
+**The six record types** (`internal/reverter/record.go:16-38`):
+
+| `type` | written when |
+|---|---|
+| `arm` | the WRITE-AHEAD record: the hold (fault, inverse, check, TTL) is on disk and fsynced before `land` may be called — a hold whose arm line is not durable must never be landed |
+| `land` | the caller landed the fault (post write-ahead), naming the landing pid in `own_pid` |
+| `land_refused` | a Land refusal: the write-ahead line for the hold was not durable, so the inverse would not predate the fault — nothing was landed |
+| `hold_expired` | the TTL boundary observed by a TTL owner (`own_pid` set; boot reconcile records it with `own_pid` absent) |
+| `revert_proof` | the MEASURED revert outcome (AC-4): fault id, measured check, `outcome` (`reverted` \| `revert_failed`), who, pid |
+| `hold_stuck` | a non-terminal hold inherited from a previous boot, marked by boot reconcile at `Open` (AC-6's "leftover faults from a previous boot are listed stuck") |
+
+**Backup/restore collection path.** The generic run-dir snapshot described
+under "Backup and retention" above covers this journal: a filesystem snapshot
+of the run dir collects `reverter.jsonl` together with the verbs' run journals,
+and the restore drill is the same (`mischief status --dir <scratch copy>` folds
+the reverter journal without touching the live one). Because the file is
+append-only and never rewritten in place, a file copy taken while the daemon
+runs is consistent enough for a restore into a scratch dir.
 
 ## Troubleshooting
 
