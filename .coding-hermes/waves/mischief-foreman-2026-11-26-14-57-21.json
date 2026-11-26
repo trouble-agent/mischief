@@ -14,7 +14,10 @@
       "branch": "wt/PROF-020",
       "base_sha": "1b6d5f3",
       "brief": "/tmp/mf-1457-PROF-020-brief.md",
-      "status": "dispatched"
+      "status": "merged",
+      "commit": "4c9441f",
+      "merge_commit": "1cd203f",
+      "judge": "cae3a0de PASS tier2 COMPLETE"
     },
     {
       "row": "README-13",
@@ -24,18 +27,49 @@
       "branch": "wt/README-13",
       "base_sha": "1b6d5f3",
       "brief": "/tmp/mf-1457-README-13-brief.md",
-      "status": "dispatched"
+      "status": "merged",
+      "commit": "9f71b66",
+      "merge_commit": "1cd203f",
+      "judge": "23a4c165 PASS tier2 COMPLETE"
     }
   ],
   "rejected_candidates": [
-    {"row": "PROF-021", "reason": "not independent: shares internal/profile actuator/registry seam with PROF-020 (same blast radius); serial next tick"},
-    {"row": "README-3-R2", "reason": "not independent: README.md file seam with README-13"},
-    {"row": "QA-MISCHIEF-002-R2", "reason": "routes to qa/bunker lane (JIT-agent battery, not repo code)"},
-    {"row": "QA-MISCHIEF-008", "reason": "routes to qa lane (ui-probe harness defect)"},
-    {"row": "QA-MISCHIEF-FOREMAN-3", "reason": "routes to qa lane (no HTML surface)"},
-    {"row": "INT-CI-10", "reason": "routes to infra lane (act runner-env)"},
-    {"row": "QA-MISCHIEF-CHAOS-4", "reason": "routes to config/ops lane (nonexistent target path)"},
-    {"row": "MISCHIEF-DF-76-R1", "reason": "routes to infra lane (needs scratch host, no run dir carries a not_landed hold grade)"},
-    {"row": "DOC-11-R2/DOC-16-R2/DOC-17-R2-R2/DOC-20-R2-R2/DOC-34-R2", "reason": "premise disproved at origin/main 1b6d5f3 by direct probes (fixes already landed): LANES.md+README say 11 rows live-verified 2026-11-26; PRD has 3 arm/land/profile verb hits; operator.md has 2 MISCHIEFD_TEST_OWNER_CHILD_DIR hits and README 'every MISCHIEF*' claim gone; SKILL.md:50 documents [--json] | --version and check_cli_table.py PASS 0 warnings; OPERATIONS.md has 1 land_refused hit. Stale pending rows — need evidence-bound close or pm/sync sweep, not re-dispatch"}
-  ]
+    {
+      "row": "PROF-021",
+      "reason": "not independent: shares internal/profile actuator/registry seam with PROF-020 (same blast radius); serial next tick"
+    },
+    {
+      "row": "README-3-R2",
+      "reason": "not independent: README.md file seam with README-13"
+    },
+    {
+      "row": "QA-MISCHIEF-002-R2",
+      "reason": "routes to qa/bunker lane (JIT-agent battery, not repo code)"
+    },
+    {
+      "row": "QA-MISCHIEF-008",
+      "reason": "routes to qa lane (ui-probe harness defect)"
+    },
+    {
+      "row": "QA-MISCHIEF-FOREMAN-3",
+      "reason": "routes to qa lane (no HTML surface)"
+    },
+    {
+      "row": "INT-CI-10",
+      "reason": "routes to infra lane (act runner-env)"
+    },
+    {
+      "row": "QA-MISCHIEF-CHAOS-4",
+      "reason": "routes to config/ops lane (nonexistent target path)"
+    },
+    {
+      "row": "MISCHIEF-DF-76-R1",
+      "reason": "routes to infra lane (needs scratch host, no run dir carries a not_landed hold grade)"
+    },
+    {
+      "row": "DOC-11-R2/DOC-16-R2/DOC-17-R2-R2/DOC-20-R2-R2/DOC-34-R2",
+      "reason": "premise disproved at origin/main 1b6d5f3 by direct probes (fixes already landed): LANES.md+README say 11 rows live-verified 2026-11-26; PRD has 3 arm/land/profile verb hits; operator.md has 2 MISCHIEFD_TEST_OWNER_CHILD_DIR hits and README 'every MISCHIEF*' claim gone; SKILL.md:50 documents [--json] | --version and check_cli_table.py PASS 0 warnings; OPERATIONS.md has 1 land_refused hit. Stale pending rows \u2014 need evidence-bound close or pm/sync sweep, not re-dispatch"
+    }
+  ],
+  "finished_at": "2026-11-26T11:20:00-05:00"
 }
