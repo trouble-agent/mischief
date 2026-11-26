@@ -1,0 +1,39 @@
+{
+  "tick_id": "mischief-foreman-2026-11-26-16-36-30",
+  "created_at_utc": "2026-11-26T21:40:00Z",
+  "wave_budget": 2,
+  "status": "dispatched",
+  "tasks": [
+    {
+      "task_id": "MISCHIEF-RV-005",
+      "priority": "P1",
+      "worktree": "/home/kara/worktrees/mischief-MISCHIEF-RV-005",
+      "branch": "wt/MISCHIEF-RV-005",
+      "base": "origin/main",
+      "base_sha": "2098e4b",
+      "brief": "/tmp/mischief-foreman-2026-11-26-16-36-30-MISCHIEF-RV-005-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "opencode-go-2",
+      "commit": null,
+      "status": "dispatched"
+    },
+    {
+      "task_id": "DOC-16-R2",
+      "priority": "P4",
+      "worktree": "/home/kara/worktrees/mischief-DOC-16-R2",
+      "branch": "wt/DOC-16-R2",
+      "base": "origin/main",
+      "base_sha": "2098e4b",
+      "brief": "/tmp/mischief-foreman-2026-11-26-16-36-30-DOC-16-R2-brief.md",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "opencode-go-2",
+      "commit": null,
+      "status": "dispatched"
+    }
+  ],
+  "rejected_candidates": [
+    {"task_id": "QA-MISCHIEF-002-R2", "reason": "P1 but premise requires a JIT agent battery (failure only ever observed on JIT agent; dev-box green does not close per row AC3) — not dispatchable as a worktree leg"},
+    {"task_id": "MISCHIEF-DF-76-R1", "reason": "requires a scratch host with a not_landed hold; no run dir on scheduler host carries one (row's own premise)"},
+    {"task_id": "QA-MISCHIEF-008", "reason": "same surface as QA-MISCHIEF-FOREMAN-3 (QA battery ui-probe / HTML surface), P3 — deferred in favor of P1/P4 legs"}
+  ]
+}
