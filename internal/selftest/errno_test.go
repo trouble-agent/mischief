@@ -25,7 +25,7 @@ func TestS023ExternalWitness(t *testing.T) {
 }
 
 func TestS024ExternalWitness(t *testing.T) {
-	assertErrnoWitness(t, "S-024", "delivered 8 bytes")
+	assertErrnoWitness(t, "S-024", "delivered 7 bytes")
 }
 
 func assertErrnoWitness(t *testing.T, id, witness string) {
@@ -46,5 +46,44 @@ func assertErrnoWitness(t *testing.T, id, witness string) {
 		}
 	default:
 		t.Fatalf("%s result=%s reason=%q land=%q revert=%q", id, result.State, result.Reason, result.LandProof, result.RevertProof)
+	}
+}
+
+// The S-024 land predicate must demand the catalog contract exactly: a
+// 7-byte short read followed by a MEASURED EOF. The old 8-byte injection, a
+// complete read, or a missing EOF read must all be rejected.
+func TestS024LandPredicateRejectsWrongReadOrMissingEOF(t *testing.T) {
+	for _, out := range []string{
+		"partial_read=8 eof=1",  // old 8-byte injection
+		"partial_read=7 eof=0",  // second read returned data, not EOF
+		"partial_read=7",        // old output format: EOF never measured
+		"partial_read=14 eof=1", // control-shaped complete read on fault path
+		"",                      // no witness at all
+	} {
+		if res := checkS024Land(out); res.landed {
+			t.Fatalf("S-024 land predicate accepted %q", out)
+		}
+	}
+	if res := checkS024Land("partial_read=7 eof=1"); !res.landed || res.proof == "" {
+		t.Fatalf("S-024 land predicate rejected 7-byte short read + measured EOF: %+v", res)
+	}
+}
+
+// The S-020 land predicate must demand that EINTR actually fired: the
+// victim's attempts counter must be >= 2. A no-shim control run delivers the
+// 6 bytes in a single attempt and must fail.
+func TestS020LandPredicateRejectsSingleAttempt(t *testing.T) {
+	for _, out := range []string{
+		"delivered=6 attempts=1", // no-shim control: EINTR never fired
+		"delivered=6",            // old output format: no attempts count
+		"attempts=3",             // no delivered count
+		"",                       // no witness at all
+	} {
+		if res := checkS020Land(out); res.landed {
+			t.Fatalf("S-020 land predicate accepted %q", out)
+		}
+	}
+	if res := checkS020Land("delivered=6 attempts=2"); !res.landed || res.proof == "" {
+		t.Fatalf("S-020 land predicate rejected EINTR-interrupted run: %+v", res)
 	}
 }
