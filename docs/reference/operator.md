@@ -1,10 +1,15 @@
 # mischief — operator reference: sanction, reverter, shim + daemon-metrics environment variables
 
 Every environment variable in the `MISCHIEF*` / `MCFAULT*` families that the
-binary reads has a section below: what it does, who sets it, its default, safe
-override values, a troubleshooting note, and whether it is a **supported knob**
-(documented, stable, safe to set in production) or **internal-only** (set by
-the binary itself; do not set it by hand outside tests/debugging). The
+shipped binary reads has a section below: what it does, who sets it, its
+default, safe override values, a troubleshooting note, and whether it is a
+**supported knob** (documented, stable, safe to set in production) or
+**internal-only** (set by the binary itself; do not set it by hand outside
+tests/debugging). One family member is NOT read by the shipped binary: the
+test-only `MISCHIEFD_TEST_OWNER_CHILD_DIR` (its own section below) is read only
+by the daemon package's test binary — `internal/daemon/owner_test.go`'s
+`TestMain` intercepts a test run when it is set — and is documented separately
+so the inventory below stays complete without implying an operator knob. The
 inventory is mechanical and the claim is kept true by construction:
 `grep -rhoE '"(MISCHIEF[A-Z0-9_]*|MCFAULT[A-Z0-9_]*)"' --include='*.go' cmd
 internal | sort -u` must resolve to exactly the variable sections below (its
@@ -344,6 +349,32 @@ metrics surface is a separately bound listener exposing Prometheus text at
   including a systemd unit example and the full `mischiefd_*` metric-family
   table.
 
+### MISCHIEFD_TEST_OWNER_CHILD_DIR — tests-only (not read by the shipped binary)
+
+- **Purpose:** makes the daemon package's TEST binary behave as a real daemon
+  process instead of a test run. When it is set on the test binary's
+  environment, `TestMain` (`internal/daemon/owner_test.go`) intercepts the run
+  before `m.Run` and instead serves the named directory exactly like `serve`
+  does: ownership claim before the store, no metrics listener,
+  `health.json` as the readiness surface the parent polls, exit on the
+  parent's kill.
+- **Why it exists:** the ownership guard is about PROCESSES — the pid in the
+  refusal and in `health.json` must be a different process's. An in-process
+  test cannot prove that (both daemons there share `os.Getpid()`), so the
+  test execs the test binary itself (`exec.Command(os.Args[0])` with this env
+  appended) and gets a second real pid to race against (MISCHIEF-DF-71 AC1:
+  a second `serve` on an owned run dir is refused, naming the owning pid).
+- **Who sets it:** only `internal/daemon`'s own tests. No shipped code path
+  reads it, and it is never set on a production process.
+- **Default / absence:** unset — the test binary then runs its test suite
+  normally. A test binary started WITH this value never runs the tests; it
+  serves the directory until killed.
+- **Production boundary:** there is no operator knob here. Exporting it in a
+  shell that also runs `mischief serve` has no effect on the shipped binary;
+  exporting it in a shell that runs `go test ./internal/daemon/` turns every
+  test-binary invocation in that run into a daemon child, which is exactly
+  why the tests construct the child's env explicitly.
+
 ## Related variables (not mischief's, listed for completeness)
 
 - `LD_PRELOAD` — the standard dynamic-loader variable; mischief sets it to
@@ -368,3 +399,5 @@ Source of truth for every claim above:
 logic). For the metrics variable: `internal/daemon/metrics.go`
 (`MetricsAddrEnv`, `DefaultMetricsAddr`, `Metrics.Serve`) and
 `cmd/mischief/main.go` (`metricsAddr`, the serve-side metrics goroutine).
+For the test-only variable: `internal/daemon/owner_test.go` (`ownerTestChildEnv`,
+`TestMain`, `runOwnerTestChild`).
