@@ -39,6 +39,20 @@
       ],
       "status": "judging",
       "note": "implementation commit b338cda already ancestor of origin/main; verification-only closeout; gitreins judge --async job-9bd978885bbf4b69a5bebd4d39b70523 in flight"
+    },
+    {
+      "leg_id": "PROF-013-FIXUP",
+      "kind": "worker",
+      "task_ids": [
+        "PROF-013-FIXUP"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-PROF-013-FIXUP",
+      "branch": "wt/PROF-013-FIXUP",
+      "base": "origin/main",
+      "model": "glm-5.3-flash",
+      "provider": "opencode-go-2",
+      "status": "dispatching",
+      "note": "focused contract fix in internal/selftest only; RED proof = judge run 643e8343 clauses"
     }
   ]
 }
