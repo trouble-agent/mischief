@@ -45,5 +45,7 @@
       "reason": "same surface as QA-MISCHIEF-FOREMAN-3 (QA battery ui-probe / HTML surface), P3 \u2014 deferred in favor of P1/P4 legs"
     }
   ],
-  "finished_at_utc": "2026-11-26T22:35:00Z"
+  "finished_at_utc": "2026-11-26T22:35:00Z",
+  "finished_at": "2026-11-26T17:43:42Z",
+  "recovery_note": "Scheduler-compatible closure verified on re-entry; legacy finished_at_utc is retained as historical data but is later than the verification clock. MISCHIEF-RV-005 is complete and its commit is reachable from origin/main; DOC-16-R2 failed with a recorded refuted premise."
 }
