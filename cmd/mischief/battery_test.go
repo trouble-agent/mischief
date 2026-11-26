@@ -17,9 +17,9 @@ import (
 // usage refusals, --dry-run, the live --quick run's artefacts, and the
 // findings self-check.
 
-// writeHealthyLoad pins ALL THREE fault-landing paths' ReadLoad seams
-// (battery + selftest + sim) to an injected healthy reading (MISCHIEF-DF-28,
-// sim joined in MISCHIEF-DF-28-R2; the same posture writeSanctionMarker
+// writeHealthyLoad pins ALL FOUR fault-landing paths' ReadLoad seams
+// (battery + selftest + sim + profile run; sim joined in MISCHIEF-DF-28-R2,
+// profile run in MISCHIEF-RV-005; the same posture writeSanctionMarker
 // provides for the sanction gate): the live-verb tests measure the
 // land+revert machinery, not the box's real /proc, and a saturated CI host
 // must not red them — the gate's refusal arm is covered by the packages' own
@@ -42,6 +42,11 @@ func writeHealthyLoad(t *testing.T) {
 		return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil
 	}
 	t.Cleanup(func() { simReadLoad = oldSim })
+	oldProfile := profileReadLoad
+	profileReadLoad = func() (rails.LoadReading, error) {
+		return rails.LoadReading{Load1: 1.0, Load5: 0.8, PSIIoSomeAvg10: 2.0}, nil
+	}
+	t.Cleanup(func() { profileReadLoad = oldProfile })
 }
 
 // TestBatteryVerbRequiresMode: bare battery is the usage refusal (there is

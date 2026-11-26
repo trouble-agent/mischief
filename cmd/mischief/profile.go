@@ -23,10 +23,42 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/trouble-agent/mischief/internal/doctor"
 	"github.com/trouble-agent/mischief/internal/profile"
 	"github.com/trouble-agent/mischief/internal/rails"
 	"github.com/trouble-agent/mischief/internal/sanction"
 )
+
+// profileReadLoad is the AC-8 measurement seam (MISCHIEF-RV-005; the same
+// package-level pattern sim.go's simReadLoad follows, itself the doctor's
+// precedent): production = rails.ReadLoad (the live /proc read); tests pin
+// it to an injected LoadReading so the suite never depends on the box it
+// runs on.
+var profileReadLoad = rails.ReadLoad
+
+// profileLoadGateCheck measures the host and consults the rails load gate
+// at the doctor's run thresholds (LoadThreshold 12.0, PSIThreshold 50.0 —
+// the same numbers battery/selftest/sim refuse on, so every fault-lander
+// agrees on where the ceiling is). The gate is stateless and built per
+// call (the doctor's CheckLoad pattern). A non-nil error is the rails'
+// load_gate refusal: the measured numbers against the gate, verdict
+// aborted.
+func profileLoadGateCheck() error {
+	reading, err := profileReadLoad()
+	if err != nil {
+		return fmt.Errorf("load gate: %w", err)
+	}
+	gate, err := rails.NewLoadGate(rails.LoadGateConfig{
+		LoadThreshold: doctor.LoadThreshold,
+		PSIThreshold:  doctor.PSIThreshold,
+	})
+	if err != nil {
+		// unreachable with the doctor's constants (both arms enabled);
+		// a misconfigured gate refuses loudly, never silently ungates
+		return err
+	}
+	return gate.Check(reading)
+}
 
 // cmdProfile dispatches the profile subcommands.
 func cmdProfile(args []string) int {
@@ -205,6 +237,18 @@ func cmdProfileRun(args []string) int {
 	p, raw, err := profile.Load(pDir, class, name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "profile run:", err)
+		return 2
+	}
+
+	// MISCHIEF-RV-005: the AC-8 load gate, same shape as battery, selftest
+	// and sim (profile run was the last fault-landing surface without one —
+	// the top-level help claims the gate applies on every fault-landing
+	// path, and this verb arms and lands real faults). Fail closed BEFORE
+	// anything is written or armed: a saturated host gets the rails'
+	// load_gate refusal — the measured numbers against the gate — exit 2,
+	// no run dir, no journal, no fault step landed.
+	if err := profileLoadGateCheck(); err != nil {
+		fmt.Fprintf(os.Stderr, "profile run: %v\n", err)
 		return 2
 	}
 
