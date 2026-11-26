@@ -672,3 +672,4 @@
 {"id":587,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"PROF-012","tick":null,"timestamp":"2026-11-26T12:03:13Z"}
 {"id":588,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"PROF-013-FIXUP","tick":null,"timestamp":"2026-11-26T12:14:39Z"}
 {"id":589,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"PROF-013","tick":null,"timestamp":"2026-11-26T12:31:46Z"}
+{"id":590,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\",\"evidence_run_id\":\"4dc97539\"}","event_type":"task_completed","marker":null,"task_id":"DOC-041","tick":null,"timestamp":"2026-11-26T12:41:26Z"}
