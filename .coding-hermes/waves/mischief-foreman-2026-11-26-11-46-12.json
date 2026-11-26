@@ -1,0 +1,44 @@
+{
+  "tick_id": "mischief-foreman-2026-11-26-11-46-12",
+  "created_at": "2026-11-26T12:05:00Z",
+  "wave_budget": 4,
+  "legs": [
+    {
+      "leg_id": "DOC-041-045-BATCH",
+      "kind": "worker",
+      "task_ids": [
+        "DOC-041",
+        "DOC-042",
+        "DOC-043",
+        "DOC-044",
+        "DOC-045"
+      ],
+      "worktree": "/home/kara/worktrees/mischief-DOC-041-045",
+      "branch": "wt/DOC-041-045",
+      "base": "origin/main",
+      "base_sha": "ccafcc5",
+      "model": "glm-5.3-flash",
+      "provider": "opencode-go-2",
+      "status": "dispatching",
+      "note": "docs-only batch; 5 mutually independent P4 audit findings sharing README.md/operator.md/OPERATIONS.md/PRD/SKILL surfaces -> single worker leg to avoid same-file wave conflicts"
+    },
+    {
+      "leg_id": "PROF-012-CLOSEOUT",
+      "kind": "foreman-direct-verification",
+      "task_ids": [
+        "PROF-012"
+      ],
+      "status": "judging",
+      "note": "implementation commit e18c5da already ancestor of origin/main; verification-only closeout; gitreins run f2ccb9b5 PASS (graded live tip via kimi lane after z.ai 429 on first attempt a1168942)"
+    },
+    {
+      "leg_id": "PROF-013-CLOSEOUT",
+      "kind": "foreman-direct-verification",
+      "task_ids": [
+        "PROF-013"
+      ],
+      "status": "judging",
+      "note": "implementation commit b338cda already ancestor of origin/main; verification-only closeout; gitreins judge --async job-9bd978885bbf4b69a5bebd4d39b70523 in flight"
+    }
+  ]
+}
