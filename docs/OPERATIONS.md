@@ -371,8 +371,9 @@ ladder in `skills/mischief-usage/SKILL.md`.
 **Backup/restore collection path.** The generic run-dir snapshot described
 under "Backup and retention" above covers this journal: a filesystem snapshot
 of the run dir collects `reverter.jsonl` together with the verbs' run journals,
-and the restore drill is the same (`mischief status --dir <scratch copy>` folds
-the reverter journal without touching the live one). Because the file is
+and the restore drill is the same one (see "Restore drill" above: the same
+`mischief status` invocation folds the reverter journal without touching the
+live one). Because the file is
 append-only and never rewritten in place, a file copy taken while the daemon
 runs is consistent enough for a restore into a scratch dir.
 
