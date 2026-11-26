@@ -92,6 +92,7 @@ func TestProfileRunMissingProfileRefuses(t *testing.T) {
 // the graded outcome.
 func TestProfileRunJSONIsTheOnlyStdoutByte(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	dir := t.TempDir()
 	target := filepath.Join(os.TempDir(), "mischief-profile-target-cli")
 	code, stdout := captureStdout(t, func() int {
@@ -153,6 +154,7 @@ func TestProfileRunJSONIsTheOnlyStdoutByte(t *testing.T) {
 // missing primitive.
 func TestProfileRunUnknownPrimitiveIsInconclusiveAsJSON(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	pdir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(pdir, "storage"), 0o700); err != nil {
 		t.Fatal(err)
@@ -207,6 +209,7 @@ steps:
 // and not a pass.
 func TestProfileRunUnattachableTargetIsInconclusive(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"profile", "run", "storage/short-write", "--target", "process:1", "--json", "--dir", t.TempDir()})
 	})
@@ -222,6 +225,7 @@ func TestProfileRunUnattachableTargetIsInconclusive(t *testing.T) {
 // that still names the outcome, and no JSON document on stdout.
 func TestProfileRunTextMode(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	target := filepath.Join(os.TempDir(), "mischief-profile-target-text")
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"profile", "run", "storage/short-write", "--target", "scratch:" + target, "--dir", t.TempDir()})
@@ -279,6 +283,7 @@ type findingHeader struct {
 //     transitions (here: unchanged, both runs pass on an unchanged target).
 func TestProfileCompareTwoRunsSameSeedIsDeterministic(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-profile-target-cmp-%d", os.Getpid()))
 	root := t.TempDir()
 	runOnce := func(dir string) findingHeader {
@@ -419,6 +424,7 @@ func TestProfileCompareRefusals(t *testing.T) {
 // from stable storage) and the probe held.
 func TestProfileRunDurabilityFsyncTargetPassesAsJSON(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-fsync-%d", os.Getpid()))
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"profile", "run", "database/durability",
@@ -465,6 +471,7 @@ func TestProfileRunDurabilityFsyncTargetPassesAsJSON(t *testing.T) {
 // cause_class + steering hint.
 func TestProfileRunDurabilityNoFsyncTargetFailsAsJSON(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-none-%d", os.Getpid()))
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"profile", "run", "database/durability",
@@ -507,6 +514,7 @@ func TestProfileRunDurabilityNoFsyncTargetFailsAsJSON(t *testing.T) {
 // byte-identity contract, per the executor's journal_clock disclosure).
 func TestProfileRunDurabilitySameSeedIsDeterministic(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-repro-%d", os.Getpid()))
 	root := t.TempDir()
 	runOnce := func(dir string) findingHeader {
@@ -583,6 +591,7 @@ func TestProfileRunDurabilitySameSeedIsDeterministic(t *testing.T) {
 // never a refusal and never a pass.
 func TestProfileRunDurabilityUnmetRequirementIsInconclusive(t *testing.T) {
 	sanctionEnv(t)
+	writeHealthyLoad(t) // MISCHIEF-RV-005: the AC-8 gate reads the injected posture, not the box's /proc
 	code, stdout := captureStdout(t, func() int {
 		return run([]string{"profile", "run", "database/durability",
 			"--target", "dbdurability:fsync:relative/path.db", "--json", "--dir", t.TempDir()})
