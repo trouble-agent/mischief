@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -81,11 +82,65 @@ func (e *errnoLandable) prepare() ([]byte, error) {
 	return pre, nil
 }
 
+// checkS020Land parses the eintr victim's measured output. EINTR must have
+// actually fired: the victim counts every write attempt, and a shim-free
+// control run delivers the 6 bytes in a single attempt (attempts=1), which
+// must fail this predicate.
+func checkS020Land(text string) landOutcome {
+	delivered, attempts := -1, -1
+	for _, f := range strings.Fields(text) {
+		if v, ok := strings.CutPrefix(f, "delivered="); ok {
+			if n, err := strconv.Atoi(v); err == nil {
+				delivered = n
+			}
+		}
+		if v, ok := strings.CutPrefix(f, "attempts="); ok {
+			if n, err := strconv.Atoi(v); err == nil {
+				attempts = n
+			}
+		}
+	}
+	if delivered != 6 {
+		return bad("external child witness missing delivered-return count: delivered=%d: %s", delivered, text)
+	}
+	if attempts < 2 {
+		return bad("external child witness missing EINTR retries: attempts=%d, want >= 2 (EINTR must fire at least once): %s", attempts, text)
+	}
+	return ok(fmt.Sprintf("child witness: delivered=6 after EINTR retries (attempts=%d); target contains 6 bytes", attempts))
+}
+
+// checkS024Land parses the partial-stdin victim's measured output: the first
+// read must be short (exactly the 7 injected bytes) and a second read must
+// have MEASURED EOF (eof=1). A longer first read or a missing EOF read fails.
+func checkS024Land(text string) landOutcome {
+	partial, eof := -1, -1
+	for _, f := range strings.Fields(text) {
+		if v, ok := strings.CutPrefix(f, "partial_read="); ok {
+			if n, err := strconv.Atoi(v); err == nil {
+				partial = n
+			}
+		}
+		if v, ok := strings.CutPrefix(f, "eof="); ok {
+			if n, err := strconv.Atoi(v); err == nil {
+				eof = n
+			}
+		}
+	}
+	if partial != 7 {
+		return bad("external stdin witness short read: partial_read=%d, want 7: %s", partial, text)
+	}
+	if eof != 1 {
+		return bad("external stdin witness missing measured EOF: eof=%d, want 1: %s", eof, text)
+	}
+	return ok("external stdin witness: delivered 7 bytes, then EOF")
+}
+
 func (e *errnoLandable) land() landOutcome {
 	args := []string{e.target, e.mode}
 	cmd := exec.Command(e.victim, args...)
 	if e.id == "S-024" {
-		e.stdin = "partial!"
+		// Catalog S-024 contract: a short read of 7 bytes followed by EOF.
+		e.stdin = "partial"
 		cmd.Stdin = strings.NewReader(e.stdin)
 	}
 	if e.errno != "" {
@@ -98,14 +153,15 @@ func (e *errnoLandable) land() landOutcome {
 	text := string(out)
 	switch e.id {
 	case "S-020":
-		if !strings.Contains(text, "delivered=6") {
-			return bad("external child witness missing delivered-return count: %s", trimOut(out))
+		out0 := checkS020Land(text)
+		if !out0.landed {
+			return out0
 		}
 		b, readErr := os.ReadFile(e.target)
 		if readErr != nil || string(b) != "abcdef" {
 			return bad("external target witness: got %q, err %v", b, readErr)
 		}
-		return ok("child witness: delivered=6 after EINTR retries; target contains 6 bytes")
+		return out0
 	case "S-021":
 		if !strings.Contains(text, "epipe=1") {
 			return bad("external pipe witness missing EPIPE: %s", trimOut(out))
@@ -132,10 +188,7 @@ func (e *errnoLandable) land() landOutcome {
 		}
 		return ok("external EACCES witness: child rejected write while stat mode was 000")
 	case "S-024":
-		if !strings.Contains(text, "partial_read=8") {
-			return bad("external stdin witness missing short read: %s", trimOut(out))
-		}
-		return ok("external stdin witness: delivered 8 bytes, then EOF")
+		return checkS024Land(text)
 	default:
 		return bad("unknown errno mode %q", e.mode)
 	}
@@ -221,8 +274,10 @@ int main(int argc, char **argv) {
     char buf[64];
     ssize_t n = read(STDIN_FILENO, buf, sizeof(buf));
     if (n < 0) return 3;
-    if (!strcmp(mode, "partialstdin")) printf("partial_read=%zd expected=14\n", n);
-    else printf("full_read=%zd\n", n);
+    if (!strcmp(mode, "partialstdin")) {
+      ssize_t n2 = read(STDIN_FILENO, buf, sizeof(buf));
+      printf("partial_read=%zd eof=%d\n", n, n2 == 0);
+    } else printf("full_read=%zd\n", n);
     return 0;
   }
   int f = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
