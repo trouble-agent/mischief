@@ -2,7 +2,7 @@
   "tick_id": "mischief-foreman-2026-11-26-16-36-30",
   "created_at_utc": "2026-11-26T21:40:00Z",
   "wave_budget": 2,
-  "status": "dispatched",
+  "status": "closed",
   "tasks": [
     {
       "task_id": "MISCHIEF-RV-005",
@@ -14,8 +14,8 @@
       "brief": "/tmp/mischief-foreman-2026-11-26-16-36-30-MISCHIEF-RV-005-brief.md",
       "worker_model": "glm-5.3-flash",
       "worker_provider": "opencode-go-2",
-      "commit": null,
-      "status": "dispatched"
+      "commit": "76b61fd99b822f3feb7b64a755d6ff1292062e58",
+      "status": "merged+complete"
     },
     {
       "task_id": "DOC-16-R2",
@@ -28,12 +28,22 @@
       "worker_model": "glm-5.3-flash",
       "worker_provider": "opencode-go-2",
       "commit": null,
-      "status": "dispatched"
+      "status": "no-op: premise refuted, row failed"
     }
   ],
   "rejected_candidates": [
-    {"task_id": "QA-MISCHIEF-002-R2", "reason": "P1 but premise requires a JIT agent battery (failure only ever observed on JIT agent; dev-box green does not close per row AC3) — not dispatchable as a worktree leg"},
-    {"task_id": "MISCHIEF-DF-76-R1", "reason": "requires a scratch host with a not_landed hold; no run dir on scheduler host carries one (row's own premise)"},
-    {"task_id": "QA-MISCHIEF-008", "reason": "same surface as QA-MISCHIEF-FOREMAN-3 (QA battery ui-probe / HTML surface), P3 — deferred in favor of P1/P4 legs"}
-  ]
+    {
+      "task_id": "QA-MISCHIEF-002-R2",
+      "reason": "P1 but premise requires a JIT agent battery (failure only ever observed on JIT agent; dev-box green does not close per row AC3) \u2014 not dispatchable as a worktree leg"
+    },
+    {
+      "task_id": "MISCHIEF-DF-76-R1",
+      "reason": "requires a scratch host with a not_landed hold; no run dir on scheduler host carries one (row's own premise)"
+    },
+    {
+      "task_id": "QA-MISCHIEF-008",
+      "reason": "same surface as QA-MISCHIEF-FOREMAN-3 (QA battery ui-probe / HTML surface), P3 \u2014 deferred in favor of P1/P4 legs"
+    }
+  ],
+  "finished_at_utc": "2026-11-26T22:35:00Z"
 }
