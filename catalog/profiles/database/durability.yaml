@@ -1,0 +1,58 @@
+# Testing profile: database / durability
+#
+# Class : database
+# Intent: does the target's commit path make every commit it ACKNOWLEDGED
+#         durable — a successful fsync/fdatasync of the database file before
+#         each ack, and no ack of durability the storage never confirmed?
+#
+# The bug class: S-010 — the storage ack lies. A sync call returns success, a
+# commit path that treats the return as its durability gate believes the
+# record is stable, nothing reports the gap, and the power loss keeps the ack
+# log while losing the record. The target that never synced at all fails the
+# same way: its ack was durability the storage never confirmed.
+#
+# Runnable today: every step names a primitive that exists in catalog/faults/
+# (S-010) and the executor ships an actuator for it. The TARGET is a real
+# commit-log database process the executor builds and spawns as a child (a
+# real binary, real files, real syscalls — see the durability-target
+# requirement below for the exact selector). See catalog/profiles/README.md
+# for the schema and for what this build does NOT promise.
+schema: mischief.profile/v1
+name: durability
+class: database
+version: 1.0.0
+seed: 11
+
+summary: >
+  A commit the database acknowledged that stable storage never held. The
+  injected fault is S-010: fsync returns success without advancing stable
+  storage, the commit child exits (the simulated power loss), and the
+  probe grades the target's own commit protocol and recovery report against
+  the parent's independent read of the database file.
+
+requires:
+  - cc: a C compiler on PATH (the fsync-lie shim and the controlled database are built per run)
+  - durability-target: the target must be dbdurability:<fsync|none>:<absolute path under the scratch base> — the executor builds and spawns the controlled commit-log database at that path with that commit discipline (fsync = one fsync of the database file before each ack; none = ack without syncing)
+  - writable-target: the target's parent directory must be writable
+
+steps:
+  - id: commit-ack-durability
+    fault: S-010 # catalog/faults/S-010-fsync-lie.yaml
+    params:
+      # How many records the controlled database commits. Three is enough to
+      # prove the whole set was lost together.
+      commits: "3"
+    probe: commit-durable
+    cause_class: durability:storage-ack-not-durable
+
+cause_classes:
+  durability:storage-ack-not-durable:
+    hint: >
+      The target acknowledged durability stable storage never confirmed. Every
+      commit must be covered by a successful fsync/fdatasync of the database
+      file BEFORE its ack, and the recovery path must verify acked records
+      against the file and name every lost one — never claim an absent record
+      durable (Go: f.Sync() before the ack and a recovery pass that re-reads;
+      C: fsync(fd) before the ack, treat a failure as a failed commit).
+      Trusting the ack, or trusting a sync return without ever syncing, is the
+      bug this probe found.

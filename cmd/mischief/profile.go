@@ -79,9 +79,16 @@ Exit codes (the graded outcome):
   2  refused       usage, sanction, protected target or missing profile —
                    nothing was landed
 
---target takes the same selector grammar as arm/plan. scratch:<path> is the
-only kind this build can fault (the executor spawns its own scenario writer
-under an LD_PRELOAD shim); any other kind grades inconclusive.
+--target takes the same selector grammar as arm/plan. Two kinds are
+attachable in this build:
+  scratch:<path>                       the executor spawns its own scenario
+                                       writer under an LD_PRELOAD shim (S-004)
+  dbdurability:<fsync|none>:<path>     the executor builds and spawns a
+                                       controlled commit-log database child
+                                       at <path> with that commit discipline
+                                       (S-010 fsync lie; <path> must be
+                                       absolute and under the scratch base)
+any other kind grades inconclusive.
 `)
 }
 
@@ -213,7 +220,9 @@ func cmdProfileRun(args []string) int {
 	}
 
 	tgt := profile.Target{Kind: "scratch", Selector: *target, Path: scratchPath(*target)}
-	if decl.Kind != rails.TargetHost {
+	if disc, path, ok := dbDurabilityTarget(*target); ok {
+		tgt = profile.Target{Kind: "dbdurability", Selector: *target, Path: path, Discipline: disc}
+	} else if decl.Kind != rails.TargetHost {
 		tgt = profile.Target{Kind: string(decl.Kind), Selector: *target}
 	}
 
@@ -345,6 +354,24 @@ func scratchPath(selector string) string {
 		return ""
 	}
 	return strings.TrimSpace(rest)
+}
+
+// dbDurabilityTarget parses a `dbdurability:<discipline>:<path>` selector —
+// the controlled commit-log database the S-010 fsync-lie actuator builds and
+// spawns as a child. ok is true for any selector carrying the prefix (a
+// malformed one keeps the kind so the executor's durability-target
+// requirement names what is wrong: a broken discipline or a missing path
+// grades inconclusive, never a refusal that hides the selector's shape).
+func dbDurabilityTarget(selector string) (discipline, path string, ok bool) {
+	rest, isDur := strings.CutPrefix(selector, "dbdurability:")
+	if !isDur {
+		return "", "", false
+	}
+	disc, pathRest, found := strings.Cut(rest, ":")
+	if !found {
+		return strings.TrimSpace(rest), "", true
+	}
+	return strings.TrimSpace(disc), strings.TrimSpace(pathRest), true
 }
 
 // profilePreviewID derives the run id the CLI names the run dir with, using the

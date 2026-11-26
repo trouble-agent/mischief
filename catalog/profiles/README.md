@@ -48,7 +48,7 @@ silently.
 | `id` | yes | step id, unique within the profile (`short-write-append`). |
 | `fault` | yes | the primitive id from `catalog/faults/` (`S-004`). Resolved at **run** time against the loaded catalog. |
 | `params` | no | the fault's parameters, flat scalars. Every name must be declared by that primitive's own `params:` block, and a declared enumeration must accept the value. A param the primitive does not declare is `inconclusive`, naming the pair — never silently ignored. |
-| `probe` | yes | the probe that grades the step. Closed vocabulary: `payload-complete`. |
+| `probe` | yes | the probe that grades the step. Closed vocabulary: `payload-complete` (S-004), `commit-durable` (S-010). |
 | `cause_class` | no | the failure class a `failed` step routes to. Must be declared in `cause_classes` (referential integrity is checked at load, so an agent never receives a hint that does not exist). |
 
 ### `requires[]`
@@ -60,6 +60,7 @@ vocabulary and is resolved against the host at run time:
 |---|---|
 | `cc` | a C compiler is on `PATH` (the shim is generated and built per run). |
 | `scratch-target` | the target is an absolute path under the scratch base (`$TMPDIR` or `/tmp`). |
+| `durability-target` | the target is a `dbdurability:<fsync|none>:<path>` selector — an absolute database path under the scratch base, and a commit discipline this build ships (`fsync` or `none`). The executor builds and spawns the controlled commit-log database child with that discipline at that path (the `database/durability` profile). |
 | `writable-target` | the target's parent directory is writable. |
 
 Any other token — a typo included — is an **unmet** requirement: the run grades
@@ -112,6 +113,50 @@ mischief profile run storage/short-write \
   --target scratch:/tmp/mischief-profile-target \
   --json --seed 7
 ```
+
+## Worked example — `database/durability`
+
+```yaml
+schema: mischief.profile/v1
+name: durability
+class: database
+version: 1.0.0
+seed: 11
+requires:
+  - cc: a C compiler on PATH (the fsync-lie shim and the controlled database are built per run)
+  - durability-target: the target must be dbdurability:<fsync|none>:<absolute path under the scratch base>
+  - writable-target: the target's parent directory must be writable
+steps:
+  - id: commit-ack-durability
+    fault: S-010
+    params:
+      commits: "3"
+    probe: commit-durable
+    cause_class: durability:storage-ack-not-durable
+cause_classes:
+  durability:storage-ack-not-durable:
+    hint: >
+      The target acknowledged durability stable storage never confirmed...
+```
+
+Run it (the fsync-on-commit target grades `passed`; the no-fsync discipline
+grades `failed` with the cause class above — the same profile, two targets):
+
+```sh
+mischief profile run database/durability \
+  --target dbdurability:fsync:/tmp/mischief-durability.db \
+  --json --seed 11    # exit 0 (passed)
+mischief profile run database/durability \
+  --target dbdurability:none:/tmp/mischief-durability-none.db \
+  --json --seed 11    # exit 1 (failed: durability:storage-ack-not-durable)
+```
+
+The target is a real commit-log database process the executor builds and
+spawns per run (a compiled binary with a real database file and a real ack
+ledger). The injected S-010 lie models the volatile write-back layer inside
+the child's memory: the commit child's exit is the simulated power loss, and
+the parent's post-exit read of the database file is the external loss
+witness — the finding's notes name this posture on every run.
 
 ## The finding (`mischief.finding/v1`)
 
@@ -236,18 +281,23 @@ their `from`/`to` outcomes, transitions and counts.
 
 Declared here so a reader is not misled by a green finding:
 
-- **One actuator.** `S-004` (short write) is the only primitive this build can
-  inject. A step naming any other catalog primitive grades `inconclusive`,
-  naming the missing actuator; an id absent from the catalog grades
-  `inconclusive`, naming the catalog it was resolved against.
-- **No live-process attachment.** The actuator faults a CHILD the executor
-  spawns. Only `scratch:<path>` targets are attachable; any other selector
-  grades `inconclusive`.
-- **The scenario writer is mischief's own.** At L0 the target is a plain file,
-  so the executor supplies a reference writer (the POSIX-correct loop) and the
-  probe grades what it landed. The shipped profile's expected outcome is
-  therefore `passed`; the `failed` arm is covered by the executor's unit tests
-  (a probe-breaking actuator), not by the shipped scenario.
+- **Two actuators.** `S-004` (short write, `scratch:<path>` targets) and
+  `S-010` (fsync lie, `dbdurability:<fsync|none>:<path>` targets) are the only
+  primitives this build can inject. A step naming any other catalog primitive
+  grades `inconclusive`, naming the missing actuator; an id absent from the
+  catalog grades `inconclusive`, naming the catalog it was resolved against.
+- **No live-process attachment.** The actuators fault a CHILD the executor
+  spawns (the S-004 scenario writer, or the S-010 controlled commit-log
+  database). Only `scratch:<path>` and `dbdurability:<fsync|none>:<path>`
+  selectors are attachable; any other selector grades `inconclusive`.
+- **The scenario writer is mischief's own.** At L0 the target is a plain file
+  (S-004) or a controlled commit-log database the executor builds (S-010), so
+  the executor supplies the reference target and the probe grades what it
+  did. The shipped profiles' expected outcomes are therefore `passed` on the
+  correct disciplines; the `failed` arm is covered by the executor's unit
+  tests and by the S-010 profile's own no-fsync discipline (run the same
+  profile against `dbdurability:none:<path>` and it grades `failed` with
+  `durability:storage-ack-not-durable`), not by the shipped fsync scenario.
 - **The scope ladder, the AC-19 selftest rail and the AC-8 load gate are not
   enforced by `profile run`.** The selftest harness lands the same primitives on
   L0 scratch by the same posture, and `S-004` declares tier L1 while its

@@ -412,3 +412,201 @@ func TestProfileCompareRefusals(t *testing.T) {
 		t.Fatalf("stderr must name the journal read failure: %q", stderr)
 	}
 }
+
+// TestProfileRunDurabilityFsyncTargetPassesAsJSON pins the database/durability
+// PASS arm end to end: a dbdurability selector naming the fsync-on-commit
+// discipline grades passed — the S-010 lie landed (the acked records vanish
+// from stable storage) and the probe held.
+func TestProfileRunDurabilityFsyncTargetPassesAsJSON(t *testing.T) {
+	sanctionEnv(t)
+	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-fsync-%d", os.Getpid()))
+	code, stdout := captureStdout(t, func() int {
+		return run([]string{"profile", "run", "database/durability",
+			"--target", "dbdurability:fsync:" + target, "--json", "--seed", "11", "--dir", t.TempDir()})
+	})
+	if code != 0 {
+		t.Fatalf("exit = %d (want 0 passed); stdout=%s", code, stdout)
+	}
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("stdout is not one JSON document:\n%s", stdout)
+	}
+	var f struct {
+		Profile string `json:"profile"`
+		Outcome string `json:"cause_class"`
+		Steps   []struct {
+			Landed  bool `json:"landed"`
+			Outcome string `json:"outcome"`
+			Probe   *struct {
+				Name   string `json:"name"`
+				Passed bool   `json:"passed"`
+			} `json:"probe"`
+			LandedWitness *struct {
+				Kind string `json:"kind"`
+			} `json:"landed_witness"`
+		} `json:"steps"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &f); err != nil {
+		t.Fatalf("decode: %v\n%s", err, stdout)
+	}
+	if f.Profile != "database/durability" {
+		t.Fatalf("profile = %q", f.Profile)
+	}
+	if len(f.Steps) != 1 || !f.Steps[0].Landed || f.Steps[0].Outcome != "passed" ||
+		f.Steps[0].Probe == nil || f.Steps[0].Probe.Name != "commit-durable" || !f.Steps[0].Probe.Passed {
+		t.Fatalf("steps = %+v", f.Steps)
+	}
+	if f.Steps[0].LandedWitness == nil || f.Steps[0].LandedWitness.Kind != "external" {
+		t.Fatalf("landing witness must be external (the outside observer), got %+v", f.Steps[0].LandedWitness)
+	}
+}
+
+// TestProfileRunDurabilityNoFsyncTargetFailsAsJSON pins the FAIL arm end to
+// end: the no-fsync discipline grades failed (exit 1) with the profile's
+// cause_class + steering hint.
+func TestProfileRunDurabilityNoFsyncTargetFailsAsJSON(t *testing.T) {
+	sanctionEnv(t)
+	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-none-%d", os.Getpid()))
+	code, stdout := captureStdout(t, func() int {
+		return run([]string{"profile", "run", "database/durability",
+			"--target", "dbdurability:none:" + target, "--json", "--seed", "11", "--dir", t.TempDir()})
+	})
+	if code != 1 {
+		t.Fatalf("exit = %d (want 1 failed); stdout=%s", code, stdout)
+	}
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("stdout is not one JSON document:\n%s", stdout)
+	}
+	var f struct {
+		Outcome    string `json:"outcome"`
+		CauseClass string `json:"cause_class"`
+		Hint       string `json:"hint"`
+		Steps      []struct {
+			Landed  bool   `json:"landed"`
+			Outcome string `json:"outcome"`
+			Probe   *struct {
+				Passed bool `json:"passed"`
+			} `json:"probe"`
+		} `json:"steps"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &f); err != nil {
+		t.Fatalf("decode: %v\n%s", err, stdout)
+	}
+	if f.Outcome != "failed" || f.CauseClass != "durability:storage-ack-not-durable" || f.Hint == "" {
+		t.Fatalf("finding = outcome %q cause %q hint %q", f.Outcome, f.CauseClass, f.Hint)
+	}
+	if len(f.Steps) != 1 || !f.Steps[0].Landed || f.Steps[0].Outcome != "failed" ||
+		f.Steps[0].Probe == nil || f.Steps[0].Probe.Passed {
+		t.Fatalf("steps = %+v", f.Steps)
+	}
+}
+
+// TestProfileRunDurabilitySameSeedIsDeterministic is PROF-031 for the
+// database profile: the same profile bytes + seed, run into two --dir roots,
+// write byte-identical journals and identical generated sources; the graded
+// fields of the two findings agree (the wall-clock bounds are not part of the
+// byte-identity contract, per the executor's journal_clock disclosure).
+func TestProfileRunDurabilitySameSeedIsDeterministic(t *testing.T) {
+	sanctionEnv(t)
+	target := filepath.Join(os.TempDir(), fmt.Sprintf("mischief-durability-repro-%d", os.Getpid()))
+	root := t.TempDir()
+	runOnce := func(dir string) findingHeader {
+		t.Helper()
+		code, stdout := captureStdout(t, func() int {
+			return run([]string{"profile", "run", "database/durability",
+				"--target", "dbdurability:fsync:" + target, "--json", "--seed", "13", "--dir", dir})
+		})
+		if code != 0 {
+			t.Fatalf("exit = %d (want 0 passed); stdout=%s", code, stdout)
+		}
+		var f findingHeader
+		if err := json.Unmarshal([]byte(stdout), &f); err != nil {
+			t.Fatalf("decode finding: %v\n%s", err, stdout)
+		}
+		return f
+	}
+	dirA := filepath.Join(root, "before")
+	dirB := filepath.Join(root, "after")
+	fA := runOnce(dirA)
+	fB := runOnce(dirB)
+	if fA.RunID != fB.RunID {
+		t.Fatalf("same bytes + seed must derive the same run id: %q vs %q", fA.RunID, fB.RunID)
+	}
+	for _, rel := range []string{
+		"profile.jsonl", "shim/dbchild.c", "shim/libfsynclie.c", "shim/fsynclie.counter",
+	} {
+		if string(mustRead(t, fA.RunDir, rel)) != string(mustRead(t, fB.RunDir, rel)) {
+			t.Fatalf("%s differs between the two same-seed runs", rel)
+		}
+	}
+	// The graded fields agree: same outcome, same probe verdict, same cause
+	// vocabulary (both runs passed, so neither carries a cause class).
+	for _, f := range []string{"finding.json"} {
+		var fa, fb struct {
+			Outcome string `json:"outcome"`
+			Steps   []struct {
+				Outcome string `json:"outcome"`
+				Landed  bool   `json:"landed"`
+				Probe   *struct {
+					Passed bool `json:"passed"`
+				} `json:"probe"`
+			} `json:"steps"`
+		}
+		for _, pair := range []struct {
+			dir string
+			into *struct {
+				Outcome string `json:"outcome"`
+				Steps   []struct {
+					Outcome string `json:"outcome"`
+					Landed  bool   `json:"landed"`
+					Probe   *struct {
+						Passed bool `json:"passed"`
+					} `json:"probe"`
+				} `json:"steps"`
+			}
+		}{{fA.RunDir, &fa}, {fB.RunDir, &fb}} {
+			b := mustRead(t, pair.dir, f)
+			if err := json.Unmarshal(b, pair.into); err != nil {
+				t.Fatalf("decode %s from %s: %v", f, pair.dir, err)
+			}
+		}
+		if fa.Outcome != fb.Outcome || len(fa.Steps) != 1 || len(fb.Steps) != 1 ||
+			fa.Steps[0].Outcome != fb.Steps[0].Outcome || fa.Steps[0].Landed != fb.Steps[0].Landed ||
+			fa.Steps[0].Probe.Passed != fb.Steps[0].Probe.Passed {
+			t.Fatalf("graded fields differ between the two same-seed runs: %+v vs %+v", fa, fb)
+		}
+	}
+}
+
+// TestProfileRunDurabilityUnmetRequirementIsInconclusive pins that a
+// durability selector this build cannot serve (a relative database path,
+// outside the scratch base) is a graded inconclusive naming the requirement,
+// never a refusal and never a pass.
+func TestProfileRunDurabilityUnmetRequirementIsInconclusive(t *testing.T) {
+	sanctionEnv(t)
+	code, stdout := captureStdout(t, func() int {
+		return run([]string{"profile", "run", "database/durability",
+			"--target", "dbdurability:fsync:relative/path.db", "--json", "--dir", t.TempDir()})
+	})
+	if code != 3 {
+		t.Fatalf("exit = %d (want 3 inconclusive); stdout=%s", code, stdout)
+	}
+	if !json.Valid([]byte(stdout)) {
+		t.Fatalf("stdout is not valid JSON:\n%s", stdout)
+	}
+	var f struct {
+		Outcome string `json:"outcome"`
+		Reason  string `json:"reason"`
+		Steps   []struct {
+			Outcome string `json:"outcome"`
+		} `json:"steps"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &f); err != nil {
+		t.Fatal(err)
+	}
+	if f.Outcome != "inconclusive" || !strings.Contains(f.Reason, "durability-target") {
+		t.Fatalf("finding = outcome %q reason %q", f.Outcome, f.Reason)
+	}
+	if len(f.Steps) != 1 || f.Steps[0].Outcome != "inconclusive" {
+		t.Fatalf("steps = %+v", f.Steps)
+	}
+}

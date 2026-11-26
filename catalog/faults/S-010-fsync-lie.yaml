@@ -1,0 +1,21 @@
+id: S-010
+name: fsync-lie
+what: a successful fsync/fdatasync that does not advance stable storage — the
+    storage ack lies, and every byte after it that was never synced is lost on
+    power loss
+breaks: commit paths that treat a successful sync return as their durability
+    gate — the ack is durable in name only, the crash loses the record, and
+    the ack log still says committed
+params:
+  commits: int?
+landed_proof:
+  kind: child-report + post-exit file read
+  check: "the commit child reports successful syncs before every ack AND the parent's post-exit read of the database file holds none of the acked records (the successful sync did not advance stable storage)"
+inverse:
+  action: withdraw-fsync-lie-shim
+  verify: "the same commit and recover re-run with the fault env withdrawn leaves every acked record present and confirmed by the recovery report"
+capability: none
+tier: L1
+backend: shim
+maturity: L1-only        # needs its selftest + a battery cell before any shared target
+expect_when_healthy: "the target either syncs before acking and names every lost record on recovery, or refuses to ack what it cannot make durable — never a silent ack of durability it does not have"

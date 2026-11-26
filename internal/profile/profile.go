@@ -41,13 +41,16 @@
 //
 // NOT-LIST (what this build does NOT promise):
 //
-//   - It does not ship an actuator for every primitive. S-004 (short write) is
-//     the shipped one; a step naming any other catalog primitive grades
-//     inconclusive naming the missing actuator. An unknown primitive id grades
-//     inconclusive naming the catalog it was resolved against.
-//   - It does not attach to a live process. The shipped actuator faults a
-//     CHILD the executor itself spawns (the L0 scratch shape): a target
-//     selector that is not `scratch:<path>` grades inconclusive rather than
+//   - It does not ship an actuator for every primitive. S-004 (short write)
+//     and S-010 (fsync lie) are the shipped ones; a step naming any other
+//     catalog primitive grades inconclusive naming the missing actuator. An
+//     unknown primitive id grades inconclusive naming the catalog it was
+//     resolved against.
+//   - It does not attach to a live process. The shipped actuators fault a
+//     CHILD the executor itself spawns (the L0 scratch shape, and for S-010
+//     a controlled commit-log database child the executor builds): a target
+//     selector that is neither `scratch:<path>` nor
+//     `dbdurability:<fsync|none>:<path>` grades inconclusive rather than
 //     pretending to have injected anything.
 //   - It does not enforce the scope ladder or the AC-19 selftest rail. The
 //     selftest harness lands these same primitives on an L0 scratch target by
@@ -126,10 +129,14 @@ const (
 	// ProbePayloadComplete: the target's write loop landed every byte of the
 	// payload it was asked to write (the S-004 short-write probe).
 	ProbePayloadComplete = "payload-complete"
+	// ProbeCommitDurable: every acked commit was covered by a successful
+	// sync of the database file before its ack, and recovery claims durable
+	// only what stable storage holds (the S-010 fsync-lie probe).
+	ProbeCommitDurable = "commit-durable"
 )
 
 // KnownProbes is the closed probe vocabulary, sorted.
-var KnownProbes = []string{ProbePayloadComplete}
+var KnownProbes = []string{ProbeCommitDurable, ProbePayloadComplete}
 
 // Requirement tokens. A profile's `requires:` entries name one of these; any
 // other token is an UNMET requirement at run time (inconclusive, naming it),
@@ -140,12 +147,17 @@ const (
 	// ReqScratchTarget: the target must be an absolute path under the scratch
 	// base (os.TempDir()). The executor refuses to fault a path outside it.
 	ReqScratchTarget = "scratch-target"
+	// ReqDurabilityTarget: the target must be a dbdurability selector —
+	// dbdurability:<fsync|none>:<absolute path under the scratch base>. The
+	// executor builds and spawns the controlled commit-log database child
+	// with that commit discipline at that path.
+	ReqDurabilityTarget = "durability-target"
 	// ReqWritableTarget: the target's parent directory must be writable.
 	ReqWritableTarget = "writable-target"
 )
 
 // KnownRequirements is the closed requirement vocabulary, sorted.
-var KnownRequirements = []string{ReqCC, ReqScratchTarget, ReqWritableTarget}
+var KnownRequirements = []string{ReqCC, ReqDurabilityTarget, ReqScratchTarget, ReqWritableTarget}
 
 // Requirement is one declared requirement: a vocabulary token plus the
 // profile's own prose ("cc: a C compiler on PATH").
