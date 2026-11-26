@@ -8,7 +8,7 @@ watchdog reverts, and get a verdict on whether the target recovered.
 > [`trouble-agent/mischief`](https://github.com/trouble-agent/mischief), private-first. Sibling to
 > [`trouble`](https://github.com/trouble-agent/trouble) — `trouble` detects and remediates,
 > `mischief` induces and grades. SPEC-01 has shipped: a tested fault catalog lives under
-> [`internal/catalog/`](internal/catalog/) (~1,600 lines of Go: schema types, loader, tests), with
+> [`internal/catalog/`](internal/catalog/) (~1,926 lines of Go: schema types, loader, tests), with
 > the spec under [`docs/`](docs/).
 
 ## Why
