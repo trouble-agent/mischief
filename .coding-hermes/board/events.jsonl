@@ -687,3 +687,5 @@
 {"id":602,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"MISCHIEF-RV-005","tick":null,"timestamp":"2026-11-26T17:32:30Z"}
 {"id":603,"actor":"foreman","created_at":null,"detail":"{\"status\":\"failed\"}","event_type":"task_updated","marker":null,"task_id":"DOC-16-R2","tick":null,"timestamp":"2026-11-26T17:32:38Z"}
 {"id":604,"actor":"foreman","created_at":null,"detail":"{\"id\":\"QA-MISCHIEF-009\",\"status\":\"pending\"}","event_type":"task_created","marker":null,"task_id":"QA-MISCHIEF-009","tick":null,"timestamp":"2026-11-26T18:54:43Z"}
+{"id":605,"actor":"foreman","created_at":null,"detail":"{\"status\":\"in_progress\"}","event_type":"task_updated","marker":null,"task_id":"QA-MISCHIEF-009","tick":null,"timestamp":"2026-11-26T23:52:09Z"}
+{"id":606,"actor":"foreman","created_at":null,"detail":"{\"status\":\"in_progress\"}","event_type":"task_updated","marker":null,"task_id":"PROF-021","tick":null,"timestamp":"2026-11-26T23:52:09Z"}

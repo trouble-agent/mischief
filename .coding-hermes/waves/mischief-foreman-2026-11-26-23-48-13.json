@@ -1,0 +1,9 @@
+{
+  "tick_id": "mischief-foreman-2026-11-26-23-48-13",
+  "base_sha": "0b73e30d3d330782e8085a6ac725be10102db1ae",
+  "status": "prepared",
+  "tasks": [
+    {"id": "QA-MISCHIEF-009", "branch": "wt/QA-MISCHIEF-009", "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-009", "status": "prepared", "brief": "Fix reverter fallback test hermeticity; satisfy board acceptance including clean act workflow and regression for both joined errors."},
+    {"id": "PROF-021", "branch": "wt/PROF-021", "worktree": "/home/kara/worktrees/mischief-PROF-021", "status": "prepared", "brief": "Implement linux/error-handling profile end to end, both controlled targets, five external witnesses, deterministic seeds, and all board acceptance criteria."}
+  ]
+}
