@@ -1,9 +1,11 @@
 {
   "tick_id": "mischief-foreman-2026-11-26-23-48-13",
   "base_sha": "0b73e30d3d330782e8085a6ac725be10102db1ae",
-  "status": "prepared",
+  "status": "aborted",
+  "finished_at": "2026-11-26T23:54:20Z",
+  "reason": "Requested worker model/provider was not served; no code delivered. Both GitReins completions refused pending board rows; no verdicts.",
   "tasks": [
-    {"id": "QA-MISCHIEF-009", "branch": "wt/QA-MISCHIEF-009", "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-009", "status": "prepared", "brief": "Fix reverter fallback test hermeticity; satisfy board acceptance including clean act workflow and regression for both joined errors."},
-    {"id": "PROF-021", "branch": "wt/PROF-021", "worktree": "/home/kara/worktrees/mischief-PROF-021", "status": "prepared", "brief": "Implement linux/error-handling profile end to end, both controlled targets, five external witnesses, deterministic seeds, and all board acceptance criteria."}
+    {"id": "QA-MISCHIEF-009", "branch": "wt/QA-MISCHIEF-009", "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-009", "status": "failed", "brief": "Fix reverter fallback test hermeticity; satisfy board acceptance including clean act workflow and regression for both joined errors.", "reason": "Worker served cx/gpt-6.1-terra via 9router instead of the requested lane; stopped before any task diff or commit."},
+    {"id": "PROF-021", "branch": "wt/PROF-021", "worktree": "/home/kara/worktrees/mischief-PROF-021", "status": "not_dispatched", "brief": "Implement linux/error-handling profile end to end, both controlled targets, five external witnesses, deterministic seeds, and all board acceptance criteria.", "reason": "Stopped further dispatch on the wrong-seat finding."}
   ]
 }
