@@ -109,6 +109,7 @@
         "batch:silent-partial-ingest",
         "batch:unbounded-sink-retry",
         "durability:storage-ack-not-durable",
+        "error-handling:errno-swallowed",
         "mobile:empty-cold-state-mishandled",
         "mobile:hang-on-network-loss",
         "mobile:partial-message-accepted",

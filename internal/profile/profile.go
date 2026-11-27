@@ -133,10 +133,12 @@ const (
 	// sync of the database file before its ack, and recovery claims durable
 	// only what stable storage holds (the S-010 fsync-lie probe).
 	ProbeCommitDurable = "commit-durable"
+	// ProbeErrnoHandled grades measured error handling by a controlled target.
+	ProbeErrnoHandled = "errno-handled"
 )
 
 // KnownProbes is the closed probe vocabulary, sorted.
-var KnownProbes = []string{ProbeCommitDurable, ProbePayloadComplete}
+var KnownProbes = []string{ProbeCommitDurable, ProbeErrnoHandled, ProbePayloadComplete}
 
 // Requirement tokens. A profile's `requires:` entries name one of these; any
 // other token is an UNMET requirement at run time (inconclusive, naming it),
