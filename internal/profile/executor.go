@@ -550,12 +550,14 @@ func checkRequirements(reqs []Requirement, tgt Target) []RequirementResult {
 	return out
 }
 
-// underScratchBase reports whether p is inside the scratch base. Both
-// os.TempDir() and /tmp are accepted: TMPDIR is derived per-session on some
-// hosts, and the operator-facing recipe names /tmp explicitly.
+// underScratchBase reports whether p is inside the scratch base. os.TempDir(),
+// GOTMPDIR and /tmp are accepted: TMPDIR is derived per-session on some hosts,
+// the go tool redirects the test process's TMPDIR to GOTMPDIR when it is set
+// (so a go-test-built scratch target lives under the go temp root, not under
+// the shell's TMPDIR), and the operator-facing recipe names /tmp explicitly.
 func underScratchBase(p string) bool {
 	clean := filepath.Clean(p)
-	for _, base := range []string{os.TempDir(), "/tmp"} {
+	for _, base := range []string{os.TempDir(), os.Getenv("GOTMPDIR"), "/tmp"} {
 		if base == "" {
 			continue
 		}

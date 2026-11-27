@@ -268,10 +268,10 @@ func cmdProfileRun(args []string) int {
 	// controlled child, not an arbitrary host executable.
 	if p.ID() == "linux/error-handling" && filepath.IsAbs(*target) {
 		resolved, resolveErr := filepath.EvalSymlinks(*target)
-		base, baseErr := filepath.EvalSymlinks(os.TempDir())
+		base, baseOK := errnoTargetBase(resolved)
 		rel, relErr := filepath.Rel(base, resolved)
 		info, statErr := os.Stat(resolved)
-		if resolveErr != nil || baseErr != nil || relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || statErr != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0111 == 0 {
+		if resolveErr != nil || !baseOK || relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || statErr != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0111 == 0 {
 			fmt.Fprintln(os.Stderr, "profile run: errno target must be an executable regular file within the scratch directory")
 			return 2
 		}
@@ -411,6 +411,28 @@ func scratchPath(selector string) string {
 		return ""
 	}
 	return strings.TrimSpace(rest)
+}
+
+// errnoTargetBase reports whether resolved is inside a scratch base the way
+// the profile executor's underScratchBase admits them (os.TempDir, GOTMPDIR,
+// /tmp) and returns the accepted base. The go tool redirects the test
+// process's TMPDIR to GOTMPDIR when it is set, so a go-test-built controlled
+// target lives under the go temp root rather than the shell's TMPDIR.
+func errnoTargetBase(resolved string) (string, bool) {
+	for _, base := range []string{os.TempDir(), os.Getenv("GOTMPDIR"), "/tmp"} {
+		if base == "" {
+			continue
+		}
+		b, err := filepath.EvalSymlinks(base)
+		if err != nil {
+			continue
+		}
+		rel, relErr := filepath.Rel(b, resolved)
+		if relErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return b, true
+		}
+	}
+	return "", false
 }
 
 // dbDurabilityTarget parses a `dbdurability:<discipline>:<path>` selector —
