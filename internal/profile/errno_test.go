@@ -105,21 +105,14 @@ func TestUnderScratchBaseAcceptsGoTmpDir(t *testing.T) {
 	if !underScratchBase(filepath.Join(goTmp, "victim")) {
 		t.Fatalf("target under GOTMPDIR=%s refused", goTmp)
 	}
-	// Both arms refuse a path outside every accepted base: point TMPDIR and
-	// GOTMPDIR at disjoint subdirectories of the test scratch and probe a
-	// path that sits outside both (the t.TempDir() root is not under either
-	// subdirectory and — with TMPDIR redirected here — not under os.TempDir()).
-	base := t.TempDir()
-	a := filepath.Join(base, "a")
-	b := filepath.Join(base, "b")
-	for _, d := range []string{a, b} {
-		if err := os.Mkdir(d, 0o700); err != nil {
-			t.Fatal(err)
-		}
+	// Both arms refuse a path outside every accepted base: probe a path under
+	// the package's own testdata (the repo checkout is never under os.TempDir,
+	// GOTMPDIR or /tmp on any runner, including CI where TMPDIR is /tmp).
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", a)
-	t.Setenv("GOTMPDIR", filepath.Join(b, "g"))
-	if underScratchBase(filepath.Join(base, "victim")) {
+	if underScratchBase(filepath.Join(wd, "testdata", "outside-every-base")) {
 		t.Fatal("path outside every scratch base was admitted")
 	}
 }
