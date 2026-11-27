@@ -1,7 +1,8 @@
 {
   "tick_id": "mischief-foreman-2026-11-27-00-06-46",
   "base_sha": "7cfe823",
-  "status": "prepared",
+  "status": "partial",
+  "finished_at": "2026-11-27T00:23:32Z",
   "requested_model": "glm-5.3-flash",
   "requested_provider": "opencode-go-2",
   "switch_reason": "Requested provider returned HTTP 429 weekly usage limit; probe session local-2751598647e9c03eebe7f4b6169af3e4f18d4cb37a75f3b4504a244f671f7c7a.",
@@ -9,7 +10,7 @@
   "actual_provider": "9router",
   "review": "COS review timed out, no ruling received",
   "tasks": [
-    {"id":"QA-MISCHIEF-009","worktree":"/home/kara/worktrees/mischief-QA-MISCHIEF-009-20261127","branch":"wt/QA-MISCHIEF-009-20261127","status":"prepared"},
-    {"id":"PROF-021","worktree":"/home/kara/worktrees/mischief-PROF-021-20261127","branch":"wt/PROF-021-20261127","status":"prepared"}
+    {"id":"QA-MISCHIEF-009","worktree":"/home/kara/worktrees/mischief-QA-MISCHIEF-009-20261127","branch":"wt/QA-MISCHIEF-009-20261127","status":"partial","commit":"3e405bf","remaining":"isolated clean act proof; not merged or judged"},
+    {"id":"PROF-021","worktree":"/home/kara/worktrees/mischief-PROF-021-20261127","branch":"wt/PROF-021-20261127","status":"blocked","remaining":"implementation and isolated live witnesses; no diff"}
   ]
 }
