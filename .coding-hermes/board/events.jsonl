@@ -692,3 +692,4 @@
 {"id":607,"actor":"foreman","created_at":null,"detail":"{\"status\":\"pending\"}","event_type":"task_updated","marker":null,"task_id":"QA-MISCHIEF-009","tick":null,"timestamp":"2026-11-26T23:53:56Z"}
 {"id":608,"actor":"foreman","created_at":null,"detail":"{\"status\":\"pending\"}","event_type":"task_updated","marker":null,"task_id":"PROF-021","tick":null,"timestamp":"2026-11-26T23:53:56Z"}
 {"id":609,"actor":"foreman","created_at":null,"detail":"{\"status\":\"in_progress\"}","event_type":"task_updated","marker":null,"task_id":"PROF-021","tick":null,"timestamp":"2026-11-27T06:35:46Z"}
+{"id":610,"actor":"foreman","created_at":null,"detail":"{\"status\":\"complete\"}","event_type":"task_completed","marker":null,"task_id":"QA-MISCHIEF-009","tick":null,"timestamp":"2026-11-27T06:55:02Z"}
