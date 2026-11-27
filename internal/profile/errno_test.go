@@ -91,3 +91,28 @@ func TestErrnoExecutorAndDeterminism(t *testing.T) {
 		})
 	}
 }
+
+// TestUnderScratchBaseAcceptsGoTmpDir pins the scratch rail's env-redirect arm:
+// when GOTMPDIR is set, the go tool redirects the test process's TMPDIR there,
+// so a go-test-built scratch target resolves under the go temp root and must
+// still be admitted (the judge runs the suite with the ambient GOTMPDIR).
+func TestUnderScratchBaseAcceptsGoTmpDir(t *testing.T) {
+	goTmp := filepath.Join(t.TempDir(), "go-tmp")
+	if err := os.Mkdir(goTmp, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOTMPDIR", goTmp)
+	if !underScratchBase(filepath.Join(goTmp, "victim")) {
+		t.Fatalf("target under GOTMPDIR=%s refused", goTmp)
+	}
+	// Both arms refuse a path outside every accepted base: probe a path under
+	// the package's own testdata (the repo checkout is never under os.TempDir,
+	// GOTMPDIR or /tmp on any runner, including CI where TMPDIR is /tmp).
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if underScratchBase(filepath.Join(wd, "testdata", "outside-every-base")) {
+		t.Fatal("path outside every scratch base was admitted")
+	}
+}
