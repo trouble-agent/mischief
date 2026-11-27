@@ -1,0 +1,29 @@
+{
+  "tick_id": "mischief-foreman-2026-11-27-06-28-10",
+  "resumes": "mischief-foreman-2026-11-27-00-06-46",
+  "base_sha": "182d09d",
+  "status": "in_flight",
+  "requested_model": "glm-5.3-flash",
+  "requested_provider": "opencode-go-2",
+  "tasks": [
+    {
+      "id": "QA-MISCHIEF-009",
+      "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-009-20261127",
+      "branch": "wt/QA-MISCHIEF-009-20261127",
+      "status": "merged",
+      "commit": "182d09d",
+      "merge": "merge commit on main; full merged-tree gate green after removing 12 pre-existing scratch containers; judge job-edcd4c7553fe4cc28a4879ed60aa9098 in flight",
+      "remaining": "judge verdict + board close + exact-head CI"
+    },
+    {
+      "id": "PROF-021",
+      "worktree": "/home/kara/worktrees/mischief-PROF-021-R2",
+      "branch": "wt/PROF-021-R2",
+      "base_sha": "182d09d",
+      "status": "dispatched",
+      "commit": null,
+      "brief": "/home/kara/.hermes/cache/scratch/mischief-20261127-0628-PROF-021-R2-brief.md",
+      "remaining": "implementation; prior attempt (wt/PROF-021-20261127) produced no diff — preserved as evidence"
+    }
+  ]
+}
