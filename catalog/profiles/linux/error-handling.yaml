@@ -1,0 +1,30 @@
+schema: mischief.profile/v1
+name: error-handling
+class: linux
+version: 1.0.0
+seed: 7
+summary: Detect swallowed errors and incomplete input in controlled processes.
+steps:
+  - id: interrupted-write
+    fault: S-020
+    probe: errno-handled
+    cause_class: error-handling:errno-swallowed
+  - id: broken-pipe
+    fault: S-021
+    probe: errno-handled
+    cause_class: error-handling:errno-swallowed
+  - id: no-space
+    fault: S-022
+    probe: errno-handled
+    cause_class: error-handling:errno-swallowed
+  - id: access-denied
+    fault: S-023
+    probe: errno-handled
+    cause_class: error-handling:errno-swallowed
+  - id: partial-input
+    fault: S-024
+    probe: errno-handled
+    cause_class: error-handling:errno-swallowed
+cause_classes:
+  error-handling:errno-swallowed:
+    hint: Retry interrupted operations and partial reads, and report unrecoverable errors rather than claiming success.
