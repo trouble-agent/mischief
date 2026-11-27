@@ -805,6 +805,7 @@ func TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a real process; skipped in -short")
 	}
+	setFakeSystemdRuntime(t)
 	st, lf := newTestStore(t)
 	// no detachModeOverrideEnv pin: the natural path must fall back itself
 	t.Setenv(spawnProbeEnv, spawnProbeBinary(t))
@@ -854,6 +855,20 @@ func TestNaturalPathFallsBackToSetsidOnDeadSystemdOwner(t *testing.T) {
 	_ = p.Kill()
 }
 
+// setFakeSystemdRuntime makes the natural systemd branch eligible without
+// depending on a user manager or touching the host's runtime directory.
+func setFakeSystemdRuntime(t *testing.T) {
+	t.Helper()
+	runtimeDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(runtimeDir, "systemd"), 0o700); err != nil {
+		t.Fatalf("create fake systemd runtime: %v", err)
+	}
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	if !systemdUserReachable(runtimeDir) {
+		t.Fatal("fake systemd runtime must select the natural systemd branch")
+	}
+}
+
 // TestFallbackFailureJoinsSystemdExecClass: when the fallback ALSO fails
 // (the setsid leg cannot exec the owner binary), the returned error is the
 // JOIN of both failures — the systemd exec-formation class stays visible
@@ -866,6 +881,7 @@ func TestFallbackFailureJoinsSystemdExecClass(t *testing.T) {
 	// The assertions require both natural-path arms. Clear the documented
 	// operator pin so an exported value cannot select only one detach shape.
 	t.Setenv(detachModeOverrideEnv, "")
+	setFakeSystemdRuntime(t)
 	st, lf := newTestStore(t)
 	prevSelf := selfExe
 	selfExe = func() (string, error) {
