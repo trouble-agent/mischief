@@ -97,6 +97,10 @@ type Observation struct {
 	LieHits int
 	// Note carries actuator detail the probe's line should include.
 	Note string
+	// ErrnoObserved records a fault independently observed in the target report.
+	ErrnoObserved bool
+	// ErrnoHandled records that the target recovered or reported the fault.
+	ErrnoHandled bool
 }
 
 // LandResult is one actuator's landing report.
@@ -148,6 +152,7 @@ func DefaultProbes() map[string]ProbeFunc {
 	return map[string]ProbeFunc{
 		ProbePayloadComplete: probePayloadComplete,
 		ProbeCommitDurable:   probeCommitDurable,
+		ProbeErrnoHandled:    probeErrnoHandled,
 	}
 }
 

@@ -9,6 +9,16 @@ import (
 // satisfies the probe's expectation. It never measures anything itself, so a
 // probe cannot be satisfied by the injector's own bookkeeping.
 
+// probeErrnoHandled requires both a measured fault and recovery or reporting.
+func probeErrnoHandled(obs Observation) ProbeResult {
+	return ProbeResult{
+		Name:     ProbeErrnoHandled,
+		Expected: "the target recovers from or reports the injected fault",
+		Observed: obs.Note,
+		Passed:   obs.ErrnoObserved && obs.ErrnoHandled,
+	}
+}
+
 // probePayloadComplete grades S-004: the target's write loop must land every
 // byte of the payload it was asked to write. A short payload (0 bytes) is a
 // permanently-failed premise — an empty expectation must never grade as met
