@@ -21,7 +21,10 @@ int main(int argc, char **argv) {
   }
   if (!strcmp(mode, "partialstdin")) {
     char buf[64]; ssize_t n = read(0, buf, sizeof(buf)); if (n < 0) return 2;
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600); if (fd < 0) return 2;
+    if (handles && write(fd, buf, n) != n) return 2;
     ssize_t next = read(0, buf, sizeof(buf));
+    close(fd);
     printf("fault=%d handled=%d bytes=%zd eof=%d\n", n == 7 && next == 0, handles && n == 7 && next == 0, n, next == 0); return 0;
   }
   int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);

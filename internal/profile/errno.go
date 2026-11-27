@@ -117,8 +117,8 @@ func (e *Errno) Apply(ctx context.Context, req LandRequest) LandResult {
 			return LandResult{Reason: "EACCES target changed"}
 		}
 	case "S-024":
-		if fields["bytes"] != "7" || fields["eof"] != "1" {
-			return LandResult{Reason: "short stdin and EOF not observed"}
+		if fields["bytes"] != "7" || fields["eof"] != "1" || (fields["handled"] == "1" && string(b) != "partial") || (fields["handled"] == "0" && len(b) != 0) {
+			return LandResult{Reason: "short stdin report contradicts the post-exit file"}
 		}
 	}
 	evidence := fmt.Sprintf("child: fault=1 handled=%s; parent read target bytes=%d", fields["handled"], len(b))
