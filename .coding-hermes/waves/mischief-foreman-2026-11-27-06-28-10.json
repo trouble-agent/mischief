@@ -2,7 +2,8 @@
   "tick_id": "mischief-foreman-2026-11-27-06-28-10",
   "resumes": "mischief-foreman-2026-11-27-00-06-46",
   "base_sha": "182d09d",
-  "status": "in_flight",
+  "status": "complete",
+  "finished_at": "2026-11-27T08:30:00Z",
   "requested_model": "glm-5.3-flash",
   "requested_provider": "opencode-go-2",
   "tasks": [
@@ -10,20 +11,21 @@
       "id": "QA-MISCHIEF-009",
       "worktree": "/home/kara/worktrees/mischief-QA-MISCHIEF-009-20261127",
       "branch": "wt/QA-MISCHIEF-009-20261127",
-      "status": "merged",
-      "commit": "182d09d",
-      "merge": "merge commit on main; full merged-tree gate green after removing 12 pre-existing scratch containers; judge job-edcd4c7553fe4cc28a4879ed60aa9098 in flight",
-      "remaining": "judge verdict + board close + exact-head CI"
+      "status": "closed",
+      "commit": "8da47f5",
+      "judge": "82090f35 PASS COMPLETE (tier1+tier2, act clean-env Main Test proven by judge)",
+      "row": "complete @ 953867c close, repointed to 55386a2; gitreins task complete refused (row/verdict tree mismatch after repoint) — disclosed, record left open for audit"
     },
     {
       "id": "PROF-021",
       "worktree": "/home/kara/worktrees/mischief-PROF-021-R2",
       "branch": "wt/PROF-021-R2",
-      "base_sha": "182d09d",
-      "status": "dispatched",
-      "commit": null,
-      "brief": "/home/kara/.hermes/cache/scratch/mischief-20261127-0628-PROF-021-R2-brief.md",
-      "remaining": "implementation; prior attempt (wt/PROF-021-20261127) produced no diff — preserved as evidence"
+      "status": "closed",
+      "commit": "a1129b7",
+      "judge": "f6d515b2 PASS COMPLETE @a1129b7 (tier1+tier2)",
+      "fixup": "wt/PROF-021-FIXUP (scratch rail admits GOTMPDIR; merged b47df95 + test-arm follow-up a1129b7)",
+      "evidence_debt": "live unsanctioned-host run refused by SPEC-13 rail (PROF-031 precedent)"
     }
-  ]
+  ],
+  "notes": "Two initial PROF-021 worker sessions (R2 whole-row brief, R3 partial) delivered zero-diff then partial; R4 continuation brief with commit-early units delivered 5 commits. First PROF-021 judge FAIL exposed the judge-env scratch-rail env redirect; fixup merged and re-judged PASS at the same sha CI went green."
 }
