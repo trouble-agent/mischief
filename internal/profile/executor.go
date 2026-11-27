@@ -144,6 +144,11 @@ func DefaultActuators() map[string]FaultActuator {
 	return map[string]FaultActuator{
 		"S-004": &ShortWrite{},
 		"S-010": &FsyncLie{},
+		"S-020": &Errno{ID: "S-020"},
+		"S-021": &Errno{ID: "S-021"},
+		"S-022": &Errno{ID: "S-022"},
+		"S-023": &Errno{ID: "S-023"},
+		"S-024": &Errno{ID: "S-024"},
 	}
 }
 
