@@ -21,6 +21,11 @@ func (e *Errno) Apply(ctx context.Context, req LandRequest) LandResult {
 	if req.Target.Kind != "scratch" || req.Target.Path == "" {
 		return LandResult{Reason: "errno requires a scratch selector naming a controlled executable"}
 	}
+	resolved, err := filepath.EvalSymlinks(req.Target.Path)
+	if err != nil || !underScratchBase(resolved) {
+		return LandResult{Reason: "controlled executable must resolve within scratch"}
+	}
+	req.Target.Path = resolved
 	if _, err := exec.LookPath("cc"); err != nil {
 		return LandResult{Reason: "no C compiler (cc) on PATH: errno shim cannot be built"}
 	}

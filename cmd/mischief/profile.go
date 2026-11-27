@@ -264,6 +264,19 @@ func cmdProfileRun(args []string) int {
 	}
 
 	tgt := profile.Target{Kind: "scratch", Selector: *target, Path: scratchPath(*target)}
+	// The errno profile accepts an executable in the test scratch tree as its
+	// controlled child, not an arbitrary host executable.
+	if p.ID() == "linux/error-handling" && filepath.IsAbs(*target) {
+		resolved, resolveErr := filepath.EvalSymlinks(*target)
+		base, baseErr := filepath.EvalSymlinks(os.TempDir())
+		rel, relErr := filepath.Rel(base, resolved)
+		info, statErr := os.Stat(resolved)
+		if resolveErr != nil || baseErr != nil || relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || statErr != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0111 == 0 {
+			fmt.Fprintln(os.Stderr, "profile run: errno target must be an executable regular file within the scratch directory")
+			return 2
+		}
+		tgt.Path = resolved
+	}
 	if disc, path, ok := dbDurabilityTarget(*target); ok {
 		tgt = profile.Target{Kind: "dbdurability", Selector: *target, Path: path, Discipline: disc}
 	} else if decl.Kind != rails.TargetHost {
